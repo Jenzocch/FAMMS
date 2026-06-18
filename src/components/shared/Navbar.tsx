@@ -9,7 +9,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ShoppingCart, LayoutDashboard, Clock, Plus, LogOut, User, Shield } from 'lucide-react'
+import { ShoppingCart, LayoutDashboard, Clock, Plus, LogOut, User, Shield, BarChart2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -20,6 +20,7 @@ const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/requests/new', label: 'New Request', icon: Plus },
   { href: '/history', label: 'History', icon: Clock },
+  { href: '/materials', label: 'Prices', icon: BarChart2 },
 ]
 
 export default function Navbar({ profile }: NavbarProps) {
@@ -39,11 +40,13 @@ export default function Navbar({ profile }: NavbarProps) {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+        {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-blue-600">
           <ShoppingCart className="w-5 h-5" />
           <span className="hidden sm:inline">PDP</span>
         </Link>
 
+        {/* Nav links */}
         <nav className="flex items-center gap-1">
           {NAV_LINKS.map(({ href, label, icon: Icon }) => (
             <Link
@@ -76,6 +79,7 @@ export default function Navbar({ profile }: NavbarProps) {
           )}
         </nav>
 
+        {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500">
               <Avatar className="h-8 w-8">
