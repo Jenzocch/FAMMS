@@ -537,11 +537,11 @@ ON CONFLICT (code) DO NOTHING;
 
 -- Level 1: Main Categories
 INSERT INTO failure_categories (code, name, level, display_order, is_active) VALUES
-('MECH', '機械類', 1, 1, true),
-('ELEC', '電氣類', 1, 2, true),
-('UTILITY', '公用設備', 1, 3, true),
-('PROCESS', '製程', 1, 4, true),
-('OPERATION', '操作/人為', 1, 5, true)
+('MECH', 'Mekanikal', 1, 1, true),
+('ELEC', 'Elektrikal', 1, 2, true),
+('UTILITY', 'Utility', 1, 3, true),
+('PROCESS', 'Proses', 1, 4, true),
+('OPERATION', 'Operasi / Human Error', 1, 5, true)
 ON CONFLICT (code) DO NOTHING;
 
 ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;

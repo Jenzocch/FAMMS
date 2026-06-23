@@ -500,53 +500,86 @@ export const INCIDENT_STATUS_COLORS: Record<IncidentStatus, string> = {
   closed: 'bg-green-100 text-green-800',
 };
 
+// UI Language: Bahasa Indonesia + technical English terms
+// (parts/components like bearing, VFD, PLC stay in English for clarity)
+
 export const INCIDENT_STATUS_LABELS: Record<IncidentStatus, string> = {
-  reported: '已報告',
-  accepted: '已受理',
-  analyzing: '分析中',
-  waiting_parts: '等待零件',
-  waiting_approval: '等待批准',
-  waiting_vendor: '等待廠商',
-  waiting_shutdown: '等待停機',
-  repairing: '維修中',
-  testing: '測試中',
-  observation: '觀察中',
-  closed: '已結案',
+  reported: 'Dilaporkan',
+  accepted: 'Diterima',
+  analyzing: 'Analisa',
+  waiting_parts: 'Menunggu Parts',
+  waiting_approval: 'Menunggu Approval',
+  waiting_vendor: 'Menunggu Vendor',
+  waiting_shutdown: 'Menunggu Shutdown',
+  repairing: 'Perbaikan',
+  testing: 'Testing',
+  observation: 'Observasi',
+  closed: 'Selesai',
 };
 
 export const DOWNTIME_IMPACT_LABELS: Record<DowntimeImpact, string> = {
-  A: '全廠停線',
-  B: '單線停線',
-  C: '降速運轉',
-  D: '無影響',
+  A: 'Pabrik Berhenti',      // Factory Stop
+  B: 'Line Berhenti',        // Production Line Stop
+  C: 'Kapasitas Turun',      // Reduced Capacity
+  D: 'Tidak Berpengaruh',    // No Impact
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  technician: '技術員',
-  supervisor: '主管',
-  manager: '經理',
-  director: '廠長',
-  admin: '系統管理員',
+  technician: 'Teknisi',
+  supervisor: 'Supervisor',
+  manager: 'Manager',
+  director: 'Kepala Pabrik',
+  admin: 'Admin',
 };
 
 export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
-  inspection: '檢查',
-  temporary_fix: '臨時修復',
-  root_cause_analysis: '根因分析',
-  part_replacement: '零件更換',
-  corrective_action: '改正措施',
-  preventive_action: '預防措施',
-  testing: '測試驗證',
-  observation: '觀察監控',
+  inspection: 'Inspeksi',
+  temporary_fix: 'Perbaikan Sementara',
+  root_cause_analysis: 'Analisa Root Cause',
+  part_replacement: 'Ganti Parts',
+  corrective_action: 'Tindakan Korektif',
+  preventive_action: 'Tindakan Preventif',
+  testing: 'Testing',
+  observation: 'Observasi',
+};
+
+export const COMPLETION_TYPE_LABELS: Record<CompletionType, string> = {
+  temporary_fix: 'Perbaikan Sementara (Temporary)',
+  permanent_fix: 'Perbaikan Permanen (Permanent)',
 };
 
 export const PM_TYPE_LABELS: Record<PMType, string> = {
-  daily: '每日',
-  weekly: '每週',
-  monthly: '每月',
-  quarterly: '季度',
-  half_yearly: '半年',
-  yearly: '年度',
+  daily: 'Harian',
+  weekly: 'Mingguan',
+  monthly: 'Bulanan',
+  quarterly: 'Per 3 Bulan',
+  half_yearly: 'Per 6 Bulan',
+  yearly: 'Tahunan',
+};
+
+export const PM_DELAY_REASON_LABELS: Record<PMDelayReason, string> = {
+  no_shutdown: 'Tidak Ada Shutdown',
+  no_manpower: 'Kurang Tenaga Kerja',
+  no_parts: 'Parts Tidak Ada',
+  production_priority: 'Prioritas Produksi',
+  forgot: 'Terlupa',
+};
+
+export const BLOCK_REASON_LABELS: Record<BlockReason, string> = {
+  waiting_parts: 'Menunggu Parts',
+  waiting_purchase: 'Menunggu Pembelian',
+  waiting_vendor: 'Menunggu Vendor',
+  waiting_shutdown: 'Menunggu Shutdown',
+  waiting_approval: 'Menunggu Approval',
+  waiting_drawing: 'Menunggu Drawing',
+  other: 'Lainnya',
+};
+
+export const MACHINE_STATUS_LABELS: Record<Machine['status'], string> = {
+  running: 'Beroperasi',
+  repairing: 'Perbaikan',
+  standby: 'Standby',
+  scrapped: 'Dihapus',
 };
 
 // ============================================================================
@@ -557,8 +590,8 @@ export function getHealthScoreBadge(score: number): {
   label: string;
   color: string;
 } {
-  if (score >= 80) return { label: '健康', color: 'bg-green-500' };
-  if (score >= 60) return { label: '注意', color: 'bg-yellow-500' };
-  if (score >= 40) return { label: '高風險', color: 'bg-orange-500' };
-  return { label: '嚴重', color: 'bg-red-500' };
+  if (score >= 80) return { label: 'Sehat', color: 'bg-green-500' };          // Healthy
+  if (score >= 60) return { label: 'Perhatian', color: 'bg-yellow-500' };     // Warning
+  if (score >= 40) return { label: 'Risiko Tinggi', color: 'bg-orange-500' }; // High Risk
+  return { label: 'Kritis', color: 'bg-red-500' };                            // Critical
 }

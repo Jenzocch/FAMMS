@@ -37,6 +37,23 @@ This project uses `@base-ui/react`, NOT `@radix-ui/react`. Key differences:
 - **NO `<Link asChild>` pattern** — use `onClick={() => router.push(...)}`
 - Apply styles directly to trigger elements
 
+### 🌐 Language Convention: Bahasa Indonesia + English Tech Terms
+
+Factories (SJA, DIN, Olentia) are in Indonesia. UI is presented in **Bahasa
+Indonesia mixed with English technical terms**:
+
+- **UI labels, buttons, status, messages** → Bahasa Indonesia
+  (e.g. "Lapor Incident", "Sedang Perbaikan", "Menunggu Parts")
+- **Parts / components / technical terms** → keep English
+  (e.g. bearing, VFD, PLC, motor, gearbox, sensor, contactor, breaker)
+- **Failure code names** → Bahasa Indonesia for the symptom, English for the
+  component (e.g. `BEARING_001` = "Pelumasan Kurang (Lubrication)",
+  `VFD_001` = "Overheat / Over Temperature")
+
+All user-facing label maps live in `src/types/famms.ts` (INCIDENT_STATUS_LABELS,
+ROLE_LABELS, ACTION_TYPE_LABELS, etc.). The fault tree seed
+(`supabase/seed_fault_tree.sql`) follows the same convention.
+
 ---
 
 ## System Architecture
@@ -361,13 +378,14 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000 (or production URL)
 Before first run:
 
 1. ✅ Create `.env.local` with Supabase + OpenAI + Telegram keys
-2. ✅ Run `supabase/schema.sql` in Supabase SQL editor
-3. ✅ Create Supabase storage buckets:
+2. ✅ Run `supabase/schema.sql` in Supabase SQL editor (creates tables + 3 factories + 5 level-1 failure categories)
+3. ✅ Run `supabase/seed_fault_tree.sql` (subcategories + 100+ failure codes, Bahasa Indonesia + English)
+4. ✅ Create Supabase storage buckets:
    - `incident-photos` (public, for before/during/after)
    - `attachments` (private, for PDFs/docs)
-4. ✅ Set up Telegram bot (get token from @BotFather)
-5. ✅ `npm install` (if node_modules missing)
-6. ✅ `npm run dev`
+5. ✅ Set up Telegram bot (get token from @BotFather)
+6. ✅ `npm install` (if node_modules missing)
+7. ✅ `npm run dev`
 
 ---
 

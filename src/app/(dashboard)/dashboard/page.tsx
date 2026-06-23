@@ -48,32 +48,32 @@ export default async function DashboardPage() {
           href="/incidents/new"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-base font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
         >
-          <Plus className="w-5 h-5" /> New Incident
+          <Plus className="w-5 h-5" /> Lapor Incident
         </Link>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          label="Open Incidents"
+          label="Incident Aktif"
           value={openIncidents}
           icon={<AlertCircle className="w-5 h-5" />}
           color="bg-red-50 text-red-700"
         />
         <KPICard
-          label="New Today"
+          label="Baru Hari Ini"
           value={newToday}
           icon={<Activity className="w-5 h-5" />}
           color="bg-blue-50 text-blue-700"
         />
         <KPICard
-          label="Repairing"
+          label="Sedang Perbaikan"
           value={repairing}
           icon={<TrendingDown className="w-5 h-5" />}
           color="bg-yellow-50 text-yellow-700"
         />
         <KPICard
-          label="Total Machines"
+          label="Total Mesin"
           value={machines?.length || 0}
           icon={<Activity className="w-5 h-5" />}
           color="bg-green-50 text-green-700"
@@ -84,25 +84,25 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <QuickLink
           href="/incidents"
-          label="Incidents"
-          description="Manage incidents & repairs"
+          label="Incident"
+          description="Kelola incident & perbaikan"
         />
-        <QuickLink href="/machines" label="Machines" description="Equipment master data" />
-        <QuickLink href="/pm" label="PM Schedule" description="Preventive maintenance" />
+        <QuickLink href="/machines" label="Mesin" description="Data master equipment" />
+        <QuickLink href="/pm" label="Jadwal PM" description="Preventive maintenance" />
         <QuickLink
           href="/knowledge-base"
           label="Knowledge Base"
-          description="Search repair history"
+          description="Cari riwayat perbaikan"
         />
       </div>
 
-      {/* Coming Soon */}
+      {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h2 className="text-lg font-bold text-blue-900 mb-2">🚀 FAMMS V1.0</h2>
         <p className="text-blue-800">
-          Equipment maintenance system designed for SJA, DIN, and Olentia. Track incidents with
-          multi-step repair workflows, detect repeat failures without false positives via fault
-          tree, and drive decision-making with KPI dashboards.
+          Sistem maintenance equipment untuk SJA, DIN, dan Olentia. Catat incident dengan alur
+          perbaikan multi-step, deteksi repeat failure tanpa salah deteksi via fault tree, dan ambil
+          keputusan berdasarkan KPI dashboard.
         </p>
       </div>
     </div>
