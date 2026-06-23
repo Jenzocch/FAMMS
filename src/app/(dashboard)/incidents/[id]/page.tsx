@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import StatusBadge from '@/components/shared/StatusBadge'
 import ActionForm from '@/components/incidents/ActionForm'
+import RCAForm from '@/components/incidents/RCAForm'
+import CloseIncidentButton from '@/components/incidents/CloseIncidentButton'
+import { checkRCARequirement } from '@/lib/rca'
 import {
   IncidentStatus, DowntimeImpact, DOWNTIME_IMPACT_LABELS,
   ActionType, ACTION_TYPE_LABELS, CompletionType, COMPLETION_TYPE_LABELS,
@@ -38,6 +41,12 @@ export default async function IncidentDetailPage({
 
   const machine = incident.machine as { machine_code: string; machine_name: string; brand?: string; model?: string } | null
   const fc = incident.failure_code as { code: string; name: string } | null
+
+  // RCA gate: when the same failure_code crossed the threshold and no RCA exists,
+  // closing is blocked and the RCA form is shown.
+  const rca = await checkRCARequirement(supabase, incident.failure_code_id, incident.factory_id)
+  const rcaBlocked = rca.required && !rca.satisfied
+  const isClosed = incident.status === 'closed'
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -127,8 +136,25 @@ export default async function IncidentDetailPage({
         )}
       </div>
 
+      {/* RCA mandatory form (when triggered & not yet satisfied) */}
+      {!isClosed && rcaBlocked && (
+        <RCAForm failureCodeId={incident.failure_code_id} occurrenceCount={rca.occurrenceCount} />
+      )}
+
       {/* Add action */}
-      {incident.status !== 'closed' && <ActionForm incidentId={id} />}
+      {!isClosed && <ActionForm incidentId={id} />}
+
+      {/* Close incident */}
+      {!isClosed && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <CloseIncidentButton incidentId={id} rcaBlocked={rcaBlocked} />
+          {rcaBlocked && (
+            <p className="text-xs text-red-600 mt-2 text-center">
+              Failure code ini terjadi {rca.occurrenceCount}× dalam 90 hari — isi RCA di atas untuk dapat menutup.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

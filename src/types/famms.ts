@@ -589,6 +589,20 @@ export const MACHINE_STATUS_COLORS: Record<Machine['status'], string> = {
   scrapped: 'bg-red-100 text-red-800',
 };
 
+export const RCA_STATUS_LABELS: Record<RCAStatus, string> = {
+  open: 'Terbuka',
+  in_progress: 'Sedang Dikerjakan',
+  completed: 'Selesai',
+  closed: 'Ditutup',
+};
+
+export const RCA_STATUS_COLORS: Record<RCAStatus, string> = {
+  open: 'bg-red-100 text-red-800',
+  in_progress: 'bg-yellow-100 text-yellow-800',
+  completed: 'bg-green-100 text-green-800',
+  closed: 'bg-gray-100 text-gray-800',
+};
+
 // ============================================================================
 // Health Score Helper
 // ============================================================================
