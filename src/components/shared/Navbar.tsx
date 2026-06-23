@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   Wrench, LayoutDashboard, AlertCircle, HardDrive,
-  CalendarCheck, BookOpen, LogOut, User,
+  CalendarCheck, BookOpen, LogOut, User, Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -89,6 +89,9 @@ export default function Navbar({ profile }: NavbarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/profile')} className="flex items-center gap-2 cursor-pointer">
               <User className="w-4 h-4" /> Profil
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')} className="flex items-center gap-2 cursor-pointer">
+              <Settings className="w-4 h-4" /> Pengaturan
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-red-600 flex items-center gap-2">

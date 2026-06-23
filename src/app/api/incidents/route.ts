@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { REPEAT_FAILURE_WINDOW_DAYS } from '@/lib/constants'
+import { notifyFactory, formatNewIncident } from '@/lib/telegram'
+import type { DowntimeImpact } from '@/types'
 
 // POST /api/incidents — create a new incident
 // Generates incident_no (INC-YYYYMM-NNNN), then runs repeat-failure detection.
@@ -71,6 +73,31 @@ export async function POST(req: Request) {
   const potentialRepeats = (priors ?? []).filter(
     p => p.completion_type === 'temporary_fix' || !p.root_cause
   )
+
+  // Best-effort Telegram notification (never blocks incident creation)
+  try {
+    const { data: fc } = await supabase
+      .from('failure_codes')
+      .select('name')
+      .eq('id', failure_code_id)
+      .single()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const html = formatNewIncident({
+      incidentNo: incident_no,
+      machineLabel: machine.machine_code,
+      failureName: fc?.name ?? failure_code_id,
+      impact: downtime_impact as DowntimeImpact,
+      appUrl,
+      incidentId: incident.id,
+    })
+    await notifyFactory(supabase, {
+      factoryId: machine.factory_id,
+      type: 'new_incident',
+      html,
+    })
+  } catch {
+    // swallow — notification failures must not affect the API result
+  }
 
   return NextResponse.json({
     incident,
