@@ -521,21 +521,20 @@ CREATE INDEX idx_knowledge_base_keywords ON knowledge_base(keywords);
 CREATE INDEX idx_maintenance_costs_machine_date ON maintenance_costs(machine_id, cost_date);
 
 -- ============================================================================
--- RLS (ROW LEVEL SECURITY)
+-- RLS (ROW LEVEL SECURITY) — DISABLED FOR INITIAL SETUP
 -- ============================================================================
-
-ALTER TABLE factories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE machines ENABLE ROW LEVEL SECURITY;
-ALTER TABLE incidents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE incident_actions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pm_schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pm_records ENABLE ROW LEVEL SECURITY;
-
--- Users can see their own profile
-CREATE POLICY "Users see own profile"
-  ON profiles
-  USING (auth.uid() = id);
+-- Uncomment after schema is created and seeded
+-- ALTER TABLE factories ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE machines ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE incidents ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE incident_actions ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE pm_schedules ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE pm_records ENABLE ROW LEVEL SECURITY;
+--
+-- CREATE POLICY "Users see own profile"
+--   ON profiles
+--   USING (auth.uid() = id);
 
 -- ============================================================================
 -- INITIAL DATA: Factories
