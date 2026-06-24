@@ -33,6 +33,17 @@ CREATE TABLE areas (
   UNIQUE(factory_id, code)
 );
 
+-- Departments (for purchase request system)
+CREATE TABLE departments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  factory_id UUID NOT NULL REFERENCES factories(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(factory_id, code)
+);
+
 -- Profiles (extends auth.users)
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
