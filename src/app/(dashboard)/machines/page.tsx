@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { Plus, Edit2, Trash2, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -28,12 +27,12 @@ export default async function MachinesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Mesin</h1>
-        <Link href="/machines/new">
-          <Button>
+        <form action="/machines/new" method="get">
+          <Button type="submit">
             <Plus className="w-4 h-4 mr-2" />
             Tambah Mesin
           </Button>
-        </Link>
+        </form>
       </div>
 
       {!machines || machines.length === 0 ? (
@@ -58,16 +57,16 @@ export default async function MachinesPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Link href={`/machines/${m.id}/qr`}>
-                  <Button variant="outline" size="sm">
+                <form action={`/machines/${m.id}/qr`} method="get" className="inline">
+                  <Button type="submit" variant="outline" size="sm">
                     <QrCode className="w-4 h-4" />
                   </Button>
-                </Link>
-                <Link href={`/machines/${m.id}/edit`}>
-                  <Button variant="outline" size="sm">
+                </form>
+                <form action={`/machines/${m.id}/edit`} method="get" className="inline">
+                  <Button type="submit" variant="outline" size="sm">
                     <Edit2 className="w-4 h-4" />
                   </Button>
-                </Link>
+                </form>
                 <DeleteMachineButton machineId={m.id} />
               </div>
             </div>
