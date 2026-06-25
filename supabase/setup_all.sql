@@ -1,10 +1,9 @@
 -- ============================================================
--- FAMMS — COMBINED SETUP (schema + fault tree + demo data)
+-- FAMMS — COMBINED SETUP (schema + fault tree + demo data + facilities)
 -- Run this ENTIRE file in ONE paste in Supabase SQL Editor.
--- Run storage_setup.sql separately afterwards.
 -- ============================================================
 
--- Clean slate (safe to re-run)
+-- Clean slate
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 GRANT ALL ON SCHEMA public TO postgres, anon, authenticated, service_role;
@@ -131,6 +130,32 @@ CREATE TABLE machine_qr_codes (
 );
 
 -- ============================================================================
+-- 2B. FACILITIES & INFRASTRUCTURE (Non-Machine Assets)
+-- ============================================================================
+
+CREATE TABLE facilities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  factory_id UUID NOT NULL REFERENCES factories(id) ON DELETE CASCADE,
+  area_id UUID REFERENCES areas(id) ON DELETE CASCADE,
+
+  facility_code TEXT NOT NULL,
+  facility_name TEXT NOT NULL,
+  facility_type TEXT NOT NULL,
+  -- 'water_system' | 'floor' | 'lighting' | 'air_compressor' | 'steam_system'
+  -- | 'cooling_system' | 'electrical' | 'exhaust' | 'cleanliness' | 'safety' | 'other'
+
+  description TEXT,
+  owner_id UUID REFERENCES profiles(id),
+  status TEXT DEFAULT 'operational',
+  -- 'operational' | 'maintenance_needed' | 'critical' | 'out_of_service'
+
+  remarks TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(factory_id, facility_code)
+);
+
+-- ============================================================================
 -- 3. FAILURE CLASSIFICATION SYSTEM (Fault Tree)
 -- ============================================================================
 
@@ -157,15 +182,42 @@ CREATE TABLE failure_codes (
 );
 
 -- ============================================================================
+-- 3B. FACILITY ISSUE CATEGORIES (for non-machine incidents)
+-- ============================================================================
+
+CREATE TABLE facility_issue_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  facility_type TEXT NOT NULL,
+  -- Linked to facilities.facility_type for relevance filtering
+  description TEXT,
+  display_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================================================
 -- 4. INCIDENTS (Main Event Log)
 -- ============================================================================
 
 CREATE TABLE incidents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   factory_id UUID NOT NULL REFERENCES factories(id) ON DELETE CASCADE,
-  machine_id UUID NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+
+  -- Report target: either machine OR facility, not both
+  machine_id UUID REFERENCES machines(id) ON DELETE CASCADE,
+  facility_id UUID REFERENCES facilities(id) ON DELETE CASCADE,
+  incident_type TEXT NOT NULL,
+  -- 'machine' | 'facility'
+
   incident_no TEXT NOT NULL,
-  failure_code_id UUID NOT NULL REFERENCES failure_codes(id),
+
+  -- Machine incidents use failure_code; facility incidents can be null
+  failure_code_id UUID REFERENCES failure_codes(id),
+
+  -- Facility incidents use this for free-text description
+  facility_issue_description TEXT,
 
   status TEXT DEFAULT 'reported',
   -- reported → accepted → analyzing → waiting_* → repairing → testing → observation → closed
@@ -524,7 +576,10 @@ CREATE TABLE projects (
 
 CREATE INDEX idx_profiles_factory_id ON profiles(factory_id);
 CREATE INDEX idx_machines_factory_area ON machines(factory_id, area_id);
+CREATE INDEX idx_facilities_factory_area ON facilities(factory_id, area_id);
 CREATE INDEX idx_incidents_machine_status ON incidents(machine_id, status);
+CREATE INDEX idx_incidents_facility_status ON incidents(facility_id, status);
+CREATE INDEX idx_incidents_type_status ON incidents(incident_type, status);
 CREATE INDEX idx_incidents_failure_code ON incidents(failure_code_id);
 CREATE INDEX idx_incidents_created_at ON incidents(created_at DESC);
 CREATE INDEX idx_incident_actions_incident_id ON incident_actions(incident_id);
@@ -556,6 +611,44 @@ INSERT INTO factories (name, code, country) VALUES
 ('SJA', 'SJA', 'ID'),
 ('DIN', 'DIN', 'ID'),
 ('Olentia', 'OLT', 'ID')
+ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================================
+-- INITIAL DATA: Facility Issue Categories
+-- ============================================================================
+
+INSERT INTO facility_issue_categories (code, name, facility_type, display_order, is_active) VALUES
+-- Water System
+('WATER_LEAK', 'Kebocoran Air', 'water_system', 1, true),
+('WATER_PRESSURE', 'Tekanan Air Rendah', 'water_system', 2, true),
+('WATER_QUALITY', 'Kualitas Air Buruk', 'water_system', 3, true),
+
+-- Floor & Structure
+('FLOOR_CRACK', 'Lantai Retak/Rusak', 'floor', 1, true),
+('FLOOR_SLIP', 'Lantai Licin/Hazard', 'floor', 2, true),
+
+-- Lighting
+('LIGHT_BROKEN', 'Lampu Mati/Rusak', 'lighting', 1, true),
+('LIGHT_DIM', 'Pencahayaan Kurang', 'lighting', 2, true),
+
+-- Air Compressor & Pneumatic
+('COMPRESSOR_LOW_PRESSURE', 'Tekanan Udara Rendah', 'air_compressor', 1, true),
+('COMPRESSOR_LEAK', 'Kebocoran Udara Terkompresi', 'air_compressor', 2, true),
+
+-- Electrical & Safety
+('ELECTRICAL_HAZARD', 'Hazard Listrik', 'electrical', 1, true),
+('ELECTRICAL_FAULT', 'Fault Listrik', 'electrical', 2, true),
+
+-- Cleanliness & Environment
+('CLEANLINESS_ISSUE', 'Masalah Kebersihan', 'cleanliness', 1, true),
+('PEST_INFESTATION', 'Serangan Hama', 'cleanliness', 2, true),
+
+-- Safety
+('SAFETY_HAZARD', 'Hazard Keselamatan', 'safety', 1, true),
+('SAFETY_VIOLATION', 'Pelanggaran K3', 'safety', 2, true),
+
+-- Other
+('OTHER_FACILITY_ISSUE', 'Masalah Lainnya', 'other', 1, true)
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================================
@@ -874,7 +967,7 @@ FROM (VALUES
 ) AS v(code, name, ord)
 ON CONFLICT (code) DO NOTHING;
 
--- ===== seed_demo.sql =====
+-- ===== seed_demo.sql (now with facilities) =====
 -- ============================================================================
 -- FAMMS Demo Seed Data (areas + sample machines)
 -- Run AFTER schema.sql + seed_fault_tree.sql
@@ -920,3 +1013,30 @@ FROM (VALUES
 JOIN factories f ON f.code = m.factory_code
 JOIN areas ar ON ar.factory_id = f.id AND ar.code = m.area_code
 ON CONFLICT (factory_id, machine_code) DO NOTHING;
+
+-- Sample facilities (廠區設施、基礎設施)
+INSERT INTO facilities (factory_id, area_id, facility_code, facility_name, facility_type, description, status)
+SELECT f.id, ar.id, fc.facility_code, fc.facility_name, fc.facility_type, fc.description, 'operational'
+FROM (VALUES
+  -- DIN factory facilities
+  ('DIN', 'PROD', 'DIN-WTR-001', 'Water Supply Tank 1', 'water_system', 'Main water tank untuk produksi'),
+  ('DIN', 'PROD', 'DIN-AIR-001', 'Air Compressor System', 'air_compressor', 'Central air supply untuk area produksi'),
+  ('DIN', 'PROD', 'DIN-FLR-001', 'Production Floor', 'floor', 'Lantai area produksi'),
+  ('DIN', 'PROD', 'DIN-LGT-001', 'LED Lighting Panel 1', 'lighting', 'Pencahayaan area produksi'),
+  ('DIN', 'PROD', 'DIN-ELC-001', 'Main Electrical Panel', 'electrical', 'Main power distribution'),
+  ('DIN', 'WH', 'DIN-FLR-002', 'Warehouse Floor', 'floor', 'Lantai gudang'),
+  -- SJA factory facilities
+  ('SJA', 'PROD', 'SJA-WTR-001', 'Water Supply - Production', 'water_system', 'Water untuk area produksi'),
+  ('SJA', 'PROD', 'SJA-STM-001', 'Steam Generator', 'steam_system', 'Steam untuk proses'),
+  ('SJA', 'PROD', 'SJA-FLR-001', 'Production Floor', 'floor', 'Lantai area produksi SJA'),
+  ('SJA', 'PACK', 'SJA-AIR-001', 'Pneumatic System', 'air_compressor', 'Udara terkompresi untuk packing'),
+  ('SJA', 'PACK', 'SJA-LGT-001', 'Packing Area Lights', 'lighting', 'Lampu area packing'),
+  ('SJA', 'UTIL', 'SJA-CHI-001', 'Chiller System', 'cooling_system', 'Sistem pendingin utilitas'),
+  -- Olentia factory facilities
+  ('OLT', 'PROD', 'OLT-WTR-001', 'Water Distribution', 'water_system', 'Saluran air ke area produksi'),
+  ('OLT', 'PROD', 'OLT-FLR-001', 'Conveyor Area Floor', 'floor', 'Lantai area konveyor'),
+  ('OLT', 'PROD', 'OLT-LGT-001', 'Overhead Lighting', 'lighting', 'Lampu gantung area produksi')
+) AS fc(factory_code, area_code, facility_code, facility_name, facility_type, description)
+JOIN factories f ON f.code = fc.factory_code
+JOIN areas ar ON ar.factory_id = f.id AND ar.code = fc.area_code
+ON CONFLICT (factory_id, facility_code) DO NOTHING;

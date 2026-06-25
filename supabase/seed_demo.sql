@@ -43,3 +43,30 @@ FROM (VALUES
 JOIN factories f ON f.code = m.factory_code
 JOIN areas ar ON ar.factory_id = f.id AND ar.code = m.area_code
 ON CONFLICT (factory_id, machine_code) DO NOTHING;
+
+-- Sample facilities (廠區設施、基礎設施)
+INSERT INTO facilities (factory_id, area_id, facility_code, facility_name, facility_type, description, status)
+SELECT f.id, ar.id, fc.facility_code, fc.facility_name, fc.facility_type, fc.description, 'operational'
+FROM (VALUES
+  -- DIN factory facilities
+  ('DIN', 'PROD', 'DIN-WTR-001', 'Water Supply Tank 1', 'water_system', 'Main water tank untuk produksi'),
+  ('DIN', 'PROD', 'DIN-AIR-001', 'Air Compressor System', 'air_compressor', 'Central air supply untuk area produksi'),
+  ('DIN', 'PROD', 'DIN-FLR-001', 'Production Floor', 'floor', 'Lantai area produksi'),
+  ('DIN', 'PROD', 'DIN-LGT-001', 'LED Lighting Panel 1', 'lighting', 'Pencahayaan area produksi'),
+  ('DIN', 'PROD', 'DIN-ELC-001', 'Main Electrical Panel', 'electrical', 'Main power distribution'),
+  ('DIN', 'WH', 'DIN-FLR-002', 'Warehouse Floor', 'floor', 'Lantai gudang'),
+  -- SJA factory facilities
+  ('SJA', 'PROD', 'SJA-WTR-001', 'Water Supply - Production', 'water_system', 'Water untuk area produksi'),
+  ('SJA', 'PROD', 'SJA-STM-001', 'Steam Generator', 'steam_system', 'Steam untuk proses'),
+  ('SJA', 'PROD', 'SJA-FLR-001', 'Production Floor', 'floor', 'Lantai area produksi SJA'),
+  ('SJA', 'PACK', 'SJA-AIR-001', 'Pneumatic System', 'air_compressor', 'Udara terkompresi untuk packing'),
+  ('SJA', 'PACK', 'SJA-LGT-001', 'Packing Area Lights', 'lighting', 'Lampu area packing'),
+  ('SJA', 'UTIL', 'SJA-CHI-001', 'Chiller System', 'cooling_system', 'Sistem pendingin utilitas'),
+  -- Olentia factory facilities
+  ('OLT', 'PROD', 'OLT-WTR-001', 'Water Distribution', 'water_system', 'Saluran air ke area produksi'),
+  ('OLT', 'PROD', 'OLT-FLR-001', 'Conveyor Area Floor', 'floor', 'Lantai area konveyor'),
+  ('OLT', 'PROD', 'OLT-LGT-001', 'Overhead Lighting', 'lighting', 'Lampu gantung area produksi')
+) AS fc(factory_code, area_code, facility_code, facility_name, facility_type, description)
+JOIN factories f ON f.code = fc.factory_code
+JOIN areas ar ON ar.factory_id = f.id AND ar.code = fc.area_code
+ON CONFLICT (factory_id, facility_code) DO NOTHING;
