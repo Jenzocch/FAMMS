@@ -94,7 +94,7 @@ CREATE TABLE machines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   factory_id UUID NOT NULL REFERENCES factories(id) ON DELETE CASCADE,
   area_id UUID NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
-  machine_code TEXT NOT NULL,
+  machine_code TEXT,
   machine_name TEXT NOT NULL,
   brand TEXT,
   model TEXT,
@@ -108,7 +108,7 @@ CREATE TABLE machines (
   remarks TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(factory_id, machine_code)
+  UNIQUE(factory_id, machine_code) WHERE machine_code IS NOT NULL
 );
 
 CREATE TABLE machine_qr_codes (
@@ -127,7 +127,7 @@ CREATE TABLE facilities (
   factory_id UUID NOT NULL REFERENCES factories(id) ON DELETE CASCADE,
   area_id UUID REFERENCES areas(id) ON DELETE CASCADE,
 
-  facility_code TEXT NOT NULL,
+  facility_code TEXT,
   facility_name TEXT NOT NULL,
   facility_type TEXT NOT NULL,
   -- 'water_system' | 'floor' | 'lighting' | 'air_compressor' | 'steam_system'
@@ -141,7 +141,7 @@ CREATE TABLE facilities (
   remarks TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(factory_id, facility_code)
+  UNIQUE(factory_id, facility_code) WHERE facility_code IS NOT NULL
 );
 
 -- ============================================================================

@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Zap } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 interface Area {
   id: string
@@ -60,7 +60,6 @@ export default function MachineForm({ machine }: Props) {
   const [owners, setOwners] = useState<Profile[]>([])
 
   const [areaId, setAreaId] = useState(machine?.area_id || '')
-  const [typeCode, setTypeCode] = useState('')
   const [code, setCode] = useState(machine?.machine_code || '')
   const [name, setName] = useState(machine?.machine_name || '')
   const [brand, setBrand] = useState(machine?.brand || '')
@@ -73,7 +72,6 @@ export default function MachineForm({ machine }: Props) {
   const [status, setStatus] = useState(machine?.status || 'running')
   const [remarks, setRemarks] = useState(machine?.remarks || '')
   const [submitting, setSubmitting] = useState(false)
-  const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -89,56 +87,17 @@ export default function MachineForm({ machine }: Props) {
     load()
   }, [])
 
-  const currentArea = areas.find(a => a.id === areaId)
-  const currentFactory = currentArea ? factories.find(f => f.id === currentArea.factory_id) : null
-  const factoryCode = currentFactory?.code || ''
-
-  async function generateCode() {
-    if (!factoryCode || !typeCode.trim()) {
-      toast.error('Pilih area dan masukkan kode tipe mesin')
-      return
-    }
-
-    setGenerating(true)
-    try {
-      // Find highest sequence for this prefix
-      const prefix = `${factoryCode}-${typeCode.toUpperCase()}-`
-      const { data: existing } = await supabase
-        .from('machines')
-        .select('machine_code')
-        .like('machine_code', `${prefix}%`)
-        .order('machine_code', { ascending: false })
-        .limit(1)
-
-      let nextSeq = 1
-      if (existing && existing.length > 0) {
-        const last = existing[0].machine_code
-        const match = last.match(/-(\d+)$/)
-        if (match) {
-          nextSeq = parseInt(match[1]) + 1
-        }
-      }
-
-      const newCode = `${prefix}${String(nextSeq).padStart(3, '0')}`
-      setCode(newCode)
-      toast.success(`編號 ${newCode} 已生成`)
-    } catch (err) {
-      toast.error('生成編號失敗')
-    } finally {
-      setGenerating(false)
-    }
-  }
 
   async function submit() {
-    if (!areaId || !code || !name) {
-      toast.error('Lengkapi area, kode, dan nama mesin')
+    if (!areaId || !name) {
+      toast.error('Lengkapi area dan nama mesin')
       return
     }
     setSubmitting(true)
     try {
       const payload = {
         area_id: areaId,
-        machine_code: code,
+        machine_code: code || null,
         machine_name: name,
         brand: brand || null,
         model: model || null,
@@ -184,56 +143,16 @@ export default function MachineForm({ machine }: Props) {
             {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        {factoryCode && (
-          <p className="text-xs text-gray-500 mt-1">
-            Pabrik: <span className="font-mono font-bold">{factoryCode}</span>
-          </p>
-        )}
       </div>
 
-      {/* Auto-Generate Code */}
-      {!machine && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900">Auto-Generate Kode Mesin</span>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="typeCode">Kode Tipe (2-3 huruf)</Label>
-            <div className="flex gap-2">
-              <Input
-                id="typeCode"
-                value={typeCode}
-                onChange={e => setTypeCode(e.target.value.toUpperCase())}
-                placeholder="e.g., HMG, PMP, MIX, MTR, CMP, CNV"
-                maxLength={3}
-                disabled={!factoryCode}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                onClick={generateCode}
-                disabled={!factoryCode || !typeCode.trim() || generating}
-                variant="outline"
-              >
-                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Generate'}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500">
-              Contoh: HMG=Homogenizer, PMP=Pump, MIX=Mixer, MTR=Motor, CMP=Compressor, CNV=Conveyor
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Machine Code */}
       <div>
-        <Label>Kode Mesin <span className="text-red-500">*</span></Label>
+        <Label>Kode Mesin (Opsional)</Label>
         <Input
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
-          placeholder="e.g., DIN-HMG-001"
-          disabled={!!machine}
+          placeholder="e.g., M001, PUMP-01 (atau kosongkan)"
           className="mt-1 font-mono"
         />
       </div>

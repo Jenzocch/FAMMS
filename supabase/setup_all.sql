@@ -1,15 +1,4 @@
 -- ============================================================
--- FAMMS — COMBINED SETUP (schema + fault tree + demo data + facilities)
--- Run this ENTIRE file in ONE paste in Supabase SQL Editor.
--- ============================================================
-
--- Clean slate
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO postgres, anon, authenticated, service_role;
-
--- ===== schema.sql =====
--- ============================================================
 -- FAMMS — Factory Asset & Maintenance Management System
 -- PostgreSQL Schema for Supabase
 -- Version: 1.0
@@ -105,7 +94,7 @@ CREATE TABLE machines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   factory_id UUID NOT NULL REFERENCES factories(id) ON DELETE CASCADE,
   area_id UUID NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
-  machine_code TEXT NOT NULL,
+  machine_code TEXT,
   machine_name TEXT NOT NULL,
   brand TEXT,
   model TEXT,
@@ -119,7 +108,7 @@ CREATE TABLE machines (
   remarks TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(factory_id, machine_code)
+  UNIQUE(factory_id, machine_code) WHERE machine_code IS NOT NULL
 );
 
 CREATE TABLE machine_qr_codes (
@@ -138,7 +127,7 @@ CREATE TABLE facilities (
   factory_id UUID NOT NULL REFERENCES factories(id) ON DELETE CASCADE,
   area_id UUID REFERENCES areas(id) ON DELETE CASCADE,
 
-  facility_code TEXT NOT NULL,
+  facility_code TEXT,
   facility_name TEXT NOT NULL,
   facility_type TEXT NOT NULL,
   -- 'water_system' | 'floor' | 'lighting' | 'air_compressor' | 'steam_system'
@@ -152,7 +141,7 @@ CREATE TABLE facilities (
   remarks TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(factory_id, facility_code)
+  UNIQUE(factory_id, facility_code) WHERE facility_code IS NOT NULL
 );
 
 -- ============================================================================
@@ -664,8 +653,6 @@ INSERT INTO failure_categories (code, name, level, display_order, is_active) VAL
 ('OPERATION', 'Operasi / Human Error', 1, 5, true)
 ON CONFLICT (code) DO NOTHING;
 
-
--- ===== seed_fault_tree.sql =====
 -- ============================================================================
 -- FAMMS Fault Tree Seed Data
 -- Bahasa Indonesia + technical English terms
@@ -966,8 +953,6 @@ FROM (VALUES
   ('NEG_004', 'Parts Aus Tidak Diganti', 4)
 ) AS v(code, name, ord)
 ON CONFLICT (code) DO NOTHING;
-
--- ===== seed_demo.sql (now with facilities) =====
 -- ============================================================================
 -- FAMMS Demo Seed Data (areas + sample machines)
 -- Run AFTER schema.sql + seed_fault_tree.sql
