@@ -6,6 +6,7 @@ import ProgressUpdate from '@/components/incidents/ProgressUpdate'
 import AssignForm from '@/components/incidents/AssignForm'
 import IncidentActions from '@/components/incidents/IncidentActions'
 import ImageViewer from '@/components/shared/ImageViewer'
+import AuditTrail from '@/components/incidents/AuditTrail'
 import { IncidentStatus } from '@/types'
 import {
   ISSUE_TYPE_LABELS, URGENCY_FROM_IMPACT, STATUS_ZH, STATUS_ZH_COLOR,
@@ -202,6 +203,11 @@ export default async function IncidentDetailPage({
         impact={incident.downtime_impact}
         userRole={user?.role}
       />
+
+      {/* Audit Trail - Operation History */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <AuditTrail resourceId={id} resourceType="incident" />
+      </div>
     </div>
   )
 }

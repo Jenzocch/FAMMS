@@ -724,3 +724,171 @@ ALTER TABLE machines ADD COLUMN IF NOT EXISTS asset_category TEXT DEFAULT 'machi
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS assigned_to TEXT;
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS assigned_dept TEXT;
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS due_date DATE;
+
+-- ============================================================================
+-- AUDIT LOGGING — 操作日志追踪（谁在何时做了什么）
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Who did it
+  user_id UUID REFERENCES profiles(id),
+  user_name TEXT,  -- cached for deleted users
+  
+  -- What action
+  action_type TEXT NOT NULL,
+  -- 'create' | 'update' | 'delete' | 'status_change' | 'assign' | 'comment'
+  
+  -- What resource
+  resource_type TEXT NOT NULL,
+  -- 'incident' | 'machine' | 'pm_schedule' | 'maintenance_log'
+  
+  resource_id UUID NOT NULL,
+  
+  -- What changed
+  old_value JSONB,  -- previous state (for updates)
+  new_value JSONB,  -- new state
+  change_summary TEXT,  -- human-readable: "Status changed from reported to analyzing"
+  
+  -- Metadata
+  timestamp TIMESTAMP DEFAULT NOW(),
+  ip_address TEXT,
+  factory_id UUID REFERENCES factories(id),
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_factory ON audit_logs(factory_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action_type);
+
+-- View for easy access to incident audit trail
+CREATE VIEW IF NOT EXISTS incident_audit_trail AS
+  SELECT 
+    al.id,
+    al.user_id,
+    al.user_name,
+    al.action_type,
+    al.change_summary,
+    al.old_value,
+    al.new_value,
+    al.timestamp,
+    al.resource_id as incident_id
+  FROM audit_logs
+  WHERE resource_type = 'incident'
+  ORDER BY timestamp DESC;
+
+
+-- ============================================================================
+-- AUDIT TRIGGERS — Auto-log all incident changes
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION log_incident_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Log create
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO audit_logs (
+      user_id, user_name, action_type, resource_type, resource_id,
+      old_value, new_value, change_summary, factory_id
+    ) VALUES (
+      auth.uid(), 
+      NULL,
+      'create',
+      'incident',
+      NEW.id,
+      NULL,
+      jsonb_build_object(
+        'id', NEW.id,
+        'title', NEW.title,
+        'incident_no', NEW.incident_no,
+        'status', NEW.status
+      ),
+      '案件已建立',
+      NEW.factory_id
+    );
+  END IF;
+
+  -- Log update
+  IF TG_OP = 'UPDATE' THEN
+    -- Only log if significant fields changed
+    IF (OLD.status IS DISTINCT FROM NEW.status)
+      OR (OLD.title IS DISTINCT FROM NEW.title)
+      OR (OLD.description IS DISTINCT FROM NEW.description)
+      OR (OLD.assigned_to IS DISTINCT FROM NEW.assigned_to)
+    THEN
+      INSERT INTO audit_logs (
+        user_id, user_name, action_type, resource_type, resource_id,
+        old_value, new_value, change_summary, factory_id
+      ) VALUES (
+        auth.uid(),
+        NULL,
+        CASE 
+          WHEN OLD.status IS DISTINCT FROM NEW.status THEN 'status_change'
+          WHEN OLD.assigned_to IS DISTINCT FROM NEW.assigned_to THEN 'assign'
+          ELSE 'update'
+        END,
+        'incident',
+        NEW.id,
+        jsonb_build_object(
+          'status', OLD.status,
+          'title', OLD.title,
+          'assigned_to', OLD.assigned_to
+        ),
+        jsonb_build_object(
+          'status', NEW.status,
+          'title', NEW.title,
+          'assigned_to', NEW.assigned_to
+        ),
+        CASE
+          WHEN OLD.status IS DISTINCT FROM NEW.status 
+            THEN '狀態從 ' || COALESCE(OLD.status, 'N/A') || ' 變更為 ' || COALESCE(NEW.status, 'N/A')
+          WHEN OLD.assigned_to IS DISTINCT FROM NEW.assigned_to
+            THEN '指派從 ' || COALESCE(OLD.assigned_to, '未指派') || ' 變更為 ' || COALESCE(NEW.assigned_to, '未指派')
+          ELSE '案件已編輯'
+        END,
+        NEW.factory_id
+      );
+    END IF;
+  END IF;
+
+  -- Log delete
+  IF TG_OP = 'DELETE' THEN
+    INSERT INTO audit_logs (
+      user_id, user_name, action_type, resource_type, resource_id,
+      old_value, new_value, change_summary, factory_id
+    ) VALUES (
+      auth.uid(),
+      NULL,
+      'delete',
+      'incident',
+      OLD.id,
+      jsonb_build_object(
+        'id', OLD.id,
+        'title', OLD.title,
+        'status', OLD.status
+      ),
+      NULL,
+      '案件已刪除',
+      OLD.factory_id
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop trigger if exists
+DROP TRIGGER IF EXISTS tr_audit_incident_changes ON incidents;
+
+-- Create trigger
+CREATE TRIGGER tr_audit_incident_changes
+AFTER INSERT OR UPDATE OR DELETE ON incidents
+FOR EACH ROW
+EXECUTE FUNCTION log_incident_change();
+
