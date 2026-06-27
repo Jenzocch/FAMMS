@@ -1,10 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
+import { occurrencesInWindow, toDateStr } from '@/lib/pm'
+import type { PMType } from '@/types'
 
 /**
  * GET /api/pm/calendar?factory_id=xxx&month=YYYY-MM&machine_id=xxx(optional)
  *
- * Returns all PM events for a factory in a month, grouped by date.
- * Optional machine_id filter to show single machine.
+ * Returns PM events for a factory in a month, grouped by date.
+ *
+ * Two sources are merged so the calendar is always populated:
+ *  1. Stored pm_records in the month  → real status (completed/skipped/pending/overdue)
+ *  2. Projected occurrences from active schedules → status 'scheduled' (planned)
+ *     for any date that has no stored record yet. This is what makes future
+ *     months show the planned maintenance instead of being empty.
+ *
+ * Optional machine_id filters to a single machine.
  */
 export async function GET(req: Request) {
   const supabase = await createClient()
@@ -21,45 +30,74 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Get schedules for this factory (optionally filtered by machine)
+    // Active schedules for this factory (optionally filtered by machine)
     let scheduleQuery = supabase
       .from('pm_schedules')
-      .select('id, machine_id, pm_type, description')
+      .select('id, machine_id, pm_type, description, created_at')
       .eq('factory_id', factoryId)
       .eq('is_active', true)
 
     if (machineId) scheduleQuery = scheduleQuery.eq('machine_id', machineId)
 
     const { data: schedules } = await scheduleQuery
-    if (!schedules || schedules.length === 0) return Response.json({ month, events: [], machines: [] })
+    if (!schedules || schedules.length === 0) {
+      return Response.json({ month, events: [], machines: [] })
+    }
 
-    // Get machine details
+    const scheduleIds = schedules.map(s => s.id)
+    const scheduleMap = Object.fromEntries(schedules.map(s => [s.id, s]))
+
+    // Machine details
     const machineIds = [...new Set(schedules.map(s => s.machine_id))]
     const { data: machines } = await supabase
       .from('machines')
       .select('id, machine_name, machine_code')
       .in('id', machineIds)
-
     const machineMap = Object.fromEntries((machines || []).map(m => [m.id, m]))
-    const scheduleMap = Object.fromEntries(schedules.map(s => [s.id, s]))
 
-    // Get PM records for the month
+    // Window for the visible month
     const monthStart = `${month}-01`
-    const monthEnd = new Date(month + '-01')
-    monthEnd.setMonth(monthEnd.getMonth() + 1)
-    const monthEndStr = monthEnd.toISOString().split('T')[0]
+    const monthEndDate = new Date(month + '-01T00:00:00.000Z')
+    monthEndDate.setUTCMonth(monthEndDate.getUTCMonth() + 1)
+    const monthEnd = toDateStr(monthEndDate)
 
+    const today = new Date().toISOString().split('T')[0]
+
+    // 1) Stored records in the window (real status)
     const { data: records } = await supabase
       .from('pm_records')
       .select('id, pm_schedule_id, scheduled_date, completed_at, status, delay_reason, cost')
-      .in('pm_schedule_id', schedules.map(s => s.id))
+      .in('pm_schedule_id', scheduleIds)
       .gte('scheduled_date', monthStart)
-      .lt('scheduled_date', monthEndStr)
+      .lt('scheduled_date', monthEnd)
 
-    // Group events by date
+    // 2) Anchor cadence per schedule from its latest known record date
+    //    (falls back to schedule.created_at when no records exist yet).
+    const { data: anchorRows } = await supabase
+      .from('pm_records')
+      .select('pm_schedule_id, scheduled_date')
+      .in('pm_schedule_id', scheduleIds)
+      .order('scheduled_date', { ascending: false })
+
+    const anchorMap: Record<string, string> = {}
+    for (const r of (anchorRows || [])) {
+      if (!anchorMap[r.pm_schedule_id]) anchorMap[r.pm_schedule_id] = r.scheduled_date
+    }
+    for (const s of schedules) {
+      if (!anchorMap[s.id]) anchorMap[s.id] = toDateStr(new Date(s.created_at))
+    }
+
     const byDate: Record<string, any[]> = {}
-    const today = new Date().toISOString().split('T')[0]
+    // Track which (schedule, date) pairs already have a stored record so we
+    // don't double-add a projected duplicate on top of a real one.
+    const taken = new Set<string>()
 
+    function pushTask(date: string, task: any) {
+      if (!byDate[date]) byDate[date] = []
+      byDate[date].push(task)
+    }
+
+    // Stored records first
     for (const r of (records || [])) {
       const schedule = scheduleMap[r.pm_schedule_id]
       if (!schedule) continue
@@ -67,14 +105,14 @@ export async function GET(req: Request) {
       if (!machine) continue
 
       const date = r.scheduled_date
-      if (!byDate[date]) byDate[date] = []
+      taken.add(`${r.pm_schedule_id}|${date}`)
 
-      // Determine effective status
       let status = r.status
       if (status === 'pending' && date < today) status = 'overdue'
 
-      byDate[date].push({
+      pushTask(date, {
         record_id: r.id,
+        projected: false,
         machine_id: schedule.machine_id,
         machine_name: machine.machine_name,
         machine_code: machine.machine_code,
@@ -88,12 +126,40 @@ export async function GET(req: Request) {
       })
     }
 
-    // Convert to sorted array
+    // Projected occurrences for every active schedule in the window
+    for (const s of schedules) {
+      const machine = machineMap[s.machine_id]
+      if (!machine) continue
+
+      const dates = occurrencesInWindow(anchorMap[s.id], s.pm_type as PMType, monthStart, monthEnd)
+      for (const date of dates) {
+        if (taken.has(`${s.id}|${date}`)) continue // real record already shown
+        taken.add(`${s.id}|${date}`)
+
+        // Past projected dates with no record read as overdue; today/future are planned.
+        const status = date < today ? 'overdue' : 'scheduled'
+
+        pushTask(date, {
+          record_id: `proj-${s.id}-${date}`,
+          projected: true,
+          machine_id: s.machine_id,
+          machine_name: machine.machine_name,
+          machine_code: machine.machine_code,
+          pm_type: s.pm_type,
+          description: s.description,
+          scheduled_date: date,
+          completed_at: null,
+          status,
+          cost: null,
+          delay_reason: null,
+        })
+      }
+    }
+
     const events = Object.entries(byDate)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, tasks]) => ({ date, tasks }))
 
-    // Machine list for filter
     const machineList = (machines || []).map(m => ({
       id: m.id,
       machine_name: m.machine_name,
