@@ -23,7 +23,7 @@ const NAV: NavItem[] = [
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
-  { href: '/settings', labelKey: 'navigation.settings', icon: Settings },
+  { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r) => PERMISSIONS.viewSettings(r) },
 ]
 
 interface SidebarProps {
