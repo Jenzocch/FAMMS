@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2, Camera, X, ZoomIn } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface Factory { id: string; name: string; code: string }
 interface Area { id: string; factory_id: string; name: string }
@@ -31,15 +32,16 @@ const DEFAULT_ISSUE_TYPES: IssueType[] = [
 ]
 
 const URGENCY = [
-  { value: 'critical', label: '🔴 緊急', desc: '生產停線' },
-  { value: 'high', label: '🟠 高', desc: '影響生產' },
-  { value: 'medium', label: '🟡 中', desc: '部分影響' },
-  { value: 'low', label: '🟢 低', desc: '不影響生產' },
+  { value: 'critical', labelKey: 'report.urgencyCritical', descKey: 'report.urgencyCriticalDesc' },
+  { value: 'high', labelKey: 'report.urgencyHigh', descKey: 'report.urgencyHighDesc' },
+  { value: 'medium', labelKey: 'report.urgencyMedium', descKey: 'report.urgencyMediumDesc' },
+  { value: 'low', labelKey: 'report.urgencyLow', descKey: 'report.urgencyLowDesc' },
 ]
 
 export default function IncidentForm() {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useI18n()
 
   const [factories, setFactories] = useState<Factory[]>([])
   const [areas, setAreas] = useState<Area[]>([])
@@ -106,7 +108,7 @@ export default function IncidentForm() {
       setPhotos(prev => [...prev, ...compressed].slice(0, 5))
       toast.success(`壓縮完成（節省 ${Math.round(files.reduce((s, f) => s + f.size, 0) / 1024 / 1024)}MB）`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '圖片壓縮失敗')
+      toast.error(err instanceof Error ? err.message : t('report.compressFailed'))
     } finally {
       setCompressing(false)
     }
@@ -114,11 +116,11 @@ export default function IncidentForm() {
 
   async function submit() {
     if (!factoryId || !title.trim() || !description.trim()) {
-      toast.error('請填寫工廠、標題和問題描述')
+      toast.error(t('report.fillRequired'))
       return
     }
     if (issueType === 'other' && !customType.trim()) {
-      toast.error('請說明問題類型')
+      toast.error(t('report.specifyType'))
       return
     }
     // For "other", store the free-text the user typed so it shows on the board.
@@ -175,7 +177,7 @@ export default function IncidentForm() {
       toast.success(`案件 ${incident_no} 已建立`)
       router.push(`/incidents/${incident.id}`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '送出失敗')
+      toast.error(err instanceof Error ? err.message : t('report.submitFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -184,24 +186,24 @@ export default function IncidentForm() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">回報問題</h1>
-        <p className="text-sm text-gray-500 mt-1">現場問題快速回報</p>
+        <h1 className="text-xl font-bold text-gray-900">{t('report.title')}</h1>
+        <p className="text-sm text-gray-500 mt-1">{t('report.subtitle')}</p>
       </div>
 
       {/* Reporter */}
       <div>
-        <Label>回報人姓名</Label>
+        <Label>{t('report.reporterName')}</Label>
         <Input
           value={reporterName}
           onChange={e => setReporterName(e.target.value)}
-          placeholder="您的姓名"
+          placeholder={t('report.reporterPlaceholder')}
           className="mt-1"
         />
       </div>
 
       {/* Issue Type */}
       <div>
-        <Label>問題類型 <span className="text-red-500">*</span></Label>
+        <Label>{t('report.issueType')} <span className="text-red-500">*</span></Label>
         <div className="grid grid-cols-2 gap-2 mt-1">
           {issueTypes.map(t => (
             <button
@@ -222,7 +224,7 @@ export default function IncidentForm() {
           <Input
             value={customType}
             onChange={e => setCustomType(e.target.value)}
-            placeholder="請說明問題類型，例如：天花板漏水"
+            placeholder={t('report.otherPlaceholder')}
             className="mt-2"
           />
         )}
@@ -230,7 +232,7 @@ export default function IncidentForm() {
 
       {/* Urgency */}
       <div>
-        <Label>緊急程度 <span className="text-red-500">*</span></Label>
+        <Label>{t('report.urgency')} <span className="text-red-500">*</span></Label>
         <div className="grid grid-cols-2 gap-2 mt-1">
           {URGENCY.map(u => (
             <button
@@ -243,8 +245,8 @@ export default function IncidentForm() {
                   : 'border-gray-200 bg-white text-gray-700'
               }`}
             >
-              <span className="font-medium">{u.label}</span>
-              <span className="block text-xs text-gray-500">{u.desc}</span>
+              <span className="font-medium">{t(u.labelKey)}</span>
+              <span className="block text-xs text-gray-500">{t(u.descKey)}</span>
             </button>
           ))}
         </div>
@@ -252,9 +254,9 @@ export default function IncidentForm() {
 
       {/* Location */}
       <div className="space-y-3">
-        <Label>位置</Label>
-        <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')}>
-          <SelectTrigger><SelectValue placeholder="選擇工廠 *" /></SelectTrigger>
+        <Label>{t('report.location')}</Label>
+        <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
+          <SelectTrigger><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
           <SelectContent>
             {factories.map(f => (
               <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
@@ -263,8 +265,8 @@ export default function IncidentForm() {
         </Select>
 
         {areas.length > 0 && (
-          <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')}>
-            <SelectTrigger><SelectValue placeholder="選擇區域（可選）" /></SelectTrigger>
+          <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
+            <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
             <SelectContent>
               {areas.map(a => (
                 <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -274,8 +276,8 @@ export default function IncidentForm() {
         )}
 
         {assets.length > 0 && (
-          <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')}>
-            <SelectTrigger><SelectValue placeholder="選擇機器/項目（可選）" /></SelectTrigger>
+          <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')} items={Object.fromEntries(assets.map(a => [a.id, `${a.machine_code ? `[${a.machine_code}] ` : ''}${a.machine_name}`]))}>
+            <SelectTrigger><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>
             <SelectContent>
               {assets.map(a => (
                 <SelectItem key={a.id} value={a.id}>
@@ -289,22 +291,22 @@ export default function IncidentForm() {
 
       {/* Title */}
       <div>
-        <Label>問題標題 <span className="text-red-500">*</span></Label>
+        <Label>{t('report.problemTitle')} <span className="text-red-500">*</span></Label>
         <Input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="簡短描述，如：充填機漏水"
+          placeholder={t('report.titlePlaceholder')}
           className="mt-1"
         />
       </div>
 
       {/* Description */}
       <div>
-        <Label>問題描述 <span className="text-red-500">*</span></Label>
+        <Label>{t('report.problemDesc')} <span className="text-red-500">*</span></Label>
         <Textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="詳細描述：問題發生位置、狀況、何時開始..."
+          placeholder={t('report.descPlaceholder')}
           className="mt-1"
           rows={4}
         />
@@ -312,7 +314,7 @@ export default function IncidentForm() {
 
       {/* Photos */}
       <div>
-        <Label>現場照片（最多 5 張，自動壓縮）</Label>
+        <Label>{t('report.photos')}</Label>
         <div className="mt-1 space-y-2">
           {photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -347,7 +349,7 @@ export default function IncidentForm() {
               <Camera className="w-5 h-5 text-gray-400" />
               <div className="flex-1 text-sm">
                 <span className="text-gray-500">
-                  {compressing ? '壓縮中...' : '拍照或選擇照片'}
+                  {compressing ? t('report.compressing') : t('report.takePhoto')}
                 </span>
               </div>
               <input
@@ -371,7 +373,7 @@ export default function IncidentForm() {
 
       <Button onClick={submit} disabled={submitting} className="w-full h-12 text-base">
         {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-        送出回報
+        {t('report.submit')}
       </Button>
     </div>
   )
