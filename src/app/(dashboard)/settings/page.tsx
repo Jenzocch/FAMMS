@@ -4,6 +4,7 @@ import TelegramSettings from '@/components/settings/TelegramSettings'
 import FactoryManager from '@/components/settings/FactoryManager'
 import AreaManager from '@/components/settings/AreaManager'
 import AssetManager from '@/components/settings/AssetManager'
+import IncidentTypeManager from '@/components/settings/IncidentTypeManager'
 import UserManager from '@/components/settings/UserManager'
 import { isTelegramConfigured } from '@/lib/telegram'
 
@@ -55,6 +56,15 @@ export default async function SettingsPage() {
           <p className="text-xs text-gray-500 mt-0.5">新增、編輯或刪除工廠</p>
         </div>
         <FactoryManager />
+      </section>
+
+      {/* Incident Type Management */}
+      <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <div>
+          <h2 className="font-semibold text-gray-900">問題類型管理</h2>
+          <p className="text-xs text-gray-500 mt-0.5">新增或刪除報修時可選的問題類型</p>
+        </div>
+        <IncidentTypeManager />
       </section>
 
       {/* Telegram Notifications */}

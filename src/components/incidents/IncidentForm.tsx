@@ -17,8 +17,10 @@ import { Loader2, Camera, X, ZoomIn } from 'lucide-react'
 interface Factory { id: string; name: string; code: string }
 interface Area { id: string; factory_id: string; name: string }
 interface Asset { id: string; area_id: string; machine_name: string; machine_code: string | null }
+interface IssueType { value: string; label: string }
 
-const ISSUE_TYPES = [
+// Fallback list used if the incident_types table is empty/unavailable.
+const DEFAULT_ISSUE_TYPES: IssueType[] = [
   { value: 'machine', label: '🔧 機器故障' },
   { value: 'pipe', label: '🚿 水管/管線' },
   { value: 'electrical', label: '💡 電力/照明' },
@@ -43,10 +45,12 @@ export default function IncidentForm() {
   const [areas, setAreas] = useState<Area[]>([])
   const [assets, setAssets] = useState<Asset[]>([])
 
+  const [issueTypes, setIssueTypes] = useState<IssueType[]>(DEFAULT_ISSUE_TYPES)
   const [factoryId, setFactoryId] = useState('')
   const [areaId, setAreaId] = useState('')
   const [assetId, setAssetId] = useState('')
   const [issueType, setIssueType] = useState('machine')
+  const [customType, setCustomType] = useState('')
   const [urgency, setUrgency] = useState('medium')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -57,6 +61,13 @@ export default function IncidentForm() {
 
   useEffect(() => {
     supabase.from('factories').select('*').order('name').then(({ data }) => setFactories(data ?? []))
+    // Load manageable issue types; keep defaults if table is empty/unavailable.
+    supabase.from('incident_types').select('code, label').eq('is_active', true)
+      .order('sort_order').then(({ data }) => {
+        if (data && data.length > 0) {
+          setIssueTypes(data.map((t: any) => ({ value: t.code, label: t.label })))
+        }
+      })
   }, [])
 
   useEffect(() => {
@@ -106,6 +117,12 @@ export default function IncidentForm() {
       toast.error('請填寫工廠、標題和問題描述')
       return
     }
+    if (issueType === 'other' && !customType.trim()) {
+      toast.error('請說明問題類型')
+      return
+    }
+    // For "other", store the free-text the user typed so it shows on the board.
+    const incidentType = issueType === 'other' ? customType.trim() : issueType
 
     setSubmitting(true)
     try {
@@ -124,7 +141,7 @@ export default function IncidentForm() {
         .from('incidents')
         .insert({
           factory_id: factoryId,
-          incident_type: issueType,
+          incident_type: incidentType,
           machine_id: assetId || null,
           incident_no,
           title,
@@ -186,7 +203,7 @@ export default function IncidentForm() {
       <div>
         <Label>問題類型 <span className="text-red-500">*</span></Label>
         <div className="grid grid-cols-2 gap-2 mt-1">
-          {ISSUE_TYPES.map(t => (
+          {issueTypes.map(t => (
             <button
               key={t.value}
               type="button"
@@ -201,6 +218,14 @@ export default function IncidentForm() {
             </button>
           ))}
         </div>
+        {issueType === 'other' && (
+          <Input
+            value={customType}
+            onChange={e => setCustomType(e.target.value)}
+            placeholder="請說明問題類型，例如：天花板漏水"
+            className="mt-2"
+          />
+        )}
       </div>
 
       {/* Urgency */}

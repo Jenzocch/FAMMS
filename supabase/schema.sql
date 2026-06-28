@@ -685,6 +685,32 @@ CREATE INDEX IF NOT EXISTS idx_maintenance_logs_machine ON maintenance_logs(mach
 CREATE INDEX IF NOT EXISTS idx_maintenance_logs_performed_at ON maintenance_logs(performed_at DESC);
 
 -- ============================================================================
+-- INCIDENT TYPES (報修問題類型 — 可由設定頁自行新增/刪除)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS incident_types (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL,       -- stored on incidents.incident_type
+  label TEXT NOT NULL,      -- display text (may include emoji)
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE incident_types DISABLE ROW LEVEL SECURITY;
+
+-- Seed the default 7 types (safe to re-run)
+INSERT INTO incident_types (code, label, sort_order) VALUES
+  ('machine',     '🔧 機器故障',     1),
+  ('pipe',        '🚿 水管/管線',    2),
+  ('electrical',  '💡 電力/照明',    3),
+  ('facility',    '🏭 設施/基礎建設', 4),
+  ('safety',      '⚠️ 安全問題',     5),
+  ('cleanliness', '🧹 衛生/清潔',    6),
+  ('other',       '📋 其他',         99)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
 -- MIGRATION: add simplified report fields + make codes optional
 -- (safe to re-run on an existing database)
 -- ============================================================================
