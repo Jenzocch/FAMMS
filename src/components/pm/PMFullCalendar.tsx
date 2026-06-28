@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { useI18n } from '@/lib/i18n'
 
 interface PMTask {
   record_id: string
@@ -25,12 +26,6 @@ interface PMTask {
   cost: number | null
   delay_reason: string | null
   performed_by?: string | null
-}
-
-// Short label for a task's kind: cadence (每月…) or 臨時保養 for ad-hoc logs.
-function typeLabel(task: PMTask): string {
-  if (task.ad_hoc) return '臨時保養'
-  return PM_TYPE_LABELS[task.pm_type || ''] || task.pm_type || ''
 }
 
 interface PMEvent {
@@ -51,6 +46,19 @@ interface PMFullCalendarProps {
 const PM_TYPE_LABELS: Record<string, string> = {
   daily: '每日', weekly: '每週', monthly: '每月',
   quarterly: '每季', half_yearly: '每半年', yearly: '每年', custom: '自訂天數',
+}
+
+const PM_TYPE_KEYS: Record<string, string> = {
+  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
+  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly', yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
+}
+
+const STATUS_KEYS: Record<string, string> = {
+  completed: 'pm.stCompleted',
+  pending: 'pm.stPending',
+  scheduled: 'pm.stScheduled',
+  overdue: 'pm.stOverdue',
+  skipped: 'pm.stSkipped',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -105,6 +113,16 @@ function getWeekDates(date: Date): string[] {
 }
 
 export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
+  const { t } = useI18n()
+  // Short label for a task's kind: cadence or ad-hoc maintenance label.
+  const typeLabel = (task: PMTask): string => {
+    if (task.ad_hoc) return t('pm.adhocLabel')
+    const key = PM_TYPE_KEYS[task.pm_type || '']
+    return key ? t(key, PM_TYPE_LABELS[task.pm_type || ''] || task.pm_type || '') : (task.pm_type || '')
+  }
+  const statusLabel = (status: string) =>
+    t(STATUS_KEYS[status] ?? '', STATUS_LABELS[status] || status)
+  const dayAbbr = (idx: number) => t(`weekdays.${idx}`, DAY_ABBRS[idx])
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
   const [selectedMachineId, setSelectedMachineId] = useState('all')
@@ -143,7 +161,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
       setEvents(data.events || [])
       if (data.machines?.length > 0) setMachines(data.machines)
     } catch {
-      toast.error('載入失敗')
+      toast.error(t('pm.loadFailed2'))
     } finally {
       setLoading(false)
     }
@@ -152,7 +170,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
   async function submitAction() {
     if (!action) return
     if (action.mode === 'skip' && !action.reason.trim()) {
-      toast.error('請填寫跳過原因')
+      toast.error(t('pm.skipReasonRequired2'))
       return
     }
     setSubmitting(true)
@@ -168,11 +186,11 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
         }),
       })
       if (!res.ok) throw new Error('failed')
-      toast.success(action.mode === 'complete' ? '已完成保養' : '已跳過')
+      toast.success(action.mode === 'complete' ? t('pm.completedMaintenance') : t('pm.skippedDone'))
       setAction(null)
       loadData()
     } catch {
-      toast.error('儲存失敗')
+      toast.error(t('pm.saveFailed2'))
     } finally {
       setSubmitting(false)
     }
@@ -209,19 +227,19 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
     setCurrentDate(d)
   }
 
-  const monthHeader = `${year}年${month + 1}月`
+  const monthHeader = t('pmCal.monthHeader').replace('{year}', String(year)).replace('{month}', String(month + 1))
   const weekHeader = `${weekDates[0].slice(5).replace('-', '/')} – ${weekDates[6].slice(5).replace('-', '/')}`
   const selectedTasks = selectedDate ? (eventMap[selectedDate] || []) : []
 
   // Dot priority for a day: which colored dots to render (deduped, capped)
   function dayDots(tasks: PMTask[]) {
-    const set = new Set(tasks.map(t => t.status))
+    const set = new Set(tasks.map(task => task.status))
     const order = ['overdue', 'pending', 'scheduled', 'completed', 'skipped']
     return order.filter(s => set.has(s as PMTask['status']))
   }
 
   const machineItems: Record<string, string> = {
-    all: '所有機器',
+    all: t('pm.allMachines2'),
     ...Object.fromEntries(
       machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
     ),
@@ -236,7 +254,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">所有機器</SelectItem>
+            <SelectItem value="all">{t('pm.allMachines2')}</SelectItem>
             {machines.map(m => (
               <SelectItem key={m.id} value={m.id}>
                 {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
@@ -250,13 +268,13 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
             onClick={() => setViewMode('month')}
             className={`px-3 py-1.5 ${viewMode === 'month' ? 'bg-blue-600 text-white font-semibold' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
           >
-            月
+            {t('pm.monthBtn')}
           </button>
           <button
             onClick={() => setViewMode('week')}
             className={`px-3 py-1.5 border-l border-gray-200 ${viewMode === 'week' ? 'bg-blue-600 text-white font-semibold' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
           >
-            週
+            {t('pm.weekBtn')}
           </button>
         </div>
       </div>
@@ -271,7 +289,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
             {viewMode === 'month' ? monthHeader : weekHeader}
           </p>
           <button onClick={() => setCurrentDate(new Date())} className="text-xs text-blue-500 hover:underline mt-0.5">
-            今天
+            {t('pm.todayBtn')}
           </button>
         </div>
         <Button variant="outline" size="sm" onClick={navigateNext}>
@@ -280,15 +298,15 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
       </div>
 
       {loading && (
-        <div className="text-center py-6 text-sm text-gray-400">載入中...</div>
+        <div className="text-center py-6 text-sm text-gray-400">{t('common.loading')}</div>
       )}
 
       {/* Month view */}
       {!loading && viewMode === 'month' && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="grid grid-cols-7 border-b border-gray-100">
-            {DAY_ABBRS.map(d => (
-              <div key={d} className="text-center text-xs font-medium text-gray-400 py-2">{d}</div>
+            {DAY_ABBRS.map((d, i) => (
+              <div key={d} className="text-center text-xs font-medium text-gray-400 py-2">{dayAbbr(i)}</div>
             ))}
           </div>
           <div className="grid grid-cols-7">
@@ -351,7 +369,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                     onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                     className={`text-center py-2 border-b border-gray-100 cursor-pointer ${isToday ? 'bg-amber-100' : 'bg-gray-50 hover:bg-gray-100'}`}
                   >
-                    <div className="text-xs text-gray-400">{DAY_ABBRS[idx]}</div>
+                    <div className="text-xs text-gray-400">{dayAbbr(idx)}</div>
                     <div className={`text-sm font-bold ${isToday ? 'text-blue-600' : 'text-gray-800'}`}>{dayNum}</div>
                   </div>
                   <div className="p-1 space-y-1 min-h-20">
@@ -390,7 +408,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
             </button>
           </div>
           {selectedTasks.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-5">今日無保養計畫</p>
+            <p className="text-sm text-gray-400 text-center py-5">{t('pm.noPlanToday')}</p>
           ) : (
             <div className="divide-y divide-gray-100">
               {selectedTasks.map(task => {
@@ -408,7 +426,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                             {typeLabel(task)}
                           </span>
                           <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${STATUS_BADGE[task.status] || 'bg-gray-100 text-gray-600'}`}>
-                            {STATUS_LABELS[task.status] || task.status}
+                            {statusLabel(task.status)}
                           </span>
                         </div>
                         {task.description && (
@@ -429,7 +447,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                               className="h-7 gap-1 bg-green-600 hover:bg-green-700 text-xs"
                               onClick={() => setAction({ taskId: task.record_id, mode: 'complete', findings: '', cost: '', reason: '' })}
                             >
-                              <CheckCircle className="w-3.5 h-3.5" /> 完成
+                              <CheckCircle className="w-3.5 h-3.5" /> {t('pm.complete')}
                             </Button>
                             <Button
                               size="sm"
@@ -437,7 +455,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                               className="h-7 gap-1 border-orange-300 text-orange-600 hover:bg-orange-50 text-xs"
                               onClick={() => setAction({ taskId: task.record_id, mode: 'skip', findings: '', cost: '', reason: '' })}
                             >
-                              <SkipForward className="w-3.5 h-3.5" /> 跳過
+                              <SkipForward className="w-3.5 h-3.5" /> {t('pm.skip')}
                             </Button>
                           </div>
                         )}
@@ -450,7 +468,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                         <Textarea
                           value={acting.findings}
                           onChange={e => setAction({ ...acting, findings: e.target.value })}
-                          placeholder="保養發現 / 備註（可選）"
+                          placeholder={t('pm.findingsPlaceholder')}
                           rows={2}
                           className="text-sm"
                         />
@@ -458,15 +476,15 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                           type="number"
                           value={acting.cost}
                           onChange={e => setAction({ ...acting, cost: e.target.value })}
-                          placeholder="費用（可選）"
+                          placeholder={t('pm.costPlaceholder')}
                           className="text-sm"
                         />
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 bg-green-600 hover:bg-green-700 text-xs" onClick={submitAction} disabled={submitting}>
                             {submitting && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-                            確認完成
+                            {t('pm.confirmComplete2')}
                           </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAction(null)}>取消</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAction(null)}>{t('pm.cancelBtn')}</Button>
                         </div>
                       </div>
                     )}
@@ -477,16 +495,16 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                         <Textarea
                           value={acting.reason}
                           onChange={e => setAction({ ...acting, reason: e.target.value })}
-                          placeholder="跳過原因（必填）"
+                          placeholder={t('pm.skipReasonPlaceholder')}
                           rows={2}
                           className="text-sm"
                         />
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" className="h-7 border-orange-400 text-orange-700 hover:bg-orange-100 text-xs" onClick={submitAction} disabled={submitting || !acting.reason.trim()}>
                             {submitting && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-                            確認跳過
+                            {t('pm.confirmSkip2')}
                           </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAction(null)}>取消</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAction(null)}>{t('pm.cancelBtn')}</Button>
                         </div>
                       </div>
                     )}
@@ -501,10 +519,10 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs text-gray-500">
         {[
-          { dot: 'bg-green-500', label: '已完成' },
-          { dot: 'bg-blue-500', label: '待處理' },
-          { dot: 'bg-indigo-300', label: '預定' },
-          { dot: 'bg-red-500', label: '逾期' },
+          { dot: 'bg-green-500', label: t('pm.stCompleted') },
+          { dot: 'bg-blue-500', label: t('pm.stPending') },
+          { dot: 'bg-indigo-300', label: t('pm.stScheduled') },
+          { dot: 'bg-red-500', label: t('pm.stOverdue') },
         ].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className={`w-2.5 h-2.5 rounded-full ${item.dot}`} />

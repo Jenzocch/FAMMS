@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { AlertTriangle, Clock } from 'lucide-react'
 import { formatDistanceToNow, addDays, addWeeks, addMonths } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
+import { useI18n } from '@/lib/i18n'
 
 interface OverdueMachine {
   machine_id: string
@@ -26,6 +27,16 @@ const PM_TYPE_LABELS: Record<string, string> = {
   custom: '自訂天數',
 }
 
+const PM_TYPE_KEYS: Record<string, string> = {
+  daily: 'pm.cadDaily',
+  weekly: 'pm.cadWeekly',
+  monthly: 'pm.cadMonthly',
+  quarterly: 'pm.cadQuarterly',
+  half_yearly: 'pm.cadHalfYearly',
+  yearly: 'pm.cadYearly',
+  custom: 'pm.cadCustom',
+}
+
 function getNextDueDate(lastMaintained: string | null, pmType: string, intervalDays?: number | null): Date {
   const base = lastMaintained ? new Date(lastMaintained) : new Date()
 
@@ -42,7 +53,10 @@ function getNextDueDate(lastMaintained: string | null, pmType: string, intervalD
 }
 
 export default function OverdueMaintenanceAlert() {
+  const { t } = useI18n()
   const supabase = createClient()
+  const pmTypeLabel = (pmType: string) =>
+    t(PM_TYPE_KEYS[pmType] ?? '', PM_TYPE_LABELS[pmType] || pmType)
   const [overdue, setOverdue] = useState<OverdueMachine[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -113,7 +127,7 @@ export default function OverdueMaintenanceAlert() {
   }
 
   if (loading) {
-    return <div className="text-center text-gray-500 text-sm py-4">檢查中...</div>
+    return <div className="text-center text-gray-500 text-sm py-4">{t('pm.loadingCheck')}</div>
   }
 
   if (overdue.length === 0) {
@@ -125,7 +139,7 @@ export default function OverdueMaintenanceAlert() {
       <div className="flex items-center gap-2 text-amber-600">
         <AlertTriangle className="w-5 h-5" />
         <h3 className="font-semibold text-sm">
-          {overdue.length} 台機器逾期未保養
+          {t('pm.machinesOverdue').replace('{count}', String(overdue.length))}
         </h3>
       </div>
 
@@ -141,17 +155,17 @@ export default function OverdueMaintenanceAlert() {
                   {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
                 </p>
                 <p className="text-xs text-gray-600 mt-1">
-                  保養頻率: {PM_TYPE_LABELS[m.pm_type] || m.pm_type}
+                  {t('pm.maintenanceFreq')}: {pmTypeLabel(m.pm_type)}
                 </p>
                 {m.last_maintained_at && (
                   <p className="text-xs text-gray-500 mt-0.5">
-                    上次保養: {formatDistanceToNow(new Date(m.last_maintained_at), { addSuffix: true, locale: zhTW })}
+                    {t('pm.lastMaintained2')}: {formatDistanceToNow(new Date(m.last_maintained_at), { addSuffix: true, locale: zhTW })}
                   </p>
                 )}
               </div>
               <div className="text-right">
                 <p className="text-sm font-bold text-red-600">
-                  逾期 {m.days_overdue} 天
+                  {t('pm.overdueDays').replace('{count}', String(m.days_overdue))}
                 </p>
               </div>
             </div>

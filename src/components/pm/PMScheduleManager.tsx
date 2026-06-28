@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, Edit2 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; factory_id: string; name: string }
@@ -30,23 +31,29 @@ interface PMSchedule {
 }
 
 const PM_TYPES = [
-  { value: 'daily', label: '每日' },
-  { value: 'weekly', label: '每週' },
-  { value: 'monthly', label: '每月' },
-  { value: 'quarterly', label: '每季' },
-  { value: 'half_yearly', label: '每半年' },
-  { value: 'yearly', label: '每年' },
-  { value: 'custom', label: '自訂天數' },
+  { value: 'daily', label: '每日', labelKey: 'pm.cadDaily' },
+  { value: 'weekly', label: '每週', labelKey: 'pm.cadWeekly' },
+  { value: 'monthly', label: '每月', labelKey: 'pm.cadMonthly' },
+  { value: 'quarterly', label: '每季', labelKey: 'pm.cadQuarterly' },
+  { value: 'half_yearly', label: '每半年', labelKey: 'pm.cadHalfYearly' },
+  { value: 'yearly', label: '每年', labelKey: 'pm.cadYearly' },
+  { value: 'custom', label: '自訂天數', labelKey: 'pm.cadCustom' },
 ]
 
-// Human label for a schedule's cadence, including custom "每 N 天".
-function pmTypeLabel(pmType: string, intervalDays?: number | null): string {
-  if (pmType === 'custom') return intervalDays ? `每 ${intervalDays} 天` : '自訂天數'
-  return PM_TYPES.find(t => t.value === pmType)?.label || pmType
-}
-
 export default function PMScheduleManager() {
+  const { t } = useI18n()
   const supabase = createClient()
+
+  // Human label for a schedule's cadence, including custom "每 N 天".
+  const pmTypeLabel = (pmType: string, intervalDays?: number | null): string => {
+    if (pmType === 'custom') {
+      return intervalDays
+        ? t('pm.cadEveryNDays').replace('{days}', String(intervalDays))
+        : t('pm.cadCustom')
+    }
+    const pt = PM_TYPES.find(pt => pt.value === pmType)
+    return pt ? t(pt.labelKey, pt.label) : pmType
+  }
 
   const [factories, setFactories] = useState<Factory[]>([])
   const [areas, setAreas] = useState<Area[]>([])
@@ -115,13 +122,13 @@ export default function PMScheduleManager() {
 
   async function submit() {
     if (!machineId) {
-      toast.error('請選擇機器')
+      toast.error(t('pm.selectMachineErr'))
       return
     }
 
     const days = parseInt(intervalDays, 10)
     if (pmType === 'custom' && (!days || days < 1)) {
-      toast.error('請輸入自訂天數（至少 1 天）')
+      toast.error(t('pm.customDaysRequired'))
       return
     }
     const intervalValue = pmType === 'custom' ? days : null
@@ -134,7 +141,7 @@ export default function PMScheduleManager() {
           .update({ pm_type: pmType, interval_days: intervalValue, description: description || null })
           .eq('id', editingId)
         if (error) throw error
-        toast.success('已更新保養計畫')
+        toast.success(t('pm.scheduleUpdated'))
       } else {
         const { error } = await supabase
           .from('pm_schedules')
@@ -146,7 +153,7 @@ export default function PMScheduleManager() {
             is_active: true,
           })
         if (error) throw error
-        toast.success('已建立保養計畫')
+        toast.success(t('pm.scheduleCreated'))
       }
       setMachineId('')
       setPmType('monthly')
@@ -156,28 +163,28 @@ export default function PMScheduleManager() {
       setEditingId(null)
       loadSchedules()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '操作失敗')
+      toast.error(err instanceof Error ? err.message : t('pm.operationFailed'))
     } finally {
       setSubmitting(false)
     }
   }
 
   async function removeSchedule(id: string) {
-    if (!confirm('確認停用此保養計畫？')) return
+    if (!confirm(t('pm.confirmDeactivate'))) return
     try {
       const { error } = await supabase
         .from('pm_schedules')
         .update({ is_active: false })
         .eq('id', id)
       if (error) throw error
-      toast.success('已停用')
+      toast.success(t('pm.deactivated'))
       loadSchedules()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '刪除失敗')
+      toast.error(err instanceof Error ? err.message : t('pm.deleteFailed'))
     }
   }
 
-  if (loading) return <div className="text-center text-gray-500 text-sm py-4">載入中...</div>
+  if (loading) return <div className="text-center text-gray-500 text-sm py-4">{t('common.loading')}</div>
 
   // value→label maps so Base UI <SelectValue> shows names, not raw IDs/codes
   const factoryItems = Object.fromEntries(factories.map(f => [f.id, f.name]))
@@ -185,24 +192,24 @@ export default function PMScheduleManager() {
   const machineItems = Object.fromEntries(
     machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
   )
-  const pmTypeItems = Object.fromEntries(PM_TYPES.map(t => [t.value, t.label]))
+  const pmTypeItems = Object.fromEntries(PM_TYPES.map(pt => [pt.value, t(pt.labelKey, pt.label)]))
 
   return (
     <div className="space-y-4">
       {!showForm && (
         <Button onClick={() => setShowForm(true)} className="gap-2 w-full">
-          <Plus className="w-4 h-4" /> 新增保養計畫
+          <Plus className="w-4 h-4" /> {t('pm.addSchedulePlan')}
         </Button>
       )}
 
       {showForm && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
           <p className="text-sm font-medium text-blue-900">
-            {editingId ? '編輯保養計畫' : '新增保養計畫'}
+            {editingId ? t('pm.editSchedulePlan') : t('pm.addSchedulePlan')}
           </p>
 
           <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={factoryItems}>
-            <SelectTrigger><SelectValue placeholder="選擇工廠" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t('pm.selectFactoryPh')} /></SelectTrigger>
             <SelectContent>
               {factories.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
             </SelectContent>
@@ -210,7 +217,7 @@ export default function PMScheduleManager() {
 
           {areas.length > 0 && (
             <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={areaItems}>
-              <SelectTrigger><SelectValue placeholder="選擇區域" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t('pm.selectAreaPh')} /></SelectTrigger>
               <SelectContent>
                 {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
               </SelectContent>
@@ -219,7 +226,7 @@ export default function PMScheduleManager() {
 
           {machines.length > 0 && (
             <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={machineItems}>
-              <SelectTrigger><SelectValue placeholder="選擇機器 *" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t('pm.selectMachineStar')} /></SelectTrigger>
               <SelectContent>
                 {machines.map(m => (
                   <SelectItem key={m.id} value={m.id}>
@@ -231,39 +238,39 @@ export default function PMScheduleManager() {
           )}
 
           <div>
-            <Label>保養頻率</Label>
+            <Label>{t('pm.pmFrequency')}</Label>
             <Select value={pmType} onValueChange={(v) => setPmType(v ?? 'monthly')} items={pmTypeItems}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {PM_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                {PM_TYPES.map(pt => <SelectItem key={pt.value} value={pt.value}>{t(pt.labelKey, pt.label)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           {pmType === 'custom' && (
             <div>
-              <Label>每幾天保養一次</Label>
+              <Label>{t('pm.customDaysLabel')}</Label>
               <div className="mt-1 flex items-center gap-2">
-                <span className="text-sm text-gray-500">每</span>
+                <span className="text-sm text-gray-500">{t('pm.every')}</span>
                 <input
                   type="number"
                   min={1}
                   value={intervalDays}
                   onChange={e => setIntervalDays(e.target.value)}
-                  placeholder="例如 45"
+                  placeholder={t('pm.customDaysPlaceholder')}
                   className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
-                <span className="text-sm text-gray-500">天</span>
+                <span className="text-sm text-gray-500">{t('pm.days')}</span>
               </div>
             </div>
           )}
 
           <div>
-            <Label>備註（可選）</Label>
+            <Label>{t('pm.notesOptional')}</Label>
             <input
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="例如：檢查潤滑油、校正參數..."
+              placeholder={t('pm.notesPlaceholder')}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
@@ -271,16 +278,16 @@ export default function PMScheduleManager() {
           <div className="flex gap-2">
             <Button onClick={submit} disabled={submitting || !machineId}>
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingId ? '更新' : '建立'}
+              {editingId ? t('pm.updatePlan') : t('pm.createPlan')}
             </Button>
-            <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null) }}>取消</Button>
+            <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null) }}>{t('pm.cancelBtn')}</Button>
           </div>
         </div>
       )}
 
       <div className="space-y-2">
         {schedules.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">尚無保養計畫</p>
+          <p className="text-sm text-gray-400 text-center py-4">{t('pm.noSchedules')}</p>
         ) : (
           schedules.map(s => (
             <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
