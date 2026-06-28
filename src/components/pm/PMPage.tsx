@@ -157,6 +157,13 @@ export default function PMPage() {
     }
   }
 
+  // value→label maps so Base UI <SelectValue> shows names, not raw IDs/codes
+  const factoryItems = Object.fromEntries(factories.map(f => [f.id, f.name]))
+  const areaItems = Object.fromEntries(areas.map(a => [a.id, a.name]))
+  const machineItems = Object.fromEntries(
+    machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -175,7 +182,7 @@ export default function PMPage() {
       </div>
 
       {/* Factory selector */}
-      <Select value={factoryId} onValueChange={(v) => { setFactoryId(v ?? ''); setAreaId('') }}>
+      <Select value={factoryId} onValueChange={(v) => { setFactoryId(v ?? ''); setAreaId('') }} items={factoryItems}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder="選擇工廠" />
         </SelectTrigger>
@@ -209,7 +216,7 @@ export default function PMPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-4">
           <h3 className="font-semibold text-blue-900">記錄保養</h3>
 
-          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')}>
+          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={factoryItems}>
             <SelectTrigger><SelectValue placeholder="選擇工廠" /></SelectTrigger>
             <SelectContent>
               {factories.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
@@ -217,7 +224,7 @@ export default function PMPage() {
           </Select>
 
           {areas.length > 0 && (
-            <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')}>
+            <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={areaItems}>
               <SelectTrigger><SelectValue placeholder="選擇區域" /></SelectTrigger>
               <SelectContent>
                 {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -226,7 +233,7 @@ export default function PMPage() {
           )}
 
           {machines.length > 0 && (
-            <Select value={selectedMachineId} onValueChange={(v) => setSelectedMachineId(v ?? '')}>
+            <Select value={selectedMachineId} onValueChange={(v) => setSelectedMachineId(v ?? '')} items={machineItems}>
               <SelectTrigger><SelectValue placeholder="選擇機器 *" /></SelectTrigger>
               <SelectContent>
                 {machines.map(m => (

@@ -220,11 +220,18 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
     return order.filter(s => set.has(s as PMTask['status']))
   }
 
+  const machineItems: Record<string, string> = {
+    all: '所有機器',
+    ...Object.fromEntries(
+      machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
+    ),
+  }
+
   return (
     <div className="space-y-3">
       {/* Controls row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={selectedMachineId} onValueChange={v => setSelectedMachineId(v ?? 'all')}>
+        <Select value={selectedMachineId} onValueChange={v => setSelectedMachineId(v ?? 'all')} items={machineItems}>
           <SelectTrigger className="flex-1 min-w-36 text-xs h-8">
             <SelectValue />
           </SelectTrigger>

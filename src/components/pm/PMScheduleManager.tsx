@@ -160,6 +160,14 @@ export default function PMScheduleManager() {
 
   if (loading) return <div className="text-center text-gray-500 text-sm py-4">載入中...</div>
 
+  // value→label maps so Base UI <SelectValue> shows names, not raw IDs/codes
+  const factoryItems = Object.fromEntries(factories.map(f => [f.id, f.name]))
+  const areaItems = Object.fromEntries(areas.map(a => [a.id, a.name]))
+  const machineItems = Object.fromEntries(
+    machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
+  )
+  const pmTypeItems = Object.fromEntries(PM_TYPES.map(t => [t.value, t.label]))
+
   return (
     <div className="space-y-4">
       {!showForm && (
@@ -174,15 +182,15 @@ export default function PMScheduleManager() {
             {editingId ? '編輯保養計畫' : '新增保養計畫'}
           </p>
 
-          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={factoryItems}>
+            <SelectTrigger><SelectValue placeholder="選擇工廠" /></SelectTrigger>
             <SelectContent>
               {factories.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
             </SelectContent>
           </Select>
 
           {areas.length > 0 && (
-            <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')}>
+            <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={areaItems}>
               <SelectTrigger><SelectValue placeholder="選擇區域" /></SelectTrigger>
               <SelectContent>
                 {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -191,7 +199,7 @@ export default function PMScheduleManager() {
           )}
 
           {machines.length > 0 && (
-            <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')}>
+            <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={machineItems}>
               <SelectTrigger><SelectValue placeholder="選擇機器 *" /></SelectTrigger>
               <SelectContent>
                 {machines.map(m => (
@@ -205,7 +213,7 @@ export default function PMScheduleManager() {
 
           <div>
             <Label>保養頻率</Label>
-            <Select value={pmType} onValueChange={(v) => setPmType(v ?? 'monthly')}>
+            <Select value={pmType} onValueChange={(v) => setPmType(v ?? 'monthly')} items={pmTypeItems}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {PM_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
