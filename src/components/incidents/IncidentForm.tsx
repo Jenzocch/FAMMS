@@ -204,7 +204,13 @@ export default function IncidentForm() {
       toast.success(`案件 ${incident_no} 已建立`)
       router.push(`/incidents/${incident.id}`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('report.submitFailed'))
+      // Supabase errors (PostgrestError / StorageError) are plain objects with
+      // a `message`, NOT Error instances — extract it so the real cause shows.
+      const msg =
+        err instanceof Error ? err.message
+        : (err && typeof err === 'object' && 'message' in err) ? String((err as any).message)
+        : t('report.submitFailed')
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
