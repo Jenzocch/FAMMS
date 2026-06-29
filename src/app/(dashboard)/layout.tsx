@@ -21,6 +21,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     return <AccountDisabled />
   }
 
+  // Badge: how many open (not closed) cases are assigned to me — my workload.
+  const { count: myOpenCount } = await supabase
+    .from('incidents')
+    .select('id', { count: 'exact', head: true })
+    .neq('status', 'closed')
+    .contains('assigned_user_ids', [user.id])
+
   return (
     <div className="min-h-screen bg-gray-50 lg:flex">
       {/* Desktop-only left sidebar */}
@@ -36,7 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </main>
       </div>
 
-      <BottomNav userRole={profile?.role} />
+      <BottomNav userRole={profile?.role} incidentBadge={myOpenCount ?? 0} />
     </div>
   )
 }

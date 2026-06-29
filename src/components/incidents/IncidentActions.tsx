@@ -15,6 +15,7 @@ import { Loader2, Pencil, Trash2, Lock } from 'lucide-react'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logAuditEvent } from '@/lib/audit'
+import { deadlineFromUrgency } from '@/lib/incident-display'
 
 // Fallback types used if the incident_types table is empty
 const FALLBACK_ISSUE_TYPES = [
@@ -40,13 +41,14 @@ interface IncidentActionsProps {
   description: string | null
   incidentType: string
   impact: string
+  dueDate?: string | null
   userRole?: UserRole
   userName?: string | null
   factoryId?: string | null
 }
 
 export default function IncidentActions({
-  incidentId, title, description, incidentType, impact, userRole = 'technician',
+  incidentId, title, description, incidentType, impact, dueDate, userRole = 'technician',
   userName, factoryId,
 }: IncidentActionsProps) {
   const canEdit = PERMISSIONS.editIncident(userRole)
@@ -59,6 +61,7 @@ export default function IncidentActions({
   const [d, setD] = useState(description || '')
   const [type, setType] = useState(incidentType)
   const [urg, setUrg] = useState(impact)
+  const [due, setDue] = useState(dueDate || '')
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [issueTypes, setIssueTypes] = useState(FALLBACK_ISSUE_TYPES)
@@ -95,6 +98,7 @@ export default function IncidentActions({
           description: d || null,
           incident_type: type,
           downtime_impact: urg,
+          due_date: due || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', incidentId)
@@ -106,8 +110,8 @@ export default function IncidentActions({
         actionType: 'update',
         resourceType: 'incident',
         resourceId: incidentId,
-        oldValue: { title, description, incident_type: incidentType, downtime_impact: impact },
-        newValue: { title: t, description: d || null, incident_type: type, downtime_impact: urg },
+        oldValue: { title, description, incident_type: incidentType, downtime_impact: impact, due_date: dueDate },
+        newValue: { title: t, description: d || null, incident_type: type, downtime_impact: urg, due_date: due || null },
         changeSummary: '案件內容已更新',
         factoryId: factoryId ?? undefined,
       })
@@ -211,6 +215,20 @@ export default function IncidentActions({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <Label>截止日</Label>
+          <button
+            type="button"
+            onClick={() => setDue(deadlineFromUrgency(urg))}
+            className="text-xs font-medium text-blue-600 hover:text-blue-700"
+          >
+            依緊急套用
+          </button>
+        </div>
+        <Input type="date" value={due} onChange={e => setDue(e.target.value)} className="mt-1" />
       </div>
 
       <div>

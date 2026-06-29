@@ -41,6 +41,8 @@
     "urgencyHigh": "🟠 High", "urgencyHighDesc": "Affects production",
     "urgencyMedium": "🟡 Medium", "urgencyMediumDesc": "Partial impact",
     "urgencyLow": "🟢 Low", "urgencyLowDesc": "No production impact",
+    "dueDate": "Due date",
+    "dueDateHint": "Leave empty to auto-calculate from urgency (Critical=today, High=1d, Medium=3d, Low=7d)",
     "location": "Location",
     "selectFactory": "Select factory *",
     "selectArea": "Select area (optional)",

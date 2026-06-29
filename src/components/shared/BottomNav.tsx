@@ -26,9 +26,10 @@ const NAV: NavItem[] = [
 
 interface BottomNavProps {
   userRole?: UserRole
+  incidentBadge?: number
 }
 
-export default function BottomNav({ userRole = 'technician' }: BottomNavProps) {
+export default function BottomNav({ userRole = 'technician', incidentBadge = 0 }: BottomNavProps) {
   const pathname = usePathname()
   const { t } = useI18n()
   const visibleNav = NAV.filter(item => !item.requiredRole || item.requiredRole(userRole))
@@ -57,6 +58,7 @@ export default function BottomNav({ userRole = 'technician' }: BottomNavProps) {
             )
           }
 
+          const showBadge = href === '/incidents' && incidentBadge > 0
           return (
             <Link
               key={href}
@@ -66,7 +68,14 @@ export default function BottomNav({ userRole = 'technician' }: BottomNavProps) {
                 active ? 'text-blue-600' : 'text-gray-500'
               )}
             >
-              <Icon className="w-5 h-5" />
+              <span className="relative">
+                <Icon className="w-5 h-5" />
+                {showBadge && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full">
+                    {incidentBadge > 99 ? '99+' : incidentBadge}
+                  </span>
+                )}
+              </span>
               <span className="text-xs font-medium">{label}</span>
             </Link>
           )

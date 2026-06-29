@@ -216,6 +216,7 @@ export default async function IncidentDetailPage({
         description={incident.description}
         incidentType={incident.incident_type}
         impact={incident.downtime_impact}
+        dueDate={incident.due_date}
         userRole={user?.role}
         userName={user?.full_name}
         factoryId={incident.factory_id}

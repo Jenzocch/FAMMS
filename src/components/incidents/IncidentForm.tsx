@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { Loader2, Camera, X, ZoomIn } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { logAuditEvent } from '@/lib/audit'
+import { deadlineFromUrgency } from '@/lib/incident-display'
 
 interface Factory { id: string; name: string; code: string }
 interface Area { id: string; factory_id: string; name: string }
@@ -55,6 +56,7 @@ export default function IncidentForm() {
   const [issueType, setIssueType] = useState('machine')
   const [customType, setCustomType] = useState('')
   const [urgency, setUrgency] = useState('medium')
+  const [dueDate, setDueDate] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [reporterName, setReporterName] = useState('')
@@ -134,6 +136,10 @@ export default function IncidentForm() {
     // For "other", store the free-text the user typed so it shows on the board.
     const incidentType = issueType === 'other' ? customType.trim() : issueType
 
+    // Deadline = manual pick if given, else auto-derived from urgency (SLA).
+    const impactCode = urgency === 'critical' ? 'A' : urgency === 'high' ? 'B' : urgency === 'medium' ? 'C' : 'D'
+    const computedDueDate = dueDate || deadlineFromUrgency(impactCode)
+
     setSubmitting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -157,7 +163,8 @@ export default function IncidentForm() {
           title,
           description,
           reporter_name: reporterName || null,
-          downtime_impact: urgency === 'critical' ? 'A' : urgency === 'high' ? 'B' : urgency === 'medium' ? 'C' : 'D',
+          downtime_impact: impactCode,
+          due_date: computedDueDate,
           status: 'reported',
           reported_by_id: user?.id ?? null,
         })
@@ -283,6 +290,20 @@ export default function IncidentForm() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Deadline (optional — auto-derived from urgency if left empty) */}
+      <div>
+        <Label>{t('report.dueDate', '截止日')}</Label>
+        <Input
+          type="date"
+          value={dueDate}
+          onChange={e => setDueDate(e.target.value)}
+          className="mt-1"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          {t('report.dueDateHint', '留空則依緊急程度自動計算（緊急=當天、高=1天、中=3天、低=7天）')}
+        </p>
       </div>
 
       {/* Location */}

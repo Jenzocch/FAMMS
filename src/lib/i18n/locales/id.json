@@ -41,6 +41,8 @@
     "urgencyHigh": "🟠 Tinggi", "urgencyHighDesc": "Mempengaruhi produksi",
     "urgencyMedium": "🟡 Sedang", "urgencyMediumDesc": "Dampak sebagian",
     "urgencyLow": "🟢 Rendah", "urgencyLowDesc": "Tidak mempengaruhi produksi",
+    "dueDate": "Tenggat waktu",
+    "dueDateHint": "Kosongkan untuk dihitung otomatis dari urgensi (Kritis=hari ini, Tinggi=1h, Sedang=3h, Rendah=7h)",
     "location": "Lokasi",
     "selectFactory": "Pilih pabrik *",
     "selectArea": "Pilih area (opsional)",

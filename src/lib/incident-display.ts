@@ -29,6 +29,19 @@ export const URGENCY_FROM_IMPACT: Record<string, { label: string; color: string 
   D: { label: '🟢 低', color: 'bg-green-100 text-green-700' },
 }
 
+// SLA: how many days until a case is due, based on its urgency (downtime_impact).
+// The deadline is the single benchmark technicians sort by; urgency just decides
+// how tight it is. Admins/supervisors can still override the date manually.
+export const URGENCY_SLA_DAYS: Record<string, number> = { A: 0, B: 1, C: 3, D: 7 }
+
+// Returns a YYYY-MM-DD due date computed from urgency, counting from `base`.
+export function deadlineFromUrgency(impact: string, base: Date = new Date()): string {
+  const days = URGENCY_SLA_DAYS[impact] ?? 7
+  const d = new Date(base)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
 export const STATUS_ZH: Record<IncidentStatus, string> = {
   reported: '新回報',
   accepted: '已接收',
