@@ -14,6 +14,20 @@ const OPEN_STATUSES: IncidentStatus[] = [
   'waiting_vendor', 'waiting_shutdown', 'repairing', 'testing', 'observation',
 ]
 
+function getNextDueDate(lastMaintained: string | null, pmType: string, intervalDays?: number | null): Date {
+  const base = lastMaintained ? new Date(lastMaintained) : new Date()
+  switch (pmType) {
+    case 'daily': return addDays(base, 1)
+    case 'weekly': return addWeeks(base, 1)
+    case 'monthly': return addMonths(base, 1)
+    case 'quarterly': return addMonths(base, 3)
+    case 'half_yearly': return addMonths(base, 6)
+    case 'yearly': return addMonths(base, 12)
+    case 'custom': return addDays(base, intervalDays && intervalDays > 0 ? intervalDays : 30)
+    default: return addMonths(base, 1)
+  }
+}
+
 export default async function DashboardPage() {
   const user = await getCurrentUser()
   if (!user || !PERMISSIONS.dashboard(user.role)) {
@@ -22,53 +36,50 @@ export default async function DashboardPage() {
 
   const supabase = await createClient()
 
-  const { data } = await supabase
+  // Scope incidents to the user's factory (admins without factory see all)
+  let incidentQuery = supabase
     .from('incidents')
     .select('id, incident_no, status, downtime_impact, incident_type, title, reported_at, updated_at, factory:factories(name)')
     .order('reported_at', { ascending: false })
     .limit(500)
+  if (user.factory_id) incidentQuery = incidentQuery.eq('factory_id', user.factory_id)
 
+  const { data } = await incidentQuery
   const rows = (data ?? []) as unknown as DashboardRow[]
   const open = rows.filter(r => OPEN_STATUSES.includes(r.status))
 
-  // Get overdue machines
-  const { data: schedules } = await supabase
-    .from('pm_schedules')
-    .select('machine_id, pm_type, machines(machine_name, machine_code)')
-    .eq('is_active', true)
+  // Get overdue machines: fetch both maintenance_logs and pm_records to determine
+  // the last actual maintenance date, whichever is more recent.
+  const [schedulesRes, logsRes, pmRecordsRes] = await Promise.all([
+    supabase
+      .from('pm_schedules')
+      .select('machine_id, pm_type, interval_days, machines(machine_name, machine_code)')
+      .eq('is_active', true),
+    supabase
+      .from('maintenance_logs')
+      .select('machine_id, performed_at')
+      .order('performed_at', { ascending: false }),
+    supabase
+      .from('pm_records')
+      .select('machine_id, performed_date')
+      .eq('status', 'completed')
+      .order('performed_date', { ascending: false }),
+  ])
 
-  const { data: logs } = await supabase
-    .from('maintenance_logs')
-    .select('machine_id, performed_at')
-    .order('performed_at', { ascending: false })
-
+  // Build last-maintenance-date map from both sources
   const lastByMachine: Record<string, string> = {}
-  if (logs) {
-    for (const log of logs) {
-      if (!lastByMachine[log.machine_id]) {
-        lastByMachine[log.machine_id] = log.performed_at
-      }
-    }
+  const recordLatest = (machineId: string, date: string) => {
+    const existing = lastByMachine[machineId]
+    if (!existing || date > existing) lastByMachine[machineId] = date
   }
+  for (const log of logsRes.data ?? []) recordLatest(log.machine_id, log.performed_at)
+  for (const rec of pmRecordsRes.data ?? []) recordLatest(rec.machine_id, rec.performed_date)
 
-  function getNextDueDate(lastMaintained: string | null, pmType: string): Date {
-    const base = lastMaintained ? new Date(lastMaintained) : new Date()
-    switch (pmType) {
-      case 'daily': return addDays(base, 1)
-      case 'weekly': return addWeeks(base, 1)
-      case 'monthly': return addMonths(base, 1)
-      case 'quarterly': return addMonths(base, 3)
-      case 'half_yearly': return addMonths(base, 6)
-      case 'yearly': return addMonths(base, 12)
-      default: return addMonths(base, 1)
-    }
-  }
-
-  const overdue = (schedules ?? [])
+  const overdue = (schedulesRes.data ?? [])
     .filter(s => (s as any).machines)
     .map(s => {
-      const lastMaintained = lastByMachine[s.machine_id]
-      const dueDate = getNextDueDate(lastMaintained, s.pm_type)
+      const lastMaintained = lastByMachine[s.machine_id] ?? null
+      const dueDate = getNextDueDate(lastMaintained, s.pm_type, (s as any).interval_days)
       const daysOverdue = Math.floor((Date.now() - dueDate.getTime()) / 86400000)
       return {
         machine_id: s.machine_id,
@@ -89,13 +100,9 @@ export default async function DashboardPage() {
     byFactory.set(name, (byFactory.get(name) ?? 0) + 1)
   }
 
-  // Urgent open cases (impact A or B)
   const urgent = open.filter(r => r.downtime_impact === 'A' || r.downtime_impact === 'B')
-
-  // Stale: open + not updated in 3+ days
   const now = Date.now()
   const stale = open.filter(r => now - new Date(r.updated_at).getTime() > 3 * 86400000)
-
   const byFactoryEntries: [string, number][] = [...byFactory.entries()]
 
   return (
@@ -106,13 +113,7 @@ export default async function DashboardPage() {
       byFactory={byFactoryEntries}
       urgent={urgent}
       stale={stale}
-      overdue={overdue.map(m => ({
-        machine_id: m.machine_id,
-        machine_name: m.machine_name,
-        machine_code: m.machine_code,
-        pm_type: m.pm_type,
-        days_overdue: m.days_overdue,
-      }))}
+      overdue={overdue}
     />
   )
 }

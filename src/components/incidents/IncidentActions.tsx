@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -16,14 +16,15 @@ import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logAuditEvent } from '@/lib/audit'
 
-const ISSUE_TYPES = [
-  { value: 'machine', label: '🔧 機器故障' },
-  { value: 'pipe', label: '🚿 水管/管線' },
-  { value: 'electrical', label: '💡 電力/照明' },
-  { value: 'facility', label: '🏭 設施/基礎建設' },
-  { value: 'safety', label: '⚠️ 安全問題' },
-  { value: 'cleanliness', label: '🧹 衛生/清潔' },
-  { value: 'other', label: '📋 其他' },
+// Fallback types used if the incident_types table is empty
+const FALLBACK_ISSUE_TYPES = [
+  { value: 'machine', label: '機器故障' },
+  { value: 'pipe', label: '水管/管線' },
+  { value: 'electrical', label: '電力/照明' },
+  { value: 'facility', label: '設施/基礎建設' },
+  { value: 'safety', label: '安全問題' },
+  { value: 'cleanliness', label: '衛生/清潔' },
+  { value: 'other', label: '其他' },
 ]
 
 const URGENCY = [
@@ -60,6 +61,21 @@ export default function IncidentActions({
   const [urg, setUrg] = useState(impact)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [issueTypes, setIssueTypes] = useState(FALLBACK_ISSUE_TYPES)
+
+  // Load dynamic issue types from the incident_types table
+  useEffect(() => {
+    supabase
+      .from('incident_types')
+      .select('code, label')
+      .eq('is_active', true)
+      .order('label')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setIssueTypes(data.map(r => ({ value: r.code, label: r.label })))
+        }
+      })
+  }, [])
 
   async function saveEdit() {
     if (!t.trim()) { toast.error('標題不可空白'); return }
@@ -176,7 +192,7 @@ export default function IncidentActions({
           <Select value={type} onValueChange={(v) => setType(v ?? type)}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {ISSUE_TYPES.map(it => <SelectItem key={it.value} value={it.value}>{it.label}</SelectItem>)}
+              {issueTypes.map(it => <SelectItem key={it.value} value={it.value}>{it.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

@@ -9,7 +9,7 @@ export default async function IncidentsPage() {
   const user = await getCurrentUser()
   const supabase = await createClient()
 
-  const { data: incidents } = await supabase
+  let query = supabase
     .from('incidents')
     .select(`
       id, incident_no, status, downtime_impact, incident_type,
@@ -19,6 +19,11 @@ export default async function IncidentsPage() {
     `)
     .order('reported_at', { ascending: false })
     .limit(200)
+
+  // Scope to the user's factory; admins with no factory see everything.
+  if (user?.factory_id) query = query.eq('factory_id', user.factory_id)
+
+  const { data: incidents } = await query
 
   const rows = (incidents ?? []) as unknown as BoardRow[]
 

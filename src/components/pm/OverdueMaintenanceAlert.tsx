@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { AlertTriangle, Clock } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { formatDistanceToNow, addDays, addWeeks, addMonths } from 'date-fns'
-import { zhTW } from 'date-fns/locale'
+import { zhTW, id as idLocale, enUS } from 'date-fns/locale'
+import type { Locale as DateFnsLocale } from 'date-fns'
 import { useI18n } from '@/lib/i18n'
 
 interface OverdueMachine {
@@ -18,28 +19,24 @@ interface OverdueMachine {
 }
 
 const PM_TYPE_LABELS: Record<string, string> = {
-  daily: '每日',
-  weekly: '每週',
-  monthly: '每月',
-  quarterly: '每季',
-  half_yearly: '每半年',
-  yearly: '每年',
-  custom: '自訂天數',
+  daily: '每日', weekly: '每週', monthly: '每月', quarterly: '每季',
+  half_yearly: '每半年', yearly: '每年', custom: '自訂天數',
 }
 
 const PM_TYPE_KEYS: Record<string, string> = {
-  daily: 'pm.cadDaily',
-  weekly: 'pm.cadWeekly',
-  monthly: 'pm.cadMonthly',
-  quarterly: 'pm.cadQuarterly',
-  half_yearly: 'pm.cadHalfYearly',
-  yearly: 'pm.cadYearly',
-  custom: 'pm.cadCustom',
+  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
+  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly',
+  yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
+}
+
+const DATE_LOCALES: Record<string, DateFnsLocale> = {
+  zh: zhTW,
+  en: enUS,
+  id: idLocale,
 }
 
 function getNextDueDate(lastMaintained: string | null, pmType: string, intervalDays?: number | null): Date {
   const base = lastMaintained ? new Date(lastMaintained) : new Date()
-
   switch (pmType) {
     case 'daily': return addDays(base, 1)
     case 'weekly': return addWeeks(base, 1)
@@ -53,26 +50,21 @@ function getNextDueDate(lastMaintained: string | null, pmType: string, intervalD
 }
 
 export default function OverdueMaintenanceAlert() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const supabase = createClient()
+  const dateLocale = DATE_LOCALES[locale]
   const pmTypeLabel = (pmType: string) =>
     t(PM_TYPE_KEYS[pmType] ?? '', PM_TYPE_LABELS[pmType] || pmType)
   const [overdue, setOverdue] = useState<OverdueMachine[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadOverdue()
-  }, [])
+  useEffect(() => { loadOverdue() }, [])
 
   async function loadOverdue() {
     try {
-      // Get all active PM schedules with machine info
       const { data: schedules } = await supabase
         .from('pm_schedules')
-        .select(`
-          id, machine_id, pm_type, interval_days,
-          machines(id, machine_name, machine_code)
-        `)
+        .select('id, machine_id, pm_type, interval_days, machines(id, machine_name, machine_code)')
         .eq('is_active', true)
 
       if (!schedules || schedules.length === 0) {
@@ -81,30 +73,27 @@ export default function OverdueMaintenanceAlert() {
         return
       }
 
-      // Get last maintenance date for each machine
-      const { data: logs } = await supabase
-        .from('maintenance_logs')
-        .select('machine_id, performed_at')
-        .order('performed_at', { ascending: false })
+      // Check both maintenance_logs and pm_records for last-done date
+      const [logsRes, pmRecordsRes] = await Promise.all([
+        supabase.from('maintenance_logs').select('machine_id, performed_at').order('performed_at', { ascending: false }),
+        supabase.from('pm_records').select('machine_id, performed_date').eq('status', 'completed').order('performed_date', { ascending: false }),
+      ])
 
       const lastByMachine: Record<string, string> = {}
-      if (logs) {
-        for (const log of logs) {
-          if (!lastByMachine[log.machine_id]) {
-            lastByMachine[log.machine_id] = log.performed_at
-          }
-        }
+      const recordLatest = (machineId: string, date: string) => {
+        const existing = lastByMachine[machineId]
+        if (!existing || date > existing) lastByMachine[machineId] = date
       }
+      for (const log of logsRes.data ?? []) recordLatest(log.machine_id, log.performed_at)
+      for (const rec of pmRecordsRes.data ?? []) recordLatest(rec.machine_id, rec.performed_date)
 
-      // Calculate overdue machines
       const now = new Date()
       const overdueList = (schedules as any[])
         .filter(s => s.machines)
         .map(s => {
-          const lastMaintained = lastByMachine[s.machine_id]
+          const lastMaintained = lastByMachine[s.machine_id] ?? null
           const dueDate = getNextDueDate(lastMaintained, s.pm_type, s.interval_days)
           const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / 86400000)
-
           return {
             machine_id: s.machine_id,
             machine_name: s.machines.machine_name,
@@ -130,9 +119,7 @@ export default function OverdueMaintenanceAlert() {
     return <div className="text-center text-gray-500 text-sm py-4">{t('pm.loadingCheck')}</div>
   }
 
-  if (overdue.length === 0) {
-    return null
-  }
+  if (overdue.length === 0) return null
 
   return (
     <div className="space-y-3">
@@ -145,10 +132,7 @@ export default function OverdueMaintenanceAlert() {
 
       <div className="space-y-2">
         {overdue.map(m => (
-          <div
-            key={m.machine_id}
-            className="bg-amber-50 border border-amber-200 rounded-lg p-3"
-          >
+          <div key={m.machine_id} className="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <p className="font-medium text-sm text-gray-900">
@@ -159,7 +143,7 @@ export default function OverdueMaintenanceAlert() {
                 </p>
                 {m.last_maintained_at && (
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {t('pm.lastMaintained2')}: {formatDistanceToNow(new Date(m.last_maintained_at), { addSuffix: true, locale: zhTW })}
+                    {t('pm.lastMaintained2')}: {formatDistanceToNow(new Date(m.last_maintained_at), { addSuffix: true, locale: dateLocale })}
                   </p>
                 )}
               </div>
