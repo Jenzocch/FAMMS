@@ -28,10 +28,11 @@ const NAV: NavItem[] = [
 
 interface SidebarProps {
   profile: Profile | null
+  incidentBadge?: number
 }
 
 // Desktop-only left sidebar. Hidden on mobile, where BottomNav + TopBar are used.
-export default function Sidebar({ profile }: SidebarProps) {
+export default function Sidebar({ profile, incidentBadge = 0 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -66,6 +67,7 @@ export default function Sidebar({ profile }: SidebarProps) {
           const active = href === '/incidents/new'
             ? pathname === href
             : pathname === href || (pathname.startsWith(href + '/') && href !== '/incidents/new')
+          const showBadge = href === '/incidents' && incidentBadge > 0
           return (
             <Link
               key={href}
@@ -76,7 +78,12 @@ export default function Sidebar({ profile }: SidebarProps) {
               )}
             >
               <Icon className="w-5 h-5 shrink-0" />
-              {t(labelKey)}
+              <span className="flex-1">{t(labelKey)}</span>
+              {showBadge && (
+                <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full">
+                  {incidentBadge > 99 ? '99+' : incidentBadge}
+                </span>
+              )}
             </Link>
           )
         })}
