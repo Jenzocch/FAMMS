@@ -31,7 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-gray-50 lg:flex">
       {/* Desktop-only left sidebar */}
-      <Sidebar profile={profile} />
+      <Sidebar profile={profile} incidentBadge={myOpenCount ?? 0} />
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* TopBar only on mobile; the sidebar handles brand/lang/user on desktop */}
