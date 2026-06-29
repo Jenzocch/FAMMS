@@ -7,23 +7,24 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Loader2, UserCheck, Check } from 'lucide-react'
+import { Loader2, UserCheck, Check, Users } from 'lucide-react'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
 import { ROLE_ZH } from '@/lib/incident-display'
 import { logAuditEvent } from '@/lib/audit'
 import { useI18n } from '@/lib/i18n'
 
-interface Account { id: string; full_name: string | null; role: UserRole }
+interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null }
 
 export default function AssignForm({
-  incidentId, assignedTo, assignedDept, assignedUserIds, dueDate, userRole = 'technician', userName,
+  incidentId, assignedTo, assignedDept, assignedUserIds, dueDate, factoryId, userRole = 'technician', userName,
 }: {
   incidentId: string
   assignedTo: string | null
   assignedDept: string | null
   assignedUserIds?: string[] | null
   dueDate: string | null
+  factoryId?: string | null
   userRole?: UserRole
   userName?: string | null
 }) {
@@ -43,11 +44,21 @@ export default function AssignForm({
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, role')
+      .select('id, full_name, role, factory_id')
       .eq('is_active', true)
       .order('full_name')
       .then(({ data }) => setAccounts((data ?? []) as Account[]))
   }, [])
+
+  // Technicians in this incident's factory (cross-factory accounts always
+  // qualify). Used by the "assign all technicians" shortcut.
+  const factoryTechnicians = accounts.filter(
+    a => a.role === 'technician' && (!factoryId || !a.factory_id || a.factory_id === factoryId)
+  )
+
+  function assignAllTechnicians() {
+    setSelectedIds(prev => Array.from(new Set([...prev, ...factoryTechnicians.map(a => a.id)])))
+  }
 
   // Initial free-text names = whatever in assigned_to that doesn't match a
   // linked account name (e.g. external vendors typed in before).
@@ -125,7 +136,19 @@ export default function AssignForm({
 
       {/* Account multi-select */}
       <div>
-        <Label>{t('assign.assignees', '負責人（可多選）')}</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label>{t('assign.assignees', '負責人（可多選）')}</Label>
+          {canAssign && factoryTechnicians.length > 0 && (
+            <button
+              type="button"
+              onClick={assignAllTechnicians}
+              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+            >
+              <Users className="w-3.5 h-3.5" />
+              {t('assign.allTechnicians', '指派給全部技師')} ({factoryTechnicians.length})
+            </button>
+          )}
+        </div>
         {accounts.length === 0 ? (
           <p className="text-xs text-gray-400 mt-1">{t('assign.noAccounts', '尚無可指派的帳號')}</p>
         ) : (

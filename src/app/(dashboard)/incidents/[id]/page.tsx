@@ -203,6 +203,7 @@ export default async function IncidentDetailPage({
           assignedDept={incident.assigned_dept}
           assignedUserIds={incident.assigned_user_ids}
           dueDate={incident.due_date}
+          factoryId={incident.factory_id}
           userRole={user?.role}
           userName={user?.full_name}
         />

@@ -17,6 +17,7 @@
   "assign": {
     "title": "Assignment",
     "assignees": "Assignees (multi-select)",
+    "allTechnicians": "Assign to all technicians",
     "noAccounts": "No assignable accounts yet",
     "extraNames": "Other people (external / vendor, comma-separated)",
     "extraPlaceholder": "e.g. ABC Vendor, Mr. Wang",
