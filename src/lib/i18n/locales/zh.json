@@ -209,7 +209,13 @@
     "closeFailed": "結案失敗",
     "updated": "進度已更新",
     "updateFailed": "更新失敗",
-    "allowRollback": "需要退回狀態（測試失敗、複發等）"
+    "allowRollback": "需要退回狀態（測試失敗、複發等）",
+    "completionType": "修復類型",
+    "completionRequired": "結案前請選擇修復類型（臨時 / 永久）",
+    "permanentFix": "永久修復",
+    "permanentFixDesc": "已解決根本原因",
+    "temporaryFix": "臨時修復",
+    "temporaryFixDesc": "需觀察 30 天，根本原因未解決"
   },
   "pm": {
     "manageTitle": "保養管理",

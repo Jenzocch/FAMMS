@@ -74,6 +74,7 @@ export default function ProgressUpdate({
   const [updaterName, setUpdaterName] = useState(userName ?? '')
   const [photos, setPhotos] = useState<File[]>([])
   const [allowRollback, setAllowRollback] = useState(false)
+  const [completionType, setCompletionType] = useState<'temporary_fix' | 'permanent_fix' | ''>('')
   const [submitting, setSubmitting] = useState(false)
   const [compressing, setCompressing] = useState(false)
 
@@ -127,6 +128,10 @@ export default function ProgressUpdate({
       toast.error(t('progressUpdate.onlySupervisorClose'))
       return
     }
+    if (newStatus === 'closed' && !completionType) {
+      toast.error(t('progressUpdate.completionRequired', '結案前請選擇修復類型（臨時 / 永久）'))
+      return
+    }
     setSubmitting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -146,7 +151,7 @@ export default function ProgressUpdate({
         const res = await fetch(`/api/incidents/${incidentId}/close`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ root_cause: note || undefined }),
+          body: JSON.stringify({ root_cause: note || undefined, completion_type: completionType || undefined }),
         })
         const json = await res.json().catch(() => ({}))
         if (!res.ok) {
@@ -247,6 +252,40 @@ export default function ProgressUpdate({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Completion type — only when closing. Drives the first-fix / repeat KPI:
+          a temporary fix re-arms repeat-failure detection for 30 days. */}
+      {newStatus === 'closed' && (
+        <div>
+          <Label>{t('progressUpdate.completionType', '修復類型')} <span className="text-red-500">*</span></Label>
+          <div className="grid grid-cols-1 gap-1.5 mt-1">
+            <button
+              type="button"
+              onClick={() => setCompletionType('permanent_fix')}
+              className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                completionType === 'permanent_fix'
+                  ? 'border-green-500 bg-green-50 text-green-800'
+                  : 'border-gray-200 bg-white text-gray-700'
+              }`}
+            >
+              <span className="text-sm font-semibold block">✅ {t('progressUpdate.permanentFix', '永久修復')}</span>
+              <span className="text-xs text-gray-500 block mt-0.5">{t('progressUpdate.permanentFixDesc', '已解決根本原因')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCompletionType('temporary_fix')}
+              className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                completionType === 'temporary_fix'
+                  ? 'border-amber-500 bg-amber-50 text-amber-800'
+                  : 'border-gray-200 bg-white text-gray-700'
+              }`}
+            >
+              <span className="text-sm font-semibold block">⚠️ {t('progressUpdate.temporaryFix', '臨時修復')}</span>
+              <span className="text-xs text-gray-500 block mt-0.5">{t('progressUpdate.temporaryFixDesc', '需觀察 30 天，根本原因未解決')}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div>
         <Label>{t('progressUpdate.note')}</Label>

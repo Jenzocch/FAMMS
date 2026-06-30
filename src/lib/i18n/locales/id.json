@@ -209,7 +209,13 @@
     "closeFailed": "Gagal menutup",
     "updated": "Kemajuan diperbarui",
     "updateFailed": "Gagal memperbarui",
-    "allowRollback": "Izinkan mundurkan status (mis. uji gagal)"
+    "allowRollback": "Izinkan mundurkan status (mis. uji gagal)",
+    "completionType": "Tipe Perbaikan",
+    "completionRequired": "Pilih tipe perbaikan (sementara / permanen) sebelum menutup",
+    "permanentFix": "Perbaikan Permanen",
+    "permanentFixDesc": "Akar masalah terselesaikan",
+    "temporaryFix": "Perbaikan Sementara",
+    "temporaryFixDesc": "Pantau 30 hari, akar masalah belum selesai"
   },
   "pm": {
     "manageTitle": "Manajemen PM",

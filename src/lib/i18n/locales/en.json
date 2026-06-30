@@ -210,7 +210,13 @@
     "closeFailed": "Close failed",
     "updated": "Progress updated",
     "updateFailed": "Update failed",
-    "allowRollback": "Allow moving status back (e.g. test failed)"
+    "allowRollback": "Allow moving status back (e.g. test failed)",
+    "completionType": "Fix Type",
+    "completionRequired": "Select fix type (temporary / permanent) before closing",
+    "permanentFix": "Permanent Fix",
+    "permanentFixDesc": "Root cause resolved",
+    "temporaryFix": "Temporary Fix",
+    "temporaryFixDesc": "Observe 30 days, root cause unresolved"
   },
   "pm": {
     "manageTitle": "PM Management",
