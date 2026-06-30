@@ -685,6 +685,19 @@
     "updated": "案件已更新",
     "updateFailed": "更新失敗"
   },
+  "login": {
+    "appTitle": "工廠維修系統",
+    "appSubtitle": "Factory Asset & Maintenance Management",
+    "signIn": "登入",
+    "account": "帳號 / 登入名稱",
+    "accountPlaceholder": "例如：teknisi1",
+    "password": "密碼",
+    "showPassword": "顯示密碼",
+    "hidePassword": "隱藏密碼",
+    "submit": "登入",
+    "invalidCredentials": "帳號或密碼錯誤",
+    "adminNote": "帳號由系統管理員建立，如需帳號請洽管理員"
+  },
   "incidentDetail": {
     "backToBoard": "返回看板",
     "progressLog": "處理紀錄",

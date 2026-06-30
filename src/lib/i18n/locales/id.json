@@ -685,6 +685,19 @@
     "updated": "Kasus diperbarui",
     "updateFailed": "Gagal memperbarui"
   },
+  "login": {
+    "appTitle": "Sistem Maintenance Pabrik",
+    "appSubtitle": "Factory Asset & Maintenance Management",
+    "signIn": "Masuk",
+    "account": "Akun / Nama login",
+    "accountPlaceholder": "mis. teknisi1",
+    "password": "Kata sandi",
+    "showPassword": "Tampilkan kata sandi",
+    "hidePassword": "Sembunyikan kata sandi",
+    "submit": "Masuk",
+    "invalidCredentials": "Akun atau kata sandi salah",
+    "adminNote": "Akun dibuat oleh administrator sistem. Hubungi admin jika perlu akun."
+  },
   "incidentDetail": {
     "backToBoard": "Kembali ke papan",
     "progressLog": "Catatan penanganan",

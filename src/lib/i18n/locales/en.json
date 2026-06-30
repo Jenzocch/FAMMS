@@ -686,6 +686,19 @@
     "updated": "Case updated",
     "updateFailed": "Update failed"
   },
+  "login": {
+    "appTitle": "Factory Maintenance System",
+    "appSubtitle": "Factory Asset & Maintenance Management",
+    "signIn": "Sign in",
+    "account": "Account / Login name",
+    "accountPlaceholder": "e.g. teknisi1",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "submit": "Sign in",
+    "invalidCredentials": "Incorrect account or password",
+    "adminNote": "Accounts are created by the system administrator. Contact your admin if you need one."
+  },
   "incidentDetail": {
     "backToBoard": "Back to board",
     "progressLog": "Progress log",
