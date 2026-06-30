@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Loader2, Wrench } from 'lucide-react'
+import { accountNameToEmail } from '@/lib/login-name'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [account, setAccount] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -22,6 +23,8 @@ export default function LoginPage() {
     // prerendered at build time without Supabase env vars present.
     const supabase = createClient()
     try {
+      // Accept a login name (mapped to a synthetic email) or a real email.
+      const email = accountNameToEmail(account)
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       router.push('/dashboard')
@@ -51,13 +54,15 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email">帳號 (Email)</Label>
+              <Label htmlFor="account">帳號 / 登入名稱</Label>
               <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                id="account"
+                type="text"
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
+                placeholder="例如：teknisi1"
+                autoCapitalize="none"
+                autoCorrect="off"
                 required
                 className="mt-1"
               />
