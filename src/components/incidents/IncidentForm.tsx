@@ -163,14 +163,11 @@ export default function IncidentForm() {
         .from('incidents')
         .select('id', { count: 'exact', head: true })
         .gte('created_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
-      const seq = String((count ?? 0) + 1).padStart(3, '0')
-      const incident_no = `FIT-${ym}-${seq}`
 
       const insertPayload: Record<string, unknown> = {
         factory_id: factoryId,
         incident_type: incidentType,
         machine_id: assetId || null,
-        incident_no,
         title,
         description,
         reporter_name: reporterName || null,
@@ -185,13 +182,27 @@ export default function IncidentForm() {
       const trimmedLocation = locationNote.trim()
       if (trimmedLocation) insertPayload.location_note = trimmedLocation
 
-      const { data: incident, error } = await supabase
-        .from('incidents')
-        .insert(insertPayload)
-        .select('*')
-        .single()
-
-      if (error) throw error
+      // The number is "today's count + 1". Two people reporting at once would
+      // compute the same value, so on a unique-violation (23505 — once the
+      // incidents_incident_no_key constraint is in place) bump the sequence and
+      // retry. Without the DB constraint this still works; it just can't catch a
+      // true simultaneous collision.
+      let incident: any = null
+      let lastErr: any = null
+      let seq = (count ?? 0) + 1
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const incident_no = `FIT-${ym}-${String(seq).padStart(3, '0')}`
+        const { data, error } = await supabase
+          .from('incidents')
+          .insert({ ...insertPayload, incident_no })
+          .select('*')
+          .single()
+        if (!error) { incident = data; break }
+        if (error.code === '23505') { seq++; lastErr = error; continue }
+        throw error
+      }
+      if (!incident) throw lastErr ?? new Error('無法產生不重複的案件編號，請重試')
+      const incident_no = incident.incident_no as string
 
       // Upload photos if any. Best-effort: the incident is already saved, so a
       // storage problem (missing bucket / permissions) must not fail the report.
