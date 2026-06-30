@@ -36,9 +36,10 @@ const DEFAULT_ISSUE_TYPES: IssueType[] = [
   { value: 'other', label: '📋 其他' },
 ]
 
+// Three urgency levels (mapped to impact codes A / C / D). "High" (B) is
+// retired from the picker but still renders for any legacy incident that has it.
 const URGENCY = [
   { value: 'critical', labelKey: 'report.urgencyCritical', descKey: 'report.urgencyCriticalDesc' },
-  { value: 'high', labelKey: 'report.urgencyHigh', descKey: 'report.urgencyHighDesc' },
   { value: 'medium', labelKey: 'report.urgencyMedium', descKey: 'report.urgencyMediumDesc' },
   { value: 'low', labelKey: 'report.urgencyLow', descKey: 'report.urgencyLowDesc' },
 ]
@@ -139,7 +140,7 @@ export default function IncidentForm() {
     const incidentType = issueType === 'other' ? customType.trim() : issueType
 
     // Deadline = manual pick if given, else auto-derived from urgency (SLA).
-    const impactCode = urgency === 'critical' ? 'A' : urgency === 'high' ? 'B' : urgency === 'medium' ? 'C' : 'D'
+    const impactCode = urgency === 'critical' ? 'A' : urgency === 'medium' ? 'C' : 'D'
     const computedDueDate = dueDate || deadlineFromUrgency(impactCode)
 
     setSubmitting(true)
@@ -307,7 +308,7 @@ export default function IncidentForm() {
       {/* Urgency — compact single row (4 levels) */}
       <div>
         <Label>{t('report.urgency')} <span className="text-red-500">*</span></Label>
-        <div className="grid grid-cols-4 gap-1.5 mt-1">
+        <div className="grid grid-cols-3 gap-1.5 mt-1">
           {URGENCY.map(u => (
             <button
               key={u.value}

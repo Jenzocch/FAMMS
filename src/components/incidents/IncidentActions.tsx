@@ -31,12 +31,14 @@ const FALLBACK_ISSUE_TYPES = [
   { value: 'other', label: '其他' },
 ]
 
+// Three urgency levels (A / C / D). Legacy "B" (High) is added back only when
+// editing a case that already carries it, so it still displays and saves.
 const URGENCY = [
   { value: 'A', label: '🔴 緊急' },
-  { value: 'B', label: '🟠 高' },
   { value: 'C', label: '🟡 中' },
   { value: 'D', label: '🟢 低' },
 ]
+const URGENCY_LEGACY = { value: 'B', label: '🟠 高' }
 
 interface IncidentActionsProps {
   incidentId: string
@@ -191,12 +193,17 @@ export default function IncidentActions({
             </div>
             <div>
               <Label>{tr('caseEdit.urgency')}</Label>
-              <Select value={urg} onValueChange={(v) => setUrg(v ?? urg)} items={Object.fromEntries(URGENCY.map(u => [u.value, tr(`urgency.${u.value}`, u.label)]))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {URGENCY.map(u => <SelectItem key={u.value} value={u.value}>{tr(`urgency.${u.value}`, u.label)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {(() => {
+                const choices = URGENCY.some(u => u.value === urg) ? URGENCY : [...URGENCY, URGENCY_LEGACY]
+                return (
+                  <Select value={urg} onValueChange={(v) => setUrg(v ?? urg)} items={Object.fromEntries(choices.map(u => [u.value, tr(`urgency.${u.value}`, u.label)]))}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {choices.map(u => <SelectItem key={u.value} value={u.value}>{tr(`urgency.${u.value}`, u.label)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )
+              })()}
             </div>
           </div>
 
