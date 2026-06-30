@@ -712,5 +712,20 @@
     "zoomOut": "Perkecil",
     "zoomIn": "Perbesar",
     "download": "Unduh asli"
+  },
+  "nextStep": {
+    "label": "Langkah berikutnya",
+    "doneLabel": "Selesai",
+    "reported": "Teknisi menerima kasus dan mulai inspeksi di lokasi.",
+    "accepted": "Ke lokasi, inspeksi, dan diagnosa penyebab kerusakan.",
+    "analyzing": "Mulai perbaikan setelah penyebab ditemukan; jika butuh spare, persetujuan, atau shutdown, ubah ke status \"Tunggu\" yang sesuai.",
+    "waiting_parts": "Setelah spare tiba, ubah ke \"Diproses\" dan lanjutkan perbaikan.",
+    "waiting_approval": "Setelah disetujui, ubah ke \"Diproses\" dan lanjutkan perbaikan.",
+    "waiting_vendor": "Setelah vendor selesai, perbarui kemajuan dan lanjutkan perbaikan.",
+    "waiting_shutdown": "Setelah jadwal shutdown didapat, ubah ke \"Diproses\" dan mulai perbaikan.",
+    "repairing": "Setelah perbaikan selesai, ubah ke \"Pengujian\" untuk verifikasi.",
+    "testing": "Jika pengujian lulus, ubah ke \"Menunggu Konfirmasi\" untuk masa observasi.",
+    "observation": "Setelah mesin berjalan stabil, supervisor menutup kasus.",
+    "closed": "Selesai. Pertimbangkan membuat entri knowledge base untuk referensi."
   }
 }

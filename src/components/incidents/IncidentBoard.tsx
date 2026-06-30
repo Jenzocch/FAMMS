@@ -12,6 +12,7 @@ import {
 import { PERMISSIONS } from '@/lib/permissions'
 import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
+import NextStepHint from '@/components/incidents/NextStepHint'
 
 export interface BoardRow {
   id: string
@@ -157,6 +158,13 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
                     )
                   )}
                 </div>
+
+                {/* Next-step nudge: what this case needs next, at a glance */}
+                {inc.status !== 'closed' && (
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <NextStepHint status={inc.status} variant="inline" />
+                  </div>
+                )}
               </Link>
             )
           })}

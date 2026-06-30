@@ -713,5 +713,20 @@
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
     "download": "Download original"
+  },
+  "nextStep": {
+    "label": "Next step",
+    "doneLabel": "Completed",
+    "reported": "A technician accepts the case and starts the on-site inspection.",
+    "accepted": "Go on-site, inspect, and diagnose the root cause.",
+    "analyzing": "Begin the repair once the cause is found; if you need parts, approval, or a shutdown, switch to the matching \"waiting\" status.",
+    "waiting_parts": "When the parts arrive, set back to \"In Progress\" and continue the repair.",
+    "waiting_approval": "Once approved, set back to \"In Progress\" and continue the repair.",
+    "waiting_vendor": "After the vendor finishes, update progress and continue the repair.",
+    "waiting_shutdown": "After a shutdown window is arranged, set to \"In Progress\" and start the repair.",
+    "repairing": "When the repair is done, set to \"Testing\" to verify the fix.",
+    "testing": "If the test passes, move to \"Awaiting Confirmation\" for the observation period.",
+    "observation": "Once the machine runs stably, a supervisor closes the case.",
+    "closed": "Done. Consider adding a knowledge base entry for future reference."
   }
 }
