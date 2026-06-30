@@ -138,7 +138,7 @@ export default function PMRecordForm({ recordId, checklist }: { recordId: string
           {mode === 'skipped' && (
             <div>
               <Label>Alasan Skip <span className="text-red-500">*</span></Label>
-              <Select value={delayReason} onValueChange={(v) => setDelayReason((v ?? '') as PMDelayReason)}>
+              <Select value={delayReason} onValueChange={(v) => setDelayReason((v ?? '') as PMDelayReason)} items={Object.fromEntries(DELAY_REASONS.map(r => [r, PM_DELAY_REASON_LABELS[r]]))}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih alasan" /></SelectTrigger>
                 <SelectContent>
                   {DELAY_REASONS.map(r => (

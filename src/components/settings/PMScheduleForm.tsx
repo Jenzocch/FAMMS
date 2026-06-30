@@ -101,7 +101,7 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
 
       <div>
         <Label className="text-sm">工廠 *</Label>
-        <Select value={selectedFactory} onValueChange={(v) => setSelectedFactory(v ?? '')}>
+        <Select value={selectedFactory} onValueChange={(v) => setSelectedFactory(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
           <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             {factories.map(f => (
@@ -114,7 +114,7 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
       {selectedFactory && (
         <div>
           <Label className="text-sm">機器 *</Label>
-          <Select value={selectedMachine} onValueChange={(v) => setSelectedMachine(v ?? '')}>
+          <Select value={selectedMachine} onValueChange={(v) => setSelectedMachine(v ?? '')} items={Object.fromEntries(machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`]))}>
             <SelectTrigger className="mt-1"><SelectValue placeholder="選擇機器" /></SelectTrigger>
             <SelectContent>
               {machines.map(m => (
@@ -129,7 +129,7 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
 
       <div>
         <Label className="text-sm">保養類型 *</Label>
-        <Select value={pmType} onValueChange={(v) => setPmType(v ?? '')}>
+        <Select value={pmType} onValueChange={(v) => setPmType(v ?? '')} items={Object.fromEntries(PM_TYPES.map(t => [t.value, t.label]))}>
           <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             {PM_TYPES.map(t => (

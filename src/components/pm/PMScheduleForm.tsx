@@ -95,7 +95,7 @@ export default function PMScheduleForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label>Mesin <span className="text-red-500">*</span></Label>
-          <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')}>
+          <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={Object.fromEntries(machines.map(m => [m.id, `${m.machine_code} — ${m.machine_name}`]))}>
             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih mesin" /></SelectTrigger>
             <SelectContent>
               {machines.map(m => (
@@ -111,7 +111,7 @@ export default function PMScheduleForm() {
         </div>
         <div>
           <Label>Tipe PM <span className="text-red-500">*</span></Label>
-          <Select value={pmType} onValueChange={(v) => setPmType((v ?? '') as PMType)}>
+          <Select value={pmType} onValueChange={(v) => setPmType((v ?? '') as PMType)} items={Object.fromEntries(PM_TYPES.map(t => [t, PM_TYPE_LABELS[t]]))}>
             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih frekuensi" /></SelectTrigger>
             <SelectContent>
               {PM_TYPES.map(t => <SelectItem key={t} value={t}>{PM_TYPE_LABELS[t]}</SelectItem>)}

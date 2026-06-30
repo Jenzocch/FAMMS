@@ -268,7 +268,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {/* Factory */}
           <div>
             <Label className="text-xs">{t('board.factory')}</Label>
-            <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')}>
+            <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
               <SelectTrigger className="mt-1 text-sm">
                 <SelectValue placeholder={t('board.selectFactory')} />
               </SelectTrigger>
@@ -284,7 +284,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {areas.length > 0 && (
             <div>
               <Label className="text-xs">{t('board.area')}</Label>
-              <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')}>
+              <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
                 <SelectTrigger className="mt-1 text-sm">
                   <SelectValue placeholder={t('board.selectArea')} />
                 </SelectTrigger>
@@ -301,7 +301,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {machines.length > 0 && (
             <div>
               <Label className="text-xs">{t('board.machine')}</Label>
-              <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')}>
+              <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={Object.fromEntries(machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`]))}>
                 <SelectTrigger className="mt-1 text-sm">
                   <SelectValue placeholder={t('board.selectMachine')} />
                 </SelectTrigger>
@@ -319,7 +319,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {/* Incident Type */}
           <div>
             <Label className="text-xs">{t('board.issueType')}</Label>
-            <Select value={incidentType} onValueChange={(v) => setIncidentType(v ?? '')}>
+            <Select value={incidentType} onValueChange={(v) => setIncidentType(v ?? '')} items={Object.fromEntries(issueTypes.map(it => [it.code, typeLabelOf(it.code)]))}>
               <SelectTrigger className="mt-1 text-sm">
                 <SelectValue placeholder={t('board.selectType')} />
               </SelectTrigger>
@@ -334,7 +334,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {/* Status */}
           <div>
             <Label className="text-xs">{t('board.statusLabel')}</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v ?? '')}>
+            <Select value={status} onValueChange={(v) => setStatus(v ?? '')} items={Object.fromEntries(STATUSES.map(s => [s, statusLabelOf(s)]))}>
               <SelectTrigger className="mt-1 text-sm">
                 <SelectValue placeholder={t('board.selectStatus')} />
               </SelectTrigger>

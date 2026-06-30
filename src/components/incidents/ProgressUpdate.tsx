@@ -177,7 +177,7 @@ export default function ProgressUpdate({
 
       <div>
         <Label>新狀態</Label>
-        <Select value={newStatus} onValueChange={(v) => setNewStatus(v ?? currentStatus)}>
+        <Select value={newStatus} onValueChange={(v) => setNewStatus(v ?? currentStatus)} items={Object.fromEntries(selectableStatuses.map(s => [s, STATUS_ZH[s]]))}>
           <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             {selectableStatuses.map(s => (

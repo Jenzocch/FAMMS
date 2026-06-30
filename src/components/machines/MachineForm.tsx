@@ -137,7 +137,7 @@ export default function MachineForm({ machine }: Props) {
       {/* Area Selection */}
       <div>
         <Label>Daerah / Area <span className="text-red-500">*</span></Label>
-        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} disabled={!!machine}>
+        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} disabled={!!machine} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
           <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih area" /></SelectTrigger>
           <SelectContent>
             {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -200,7 +200,7 @@ export default function MachineForm({ machine }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label>PIC (Person in Charge)</Label>
-          <Select value={ownerId} onValueChange={(v) => setOwnerId(v ?? '')}>
+          <Select value={ownerId} onValueChange={(v) => setOwnerId(v ?? '')} items={Object.fromEntries(owners.map(o => [o.id, o.full_name]))}>
             <SelectTrigger className="mt-1"><SelectValue placeholder="Optional" /></SelectTrigger>
             <SelectContent>
               {owners.map(o => <SelectItem key={o.id} value={o.id}>{o.full_name}</SelectItem>)}
@@ -223,7 +223,7 @@ export default function MachineForm({ machine }: Props) {
       {/* Status */}
       <div>
         <Label>Status</Label>
-        <Select value={status} onValueChange={(v) => setStatus(v ?? '')}>
+        <Select value={status} onValueChange={(v) => setStatus(v ?? '')} items={{ running: '🟢 Running', repairing: '🟡 Repairing', standby: '⚪ Standby', scrapped: '⛔ Scrapped' }}>
           <SelectTrigger className="mt-1"><SelectValue placeholder="running" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="running">🟢 Running</SelectItem>

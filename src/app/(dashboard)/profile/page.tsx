@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
         <div>
           <Label>Pabrik</Label>
-          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')}>
+          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih pabrik" /></SelectTrigger>
             <SelectContent>
               {factories.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}

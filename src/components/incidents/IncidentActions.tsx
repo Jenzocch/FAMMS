@@ -185,7 +185,7 @@ export default function IncidentActions({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label>問題類型</Label>
-          <Select value={type} onValueChange={(v) => setType(v ?? type)}>
+          <Select value={type} onValueChange={(v) => setType(v ?? type)} items={Object.fromEntries(issueTypes.map(it => [it.value, it.label]))}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
               {issueTypes.map(it => <SelectItem key={it.value} value={it.value}>{it.label}</SelectItem>)}
@@ -194,7 +194,7 @@ export default function IncidentActions({
         </div>
         <div>
           <Label>緊急度</Label>
-          <Select value={urg} onValueChange={(v) => setUrg(v ?? urg)}>
+          <Select value={urg} onValueChange={(v) => setUrg(v ?? urg)} items={Object.fromEntries(URGENCY.map(u => [u.value, u.label]))}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
               {URGENCY.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
