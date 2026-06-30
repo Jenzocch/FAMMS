@@ -5,7 +5,10 @@ import type { UserRole } from '@/types'
 
 const VALID_ROLES: UserRole[] = ['technician', 'supervisor', 'manager', 'director', 'admin']
 
-// GET — list all users from profiles table (no auth API call), admin only
+// GET — list all users, admin only.
+// Source of truth is the profiles table (always reliable). Emails come from the
+// auth admin API as a best-effort enrichment — if that call fails (network,
+// key, proxy), we still return the user list instead of crashing the page.
 export async function GET() {
   const guard = await requireAdmin()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
@@ -17,9 +20,20 @@ export async function GET() {
     .select('id, factory_id, full_name, role, is_active, created_at')
   if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 })
 
+  // Best-effort email lookup. Never let a failure here break the whole list.
+  const emailById = new Map<string, string>()
+  try {
+    const { data: authData, error: authErr } = await admin.auth.admin.listUsers({ perPage: 1000 })
+    if (!authErr && authData?.users) {
+      for (const u of authData.users) emailById.set(u.id, u.email ?? '')
+    }
+  } catch (e) {
+    console.error('listUsers failed (returning profiles without emails):', e)
+  }
+
   const users = (profiles ?? []).map(p => ({
     id: p.id,
-    email: '', // Email not stored in profiles, would need auth lookup
+    email: emailById.get(p.id) ?? '',
     full_name: p.full_name ?? '',
     role: (p.role ?? 'technician') as UserRole,
     factory_id: p.factory_id ?? null,
