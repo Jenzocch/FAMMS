@@ -1,17 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import ProgressUpdate from '@/components/incidents/ProgressUpdate'
+import ProgressTimeline from '@/components/incidents/ProgressTimeline'
+import WorkflowProgress from '@/components/incidents/WorkflowProgress'
+import RemindButton from '@/components/incidents/RemindButton'
+import StatusChip from '@/components/incidents/StatusChip'
+import { BackLink, UrgencyChip, DueDateChip, ClosedBanner } from '@/components/incidents/IncidentDetailChrome'
 import AssignForm from '@/components/incidents/AssignForm'
 import IncidentActions from '@/components/incidents/IncidentActions'
-import ImageViewer from '@/components/shared/ImageViewer'
 import AuditTrail from '@/components/incidents/AuditTrail'
+import IncidentTypeText from '@/components/incidents/IncidentTypeText'
 import { IncidentStatus } from '@/types'
-import {
-  ISSUE_TYPE_LABELS, URGENCY_FROM_IMPACT, STATUS_ZH, STATUS_ZH_COLOR,
-} from '@/lib/incident-display'
-import { ChevronLeft, Clock, User, UserCheck, CalendarClock } from 'lucide-react'
+import { URGENCY_FROM_IMPACT } from '@/lib/incident-display'
+import { Clock, User, UserCheck } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface UpdateRow {
@@ -54,6 +56,14 @@ export default async function IncidentDetailPage({
 
   if (!incident) notFound()
 
+  // Technicians (no full-board access) may open cases assigned to them or that
+  // they reported.
+  if (user && !PERMISSIONS.boardFull(user.role)) {
+    const assignedIds: string[] = incident.assigned_user_ids ?? []
+    const isReporter = incident.reported_by_id === user.id
+    if (!assignedIds.includes(user.id) && !isReporter) notFound()
+  }
+
   const { data: updates } = await supabase
     .from('incident_updates')
     .select('*')
@@ -70,31 +80,26 @@ export default async function IncidentDetailPage({
 
   return (
     <div className="space-y-4">
-      <Link href="/incidents" className="text-sm text-gray-500 inline-flex items-center gap-1">
-        <ChevronLeft className="w-4 h-4" /> 返回看板
-      </Link>
+      <BackLink />
 
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_ZH_COLOR[status]}`}>
-            {STATUS_ZH[status]}
-          </span>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${urgency.color}`}>
-            {urgency.label}
-          </span>
-          <span className="text-xs text-gray-400 font-mono ml-auto">{incident.incident_no}</span>
+          <StatusChip status={status} />
+          <UrgencyChip impact={incident.downtime_impact} color={urgency.color} fallbackLabel={urgency.label} />
+          <span className="text-sm text-gray-800 font-mono font-semibold ml-auto bg-gray-100 px-2 py-0.5 rounded">{incident.incident_no}</span>
         </div>
 
         <h1 className="text-lg font-bold text-gray-900 mt-2">
-          {incident.title || ISSUE_TYPE_LABELS[incident.incident_type] || '問題'}
+          {incident.title || <IncidentTypeText code={incident.incident_type} problemFallback />}
         </h1>
 
         <div className="mt-2 space-y-1 text-sm text-gray-600">
-          <p>{ISSUE_TYPE_LABELS[incident.incident_type] || incident.incident_type}</p>
+          <p><IncidentTypeText code={incident.incident_type} /></p>
           <p>
             📍 {factory?.name || '?'}
             {machine ? ` · ${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}` : ''}
+            {incident.location_note ? ` · ${incident.location_note}` : ''}
           </p>
           {incident.reporter_name && (
             <p className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {incident.reporter_name}</p>
@@ -119,60 +124,20 @@ export default async function IncidentDetailPage({
               </span>
             )}
             {incident.due_date && (
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${
-                !isClosed && new Date(incident.due_date) < new Date(new Date().toDateString())
-                  ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-600'
-              }`}>
-                <CalendarClock className="w-3.5 h-3.5" />
-                預計 {format(new Date(incident.due_date), 'yyyy-MM-dd')}
-                {!isClosed && new Date(incident.due_date) < new Date(new Date().toDateString()) ? ' (逾期)' : ''}
-              </span>
+              <DueDateChip dueDate={incident.due_date} isClosed={isClosed} />
             )}
           </div>
         )}
       </div>
 
-      {/* Progress timeline */}
-      <div>
-        <h2 className="font-semibold text-gray-900 mb-2 text-sm">處理紀錄 ({updateRows.length})</h2>
-        {updateRows.length === 0 ? (
-          <p className="text-sm text-gray-400 bg-white rounded-xl border border-gray-200 p-5 text-center">
-            尚無處理紀錄
-          </p>
-        ) : (
-          <ol className="relative border-l-2 border-gray-100 ml-2 space-y-3">
-            {updateRows.map(u => {
-              const photos = parsePhotos(u.photos)
-              return (
-                <li key={u.id} className="ml-4">
-                  <span className="absolute -left-[7px] w-3 h-3 bg-blue-500 rounded-full ring-4 ring-white" />
-                  <div className="bg-white rounded-lg border border-gray-200 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-gray-800">
-                        {u.updated_by || '維修人員'}
-                      </span>
-                      {u.new_status && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_ZH_COLOR[u.new_status as IncidentStatus] || 'bg-gray-100 text-gray-600'}`}>
-                          → {STATUS_ZH[u.new_status as IncidentStatus] || u.new_status}
-                        </span>
-                      )}
-                    </div>
-                    {u.note && <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{u.note}</p>}
-                    {photos.length > 0 && (
-                      <div className="mt-2">
-                        <ImageViewer paths={photos} supabaseUrl={supabaseUrl} />
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      {format(new Date(u.created_at), 'MM-dd HH:mm')}
-                    </p>
-                  </div>
-                </li>
-              )
-            })}
-          </ol>
-        )}
-      </div>
+      {/* Workflow progress bar — visual status pipeline */}
+      <WorkflowProgress status={status} />
+
+      {/* Progress timeline (client component → labels follow app language) */}
+      <ProgressTimeline
+        rows={updateRows.map(u => ({ ...u, photos: parsePhotos(u.photos) }))}
+        supabaseUrl={supabaseUrl}
+      />
 
       {/* Update form */}
       {!isClosed ? (
@@ -183,23 +148,26 @@ export default async function IncidentDetailPage({
           userName={user?.full_name}
         />
       ) : (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center text-sm text-green-700">
-          ✅ 此案件已結案
-          {incident.closed_at && ` · ${format(new Date(incident.closed_at), 'yyyy-MM-dd HH:mm')}`}
-        </div>
+        <ClosedBanner closedAt={incident.closed_at} />
       )}
 
-      {/* Assignment (派工) */}
-      {!isClosed && (
-        <AssignForm
-          incidentId={id}
-          assignedTo={incident.assigned_to}
-          assignedDept={incident.assigned_dept}
-          dueDate={incident.due_date}
-          userRole={user?.role}
-          userName={user?.full_name}
-        />
+      {/* Nudge assignees via Telegram (supervisors+ only, open cases only) */}
+      {!isClosed && user && PERMISSIONS.remindProgress(user.role) && (
+        <RemindButton incidentId={id} />
       )}
+
+      {/* Assignment (派工) — available even after close so a case can be
+          re-routed to whoever follow-up work belongs to. */}
+      <AssignForm
+        incidentId={id}
+        assignedTo={incident.assigned_to}
+        assignedDept={incident.assigned_dept}
+        assignedUserIds={incident.assigned_user_ids}
+        dueDate={incident.due_date}
+        factoryId={incident.factory_id}
+        userRole={user?.role}
+        userName={user?.full_name}
+      />
 
       {/* Edit / Delete */}
       <IncidentActions
@@ -208,6 +176,7 @@ export default async function IncidentDetailPage({
         description={incident.description}
         incidentType={incident.incident_type}
         impact={incident.downtime_impact}
+        dueDate={incident.due_date}
         userRole={user?.role}
         userName={user?.full_name}
         factoryId={incident.factory_id}

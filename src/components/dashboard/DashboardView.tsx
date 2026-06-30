@@ -5,8 +5,9 @@ import { AlertTriangle, Clock, Factory, ChevronRight, CheckCircle2, Wrench } fro
 import { formatDistanceToNow } from 'date-fns'
 import { zhTW, enUS, id as idLocale } from 'date-fns/locale'
 import { IncidentStatus } from '@/types'
-import { ISSUE_TYPE_LABELS, URGENCY_FROM_IMPACT, STATUS_ZH, STATUS_ZH_COLOR } from '@/lib/incident-display'
+import { URGENCY_FROM_IMPACT, STATUS_ZH, STATUS_ZH_COLOR } from '@/lib/incident-display'
 import { useI18n } from '@/lib/i18n'
+import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 
 export interface DashboardRow {
   id: string
@@ -32,7 +33,8 @@ interface DashboardViewProps {
   openCount: number
   urgentCount: number
   staleCount: number
-  byFactory: [string, number][]
+  // [factory name, open count, factory id (null = unspecified)]
+  byFactory: [string, number, (string | null)?][]
   urgent: DashboardRow[]
   stale: DashboardRow[]
   overdue: OverdueRow[]
@@ -70,12 +72,31 @@ export default function DashboardView({
           <Empty text={t('dash.noOpen')} />
         ) : (
           <div className="space-y-1.5">
-            {byFactory.map(([name, count]) => (
-              <div key={name} className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2.5">
-                <span className="text-sm font-medium text-gray-700">{name}</span>
-                <span className="text-sm font-bold text-blue-600">{t('dash.cases').replace('{count}', String(count))}</span>
-              </div>
-            ))}
+            {byFactory.map(([name, count, factoryId]) => {
+              const content = (
+                <>
+                  <span className="text-sm font-medium text-gray-700">{name}</span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-blue-600">{t('dash.cases').replace('{count}', String(count))}</span>
+                    {factoryId && <ChevronRight className="w-4 h-4 text-gray-300" />}
+                  </span>
+                </>
+              )
+              // Clickable when we know the factory id → jump to a filtered board.
+              return factoryId ? (
+                <Link
+                  key={name}
+                  href={`/incidents?factory=${factoryId}`}
+                  className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2.5 active:bg-gray-50 hover:border-blue-300 transition-colors"
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div key={name} className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2.5">
+                  {content}
+                </div>
+              )
+            })}
           </div>
         )}
       </Section>
@@ -151,6 +172,7 @@ function CaseList({
   t: (key: string, fallback?: string) => string
   dateLocale: Locale
 }) {
+  const typeLabel = useIncidentTypeLabel()
   return (
     <div className="space-y-1.5">
       {rows.map(r => {
@@ -163,7 +185,7 @@ function CaseList({
               <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
             </div>
             <p className="text-sm font-medium text-gray-900 mt-1.5 line-clamp-1">
-              {r.title || t(`issueTypes.${r.incident_type}`, ISSUE_TYPE_LABELS[r.incident_type] || t('board.problem'))}
+              {r.title || typeLabel(r.incident_type, t('board.problem'))}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
               {r.factory?.name || ''} · {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: dateLocale })}

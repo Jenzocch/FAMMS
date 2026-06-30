@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface Area {
   id: string
@@ -54,6 +55,7 @@ interface Props {
 export default function MachineForm({ machine }: Props) {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useI18n()
 
   const [areas, setAreas] = useState<Area[]>([])
   const [factories, setFactories] = useState<Factory[]>([])
@@ -90,7 +92,7 @@ export default function MachineForm({ machine }: Props) {
 
   async function submit() {
     if (!areaId || !name) {
-      toast.error('Lengkapi area dan nama mesin')
+      toast.error(t('machineForm.completeAreaName', '請填寫區域和機器名稱'))
       return
     }
     setSubmitting(true)
@@ -113,16 +115,16 @@ export default function MachineForm({ machine }: Props) {
       if (machine) {
         const { error } = await supabase.from('machines').update(payload).eq('id', machine.id)
         if (error) throw error
-        toast.success('Mesin diperbarui')
+        toast.success(t('machineForm.updated', '機器已更新'))
       } else {
         const { error } = await supabase.from('machines').insert([payload])
         if (error) throw error
-        toast.success('Mesin ditambahkan')
+        toast.success(t('machineForm.added', '機器已新增'))
       }
       router.push('/machines')
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan mesin')
+      toast.error(err instanceof Error ? err.message : t('machineForm.saveFailed', '儲存機器失敗'))
     } finally {
       setSubmitting(false)
     }
@@ -131,14 +133,14 @@ export default function MachineForm({ machine }: Props) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
       <h2 className="text-lg font-semibold text-gray-900">
-        {machine ? 'Edit Mesin' : 'Tambah Mesin Baru'}
+        {machine ? t('machineForm.editTitle', '編輯機器') : t('machineForm.addTitle', '新增機器')}
       </h2>
 
       {/* Area Selection */}
       <div>
-        <Label>Daerah / Area <span className="text-red-500">*</span></Label>
-        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} disabled={!!machine}>
-          <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih area" /></SelectTrigger>
+        <Label>{t('machineForm.area', '區域 / Area')} <span className="text-red-500">*</span></Label>
+        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} disabled={!!machine} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
+          <SelectTrigger className="mt-1"><SelectValue placeholder={t('machineForm.selectArea', '選擇區域')} /></SelectTrigger>
           <SelectContent>
             {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
           </SelectContent>
@@ -148,22 +150,22 @@ export default function MachineForm({ machine }: Props) {
 
       {/* Machine Code */}
       <div>
-        <Label>Kode Mesin (Opsional)</Label>
+        <Label>{t('machineForm.code', '機器代碼（選填）')}</Label>
         <Input
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
-          placeholder="e.g., M001, PUMP-01 (atau kosongkan)"
+          placeholder={t('machineForm.codePlaceholder', '例如 M001、PUMP-01（可留空）')}
           className="mt-1 font-mono"
         />
       </div>
 
       {/* Machine Name */}
       <div>
-        <Label>Nama Mesin <span className="text-red-500">*</span></Label>
+        <Label>{t('machineForm.name', '機器名稱')} <span className="text-red-500">*</span></Label>
         <Input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="e.g., Homogenizer Line 1"
+          placeholder={t('machineForm.namePlaceholder', '例如 Homogenizer Line 1')}
           className="mt-1"
         />
       </div>
@@ -179,7 +181,7 @@ export default function MachineForm({ machine }: Props) {
           <Input value={model} onChange={e => setModel(e.target.value)} placeholder="e.g., Ariete 3160" className="mt-1" />
         </div>
         <div>
-          <Label>No. Seri</Label>
+          <Label>{t('machineForm.serial', '序號')}</Label>
           <Input value={serial} onChange={e => setSerial(e.target.value)} placeholder="Serial" className="mt-1" />
         </div>
       </div>
@@ -187,11 +189,11 @@ export default function MachineForm({ machine }: Props) {
       {/* Dates */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>Tanggal Pembelian</Label>
+          <Label>{t('machineForm.purchaseDate', '購買日期')}</Label>
           <Input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="mt-1" />
         </div>
         <div>
-          <Label>Tanggal Instalasi</Label>
+          <Label>{t('machineForm.installDate', '安裝日期')}</Label>
           <Input type="date" value={installDate} onChange={e => setInstallDate(e.target.value)} className="mt-1" />
         </div>
       </div>
@@ -199,16 +201,16 @@ export default function MachineForm({ machine }: Props) {
       {/* Owner & Maintenance */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>PIC (Person in Charge)</Label>
-          <Select value={ownerId} onValueChange={(v) => setOwnerId(v ?? '')}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Optional" /></SelectTrigger>
+          <Label>{t('machineForm.pic', '負責人 (PIC)')}</Label>
+          <Select value={ownerId} onValueChange={(v) => setOwnerId(v ?? '')} items={Object.fromEntries(owners.map(o => [o.id, o.full_name]))}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={t('machineForm.optional', '選填')} /></SelectTrigger>
             <SelectContent>
               {owners.map(o => <SelectItem key={o.id} value={o.id}>{o.full_name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Siklus Maintenance (hari)</Label>
+          <Label>{t('machineForm.maintenanceCycle', '保養週期（天）')}</Label>
           <Input
             type="number"
             value={maintenanceCycle}
@@ -222,25 +224,25 @@ export default function MachineForm({ machine }: Props) {
 
       {/* Status */}
       <div>
-        <Label>Status</Label>
-        <Select value={status} onValueChange={(v) => setStatus(v ?? '')}>
-          <SelectTrigger className="mt-1"><SelectValue placeholder="running" /></SelectTrigger>
+        <Label>{t('machineForm.status', '狀態')}</Label>
+        <Select value={status} onValueChange={(v) => setStatus(v ?? '')} items={{ running: `🟢 ${t('machineStatus.running', 'Running')}`, repairing: `🟡 ${t('machineStatus.repairing', 'Repairing')}`, standby: `⚪ ${t('machineStatus.standby', 'Standby')}`, scrapped: `⛔ ${t('machineStatus.scrapped', 'Scrapped')}` }}>
+          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="running">🟢 Running</SelectItem>
-            <SelectItem value="repairing">🟡 Repairing</SelectItem>
-            <SelectItem value="standby">⚪ Standby</SelectItem>
-            <SelectItem value="scrapped">⛔ Scrapped</SelectItem>
+            <SelectItem value="running">🟢 {t('machineStatus.running', 'Running')}</SelectItem>
+            <SelectItem value="repairing">🟡 {t('machineStatus.repairing', 'Repairing')}</SelectItem>
+            <SelectItem value="standby">⚪ {t('machineStatus.standby', 'Standby')}</SelectItem>
+            <SelectItem value="scrapped">⛔ {t('machineStatus.scrapped', 'Scrapped')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Remarks */}
       <div>
-        <Label>Catatan</Label>
+        <Label>{t('machineForm.remarks', '備註')}</Label>
         <Textarea
           value={remarks}
           onChange={e => setRemarks(e.target.value)}
-          placeholder="Informasi tambahan tentang mesin..."
+          placeholder={t('machineForm.remarksPlaceholder', '關於機器的額外資訊...')}
           className="mt-1"
           rows={2}
         />
@@ -248,7 +250,7 @@ export default function MachineForm({ machine }: Props) {
 
       <Button onClick={submit} disabled={submitting} className="w-full">
         {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-        {machine ? 'Perbarui Mesin' : 'Tambah Mesin'}
+        {machine ? t('machineForm.update', '更新機器') : t('machineForm.add', '新增機器')}
       </Button>
     </div>
   )

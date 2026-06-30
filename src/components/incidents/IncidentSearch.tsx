@@ -10,17 +10,22 @@ import {
 } from '@/components/ui/select'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Download, Search, X, ChevronRight, AlertCircle } from 'lucide-react'
+import { Download, Search, X, ChevronRight, AlertCircle, BellRing, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 import * as XLSX from 'xlsx'
-import type { IncidentStatus } from '@/types'
+import type { IncidentStatus, UserRole } from '@/types'
 import { ISSUE_TYPE_LABELS, URGENCY_FROM_IMPACT, STATUS_ZH_COLOR } from '@/lib/incident-display'
+import { PERMISSIONS } from '@/lib/permissions'
 import { useI18n } from '@/lib/i18n'
+import { useIncidentTypes } from '@/lib/useIncidentTypes'
+import { useIncidentTypeLabel } from '@/lib/incident-type-label'
+import { useProgressNudge } from '@/lib/useProgressNudge'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; name: string }
 interface Machine { id: string; machine_name: string; machine_code: string | null }
+interface IssueType { code: string; label: string }
 interface IncidentRow {
   id: string
   incident_no: string
@@ -38,13 +43,23 @@ interface IncidentRow {
 
 interface IncidentSearchProps {
   onResults?: (results: IncidentRow[]) => void
+  userRole?: UserRole
 }
 
-export default function IncidentSearch({ onResults }: IncidentSearchProps) {
+export default function IncidentSearch({ onResults, userRole = 'technician' }: IncidentSearchProps) {
   const { t } = useI18n()
   const supabase = createClient()
+  const canRemind = PERMISSIONS.remindProgress(userRole)
+  const { remindingId, nudge } = useProgressNudge()
+  // Issue types from the shared cache; fall back to the 7 built-ins if empty.
+  // Labels follow the active app language via the shared resolver.
+  const { types: cachedTypes } = useIncidentTypes()
+  const typeLabel = useIncidentTypeLabel()
+  const issueTypes: IssueType[] = cachedTypes.length > 0
+    ? cachedTypes.map(it => ({ code: it.code, label: typeLabel(it.code) }))
+    : Object.keys(ISSUE_TYPE_LABELS).map(code => ({ code, label: ISSUE_TYPE_LABELS[code] }))
   const typeLabelOf = (key: string, fallback?: string) =>
-    t(`issueTypes.${key}`, fallback ?? key ?? t('board.unknown'))
+    typeLabel(key, fallback ?? t('board.unknown'))
   const statusLabelOf = (key: string) => t(`boardStatus.${key}`, key)
 
   const [factories, setFactories] = useState<Factory[]>([])
@@ -258,7 +273,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {/* Factory */}
           <div>
             <Label className="text-xs">{t('board.factory')}</Label>
-            <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')}>
+            <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
               <SelectTrigger className="mt-1 text-sm">
                 <SelectValue placeholder={t('board.selectFactory')} />
               </SelectTrigger>
@@ -274,7 +289,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {areas.length > 0 && (
             <div>
               <Label className="text-xs">{t('board.area')}</Label>
-              <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')}>
+              <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
                 <SelectTrigger className="mt-1 text-sm">
                   <SelectValue placeholder={t('board.selectArea')} />
                 </SelectTrigger>
@@ -291,7 +306,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {machines.length > 0 && (
             <div>
               <Label className="text-xs">{t('board.machine')}</Label>
-              <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')}>
+              <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={Object.fromEntries(machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`]))}>
                 <SelectTrigger className="mt-1 text-sm">
                   <SelectValue placeholder={t('board.selectMachine')} />
                 </SelectTrigger>
@@ -309,13 +324,13 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {/* Incident Type */}
           <div>
             <Label className="text-xs">{t('board.issueType')}</Label>
-            <Select value={incidentType} onValueChange={(v) => setIncidentType(v ?? '')}>
+            <Select value={incidentType} onValueChange={(v) => setIncidentType(v ?? '')} items={Object.fromEntries(issueTypes.map(it => [it.code, typeLabelOf(it.code)]))}>
               <SelectTrigger className="mt-1 text-sm">
                 <SelectValue placeholder={t('board.selectType')} />
               </SelectTrigger>
               <SelectContent>
-                {Object.keys(ISSUE_TYPE_LABELS).map((key) => (
-                  <SelectItem key={key} value={key}>{typeLabelOf(key)}</SelectItem>
+                {issueTypes.map((it) => (
+                  <SelectItem key={it.code} value={it.code}>{typeLabelOf(it.code)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -324,7 +339,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
           {/* Status */}
           <div>
             <Label className="text-xs">{t('board.statusLabel')}</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v ?? '')}>
+            <Select value={status} onValueChange={(v) => setStatus(v ?? '')} items={Object.fromEntries(STATUSES.map(s => [s, statusLabelOf(s)]))}>
               <SelectTrigger className="mt-1 text-sm">
                 <SelectValue placeholder={t('board.selectStatus')} />
               </SelectTrigger>
@@ -410,7 +425,7 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
                       {t(`urgency.${inc.downtime_impact}`, urgency.label)}
                     </span>
                   )}
-                  <span className="text-xs text-gray-400 font-mono ml-auto">{inc.incident_no}</span>
+                  <span className="text-sm text-gray-800 font-mono font-semibold ml-auto bg-gray-100 px-2 py-0.5 rounded">{inc.incident_no}</span>
                 </div>
 
                 <p className="font-medium text-gray-900 mt-2 line-clamp-1">
@@ -430,6 +445,22 @@ export default function IncidentSearch({ onResults }: IncidentSearchProps) {
                   {inc.reporter_name ? `${inc.reporter_name} · ` : ''}
                   {formatDistanceToNow(new Date(inc.reported_at), { addSuffix: true, locale: zhTW })}
                 </p>
+
+                {/* Nudge for progress — supervisors+ only, open cases only */}
+                {canRemind && inc.status !== 'closed' && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); nudge(inc.id) }}
+                      disabled={remindingId === inc.id}
+                      className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition disabled:opacity-50"
+                    >
+                      {remindingId === inc.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <BellRing className="w-3 h-3" />}
+                      {t('remind.cardButton', '催進度')}
+                    </button>
+                  </div>
+                )}
               </Link>
             )
           })}

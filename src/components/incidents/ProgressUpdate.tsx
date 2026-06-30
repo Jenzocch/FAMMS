@@ -17,11 +17,43 @@ import type { IncidentStatus, UserRole } from '@/types'
 import { STATUS_ZH } from '@/lib/incident-display'
 import { PERMISSIONS } from '@/lib/permissions'
 import { logAuditEvent } from '@/lib/audit'
+import { useI18n } from '@/lib/i18n'
 
-// Statuses a maintenance person can move an incident to (simplified set)
+// Statuses a maintenance person can move an incident to (simplified set).
+// All four waiting-states must be here so a blocked case can be unblocked.
 const SELECTABLE: IncidentStatus[] = [
-  'accepted', 'analyzing', 'waiting_parts', 'repairing', 'testing', 'observation', 'closed',
+  'accepted', 'analyzing',
+  'waiting_parts', 'waiting_approval', 'waiting_vendor', 'waiting_shutdown',
+  'repairing', 'testing', 'observation', 'closed',
 ]
+
+// Linear forward order of the main workflow. A case may only move to its
+// current status or a status further along this line — never backwards.
+const MAIN_ORDER: IncidentStatus[] = [
+  'reported', 'accepted', 'analyzing', 'repairing', 'testing', 'observation', 'closed',
+]
+
+// "Waiting" side-states are temporary blocks reachable any time before close.
+const WAITING_STATES: IncidentStatus[] = [
+  'waiting_parts', 'waiting_approval', 'waiting_vendor', 'waiting_shutdown',
+]
+
+// Compute which statuses the form may offer given the case's current status.
+// Forward-only on the main line; waiting states stay open until the case is
+// closed; always intersected with SELECTABLE (the form's allowed targets).
+function allowedStatuses(currentStatus: IncidentStatus, allowRollback: boolean = false): IncidentStatus[] {
+  if (allowRollback) {
+    // Rollback allowed: show all selectable statuses except 'reported'
+    return SELECTABLE.filter(s => s !== 'reported')
+  }
+
+  const currentIndex = MAIN_ORDER.indexOf(currentStatus)
+  return SELECTABLE.filter(s => {
+    if (WAITING_STATES.includes(s)) return currentStatus !== 'closed'
+    const index = MAIN_ORDER.indexOf(s)
+    return index >= 0 && currentIndex >= 0 && index >= currentIndex
+  })
+}
 
 export default function ProgressUpdate({
   incidentId, currentStatus, userRole = 'technician', userName,
@@ -33,17 +65,22 @@ export default function ProgressUpdate({
 }) {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useI18n()
+  const statusLabel = (s: IncidentStatus) => t(`boardStatus.${s}`, STATUS_ZH[s])
   const canClose = PERMISSIONS.closeIncident(userRole)
-
-  // Only supervisors+ may move a case to "closed".
-  const selectableStatuses = canClose ? SELECTABLE : SELECTABLE.filter(s => s !== 'closed')
 
   const [newStatus, setNewStatus] = useState<string>(currentStatus)
   const [note, setNote] = useState('')
   const [updaterName, setUpdaterName] = useState(userName ?? '')
   const [photos, setPhotos] = useState<File[]>([])
+  const [allowRollback, setAllowRollback] = useState(false)
+  const [completionType, setCompletionType] = useState<'temporary_fix' | 'permanent_fix' | ''>('')
   const [submitting, setSubmitting] = useState(false)
   const [compressing, setCompressing] = useState(false)
+
+  // Status options based on rollback setting. Only supervisors+ may move a case to "closed".
+  const availableStatuses = allowedStatuses(currentStatus, allowRollback)
+  const selectableStatuses = canClose ? availableStatuses : availableStatuses.filter(s => s !== 'closed')
 
   async function addPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -54,20 +91,28 @@ export default function ProgressUpdate({
       const compressed: File[] = []
       for (const file of files) {
         if (!file.type.startsWith('image/')) continue
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 2000,
-          useWebWorker: true,
+        try {
+          const options = {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1280,
+            useWebWorker: true,
+          }
+          const compressedFile = await imageCompression(file, options)
+          compressed.push(compressedFile)
+        } catch (fileErr) {
+          // Skip individual files that fail compression (e.g., very large images on low-end devices)
+          console.warn('Failed to compress individual file:', file.name, fileErr)
         }
-        const compressedFile = await imageCompression(file, options)
-        compressed.push(compressedFile)
       }
-      setPhotos(prev => [...prev, ...compressed].slice(0, 5))
       if (compressed.length > 0) {
-        toast.success(`壓縮 ${compressed.length} 張圖片完成`)
+        setPhotos(prev => [...prev, ...compressed].slice(0, 5))
+        toast.success(t('progressUpdate.compressedToast').replace('{count}', String(compressed.length)))
+      }
+      if (compressed.length < files.length) {
+        toast.warning(`${files.length - compressed.length} ${t('progressUpdate.compressSkipped')}`)
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '圖片壓縮失敗')
+      toast.error(err instanceof Error ? err.message : t('progressUpdate.compressFailed'))
     } finally {
       setCompressing(false)
     }
@@ -76,11 +121,15 @@ export default function ProgressUpdate({
   async function submit() {
     const statusChanged = newStatus !== currentStatus
     if (!note.trim() && !statusChanged) {
-      toast.error('請更新狀態或填寫處理說明')
+      toast.error(t('progressUpdate.needStatusOrNote'))
       return
     }
     if (newStatus === 'closed' && !canClose) {
-      toast.error('只有主管可以結案')
+      toast.error(t('progressUpdate.onlySupervisorClose'))
+      return
+    }
+    if (newStatus === 'closed' && !completionType) {
+      toast.error(t('progressUpdate.completionRequired', '結案前請選擇修復類型（臨時 / 永久）'))
       return
     }
     setSubmitting(true)
@@ -102,14 +151,14 @@ export default function ProgressUpdate({
         const res = await fetch(`/api/incidents/${incidentId}/close`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ root_cause: note || undefined }),
+          body: JSON.stringify({ root_cause: note || undefined, completion_type: completionType || undefined }),
         })
         const json = await res.json().catch(() => ({}))
         if (!res.ok) {
           if (json?.rca_required) {
-            throw new Error(`需先完成 RCA 才能結案（同故障在90天內已發生 ${json.occurrence_count ?? '≥3'} 次）`)
+            throw new Error(t('progressUpdate.rcaRequired').replace('{count}', String(json.occurrence_count ?? '≥3')))
           }
-          throw new Error(json?.error || '結案失敗')
+          throw new Error(json?.error || t('progressUpdate.closeFailed'))
         }
       }
 
@@ -150,12 +199,12 @@ export default function ProgressUpdate({
         })
       }
 
-      toast.success('進度已更新')
+      toast.success(t('progressUpdate.updated'))
       setNote('')
       setPhotos([])
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '更新失敗')
+      toast.error(err instanceof Error ? err.message : t('progressUpdate.updateFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -163,43 +212,94 @@ export default function ProgressUpdate({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
-      <h3 className="font-semibold text-gray-900">更新處理進度</h3>
+      <h3 className="font-semibold text-gray-900">{t('progressUpdate.heading')}</h3>
 
       <div>
-        <Label>更新人員</Label>
+        <Label>{t('progressUpdate.updater')}</Label>
+        {/* Auto-filled with the logged-in user's name and locked, so the
+            handler is recorded accurately. If the account has no name on file
+            we leave it editable as a fallback. */}
         <Input
           value={updaterName}
           onChange={e => setUpdaterName(e.target.value)}
-          placeholder="維修人員姓名"
-          className="mt-1"
+          placeholder={t('progressUpdate.updaterPlaceholder')}
+          readOnly={!!userName}
+          className={`mt-1 ${userName ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
         />
       </div>
 
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="allowRollback"
+          checked={allowRollback}
+          onChange={e => setAllowRollback(e.target.checked)}
+          className="w-4 h-4 rounded border-gray-300"
+        />
+        <Label htmlFor="allowRollback" className="mb-0 text-sm cursor-pointer">
+          {t('progressUpdate.allowRollback')}
+        </Label>
+      </div>
+
       <div>
-        <Label>新狀態</Label>
-        <Select value={newStatus} onValueChange={(v) => setNewStatus(v ?? currentStatus)}>
+        <Label>{t('progressUpdate.newStatus')}</Label>
+        <Select value={newStatus} onValueChange={(v) => setNewStatus(v ?? currentStatus)} items={Object.fromEntries(selectableStatuses.map(s => [s, statusLabel(s)]))}>
           <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             {selectableStatuses.map(s => (
-              <SelectItem key={s} value={s}>{STATUS_ZH[s]}</SelectItem>
+              <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
+      {/* Completion type — only when closing. Drives the first-fix / repeat KPI:
+          a temporary fix re-arms repeat-failure detection for 30 days. */}
+      {newStatus === 'closed' && (
+        <div>
+          <Label>{t('progressUpdate.completionType', '修復類型')} <span className="text-red-500">*</span></Label>
+          <div className="grid grid-cols-1 gap-1.5 mt-1">
+            <button
+              type="button"
+              onClick={() => setCompletionType('permanent_fix')}
+              className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                completionType === 'permanent_fix'
+                  ? 'border-green-500 bg-green-50 text-green-800'
+                  : 'border-gray-200 bg-white text-gray-700'
+              }`}
+            >
+              <span className="text-sm font-semibold block">✅ {t('progressUpdate.permanentFix', '永久修復')}</span>
+              <span className="text-xs text-gray-500 block mt-0.5">{t('progressUpdate.permanentFixDesc', '已解決根本原因')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCompletionType('temporary_fix')}
+              className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                completionType === 'temporary_fix'
+                  ? 'border-amber-500 bg-amber-50 text-amber-800'
+                  : 'border-gray-200 bg-white text-gray-700'
+              }`}
+            >
+              <span className="text-sm font-semibold block">⚠️ {t('progressUpdate.temporaryFix', '臨時修復')}</span>
+              <span className="text-xs text-gray-500 block mt-0.5">{t('progressUpdate.temporaryFixDesc', '需觀察 30 天，根本原因未解決')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div>
-        <Label>處理說明</Label>
+        <Label>{t('progressUpdate.note')}</Label>
         <Textarea
           value={note}
           onChange={e => setNote(e.target.value)}
-          placeholder="說明處理內容、發現的問題、更換的零件..."
+          placeholder={t('progressUpdate.notePlaceholder')}
           className="mt-1"
           rows={3}
         />
       </div>
 
       <div>
-        <Label>照片（最多 5 張，自動壓縮）</Label>
+        <Label>{t('progressUpdate.photos')}</Label>
         <div className="mt-1 space-y-2">
           {photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -233,7 +333,7 @@ export default function ProgressUpdate({
             }`}>
               <Camera className="w-5 h-5 text-gray-400" />
               <span className="text-sm text-gray-500">
-                {compressing ? '壓縮中...' : '新增照片'}
+                {compressing ? t('progressUpdate.compressing') : t('progressUpdate.addPhoto')}
               </span>
               <input
                 type="file"
@@ -248,7 +348,9 @@ export default function ProgressUpdate({
           )}
           {photos.length > 0 && (
             <p className="text-xs text-gray-400">
-              共 {photos.length} 張（{(photos.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(1)} MB）
+              {t('progressUpdate.photoCount')
+                .replace('{count}', String(photos.length))
+                .replace('{mb}', (photos.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(1))}
             </p>
           )}
         </div>
@@ -256,7 +358,7 @@ export default function ProgressUpdate({
 
       <Button onClick={submit} disabled={submitting} className="w-full h-11">
         {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-        送出更新
+        {t('progressUpdate.submit')}
       </Button>
     </div>
   )

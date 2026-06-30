@@ -145,7 +145,7 @@ export default function AreaManager() {
     <div className="space-y-4">
       <div>
         <Label>{t('settings.selectFactory')}</Label>
-        <Select value={selectedFactoryId} onValueChange={(v) => setSelectedFactoryId(v ?? '')}>
+        <Select value={selectedFactoryId} onValueChange={(v) => setSelectedFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, `${f.name} (${f.code})`]))}>
           <SelectTrigger className="mt-1">
             <SelectValue placeholder={t('settings.selectFactory')} />
           </SelectTrigger>

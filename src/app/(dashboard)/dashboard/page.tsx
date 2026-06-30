@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   // Scope incidents to the user's factory (admins without factory see all)
   let incidentQuery = supabase
     .from('incidents')
-    .select('id, incident_no, status, downtime_impact, incident_type, title, reported_at, updated_at, factory:factories(name)')
+    .select('id, incident_no, status, downtime_impact, incident_type, title, reported_at, updated_at, factory_id, factory:factories(name)')
     .order('reported_at', { ascending: false })
     .limit(500)
   if (user.factory_id && user.role !== 'admin') incidentQuery = incidentQuery.eq('factory_id', user.factory_id)
@@ -53,7 +53,7 @@ export default async function DashboardPage() {
   const [schedulesRes, logsRes, pmRecordsRes] = await Promise.all([
     supabase
       .from('pm_schedules')
-      .select('machine_id, pm_type, interval_days, machines(machine_name, machine_code)')
+      .select('id, machine_id, pm_type, interval_days, machines(machine_name, machine_code)')
       .eq('is_active', true),
     supabase
       .from('maintenance_logs')
@@ -61,10 +61,14 @@ export default async function DashboardPage() {
       .order('performed_at', { ascending: false }),
     supabase
       .from('pm_records')
-      .select('machine_id, performed_date')
+      .select('pm_schedule_id, completed_at')
       .eq('status', 'completed')
-      .order('performed_date', { ascending: false }),
+      .order('completed_at', { ascending: false }),
   ])
+
+  // pm_records is keyed by pm_schedule_id, so map through the schedules.
+  const scheduleToMachine: Record<string, string> = {}
+  for (const s of schedulesRes.data ?? []) scheduleToMachine[(s as any).id] = s.machine_id
 
   // Build last-maintenance-date map from both sources
   const lastByMachine: Record<string, string> = {}
@@ -73,7 +77,10 @@ export default async function DashboardPage() {
     if (!existing || date > existing) lastByMachine[machineId] = date
   }
   for (const log of logsRes.data ?? []) recordLatest(log.machine_id, log.performed_at)
-  for (const rec of pmRecordsRes.data ?? []) recordLatest(rec.machine_id, rec.performed_date)
+  for (const rec of pmRecordsRes.data ?? []) {
+    const machineId = scheduleToMachine[(rec as any).pm_schedule_id]
+    if (machineId && (rec as any).completed_at) recordLatest(machineId, (rec as any).completed_at)
+  }
 
   const overdue = (schedulesRes.data ?? [])
     .filter(s => (s as any).machines)
@@ -93,17 +100,22 @@ export default async function DashboardPage() {
     .sort((a, b) => b.days_overdue - a.days_overdue)
     .slice(0, 10)
 
-  // Open count per factory
-  const byFactory = new Map<string, number>()
+  // Open count per factory (keep factory_id so the row can link to a filtered list)
+  const byFactory = new Map<string, { count: number; factoryId: string | null }>()
   for (const r of open) {
     const name = r.factory?.name || UNSPECIFIED
-    byFactory.set(name, (byFactory.get(name) ?? 0) + 1)
+    const prev = byFactory.get(name)
+    byFactory.set(name, {
+      count: (prev?.count ?? 0) + 1,
+      factoryId: prev?.factoryId ?? (r as any).factory_id ?? null,
+    })
   }
 
   const urgent = open.filter(r => r.downtime_impact === 'A' || r.downtime_impact === 'B')
   const now = Date.now()
   const stale = open.filter(r => now - new Date(r.updated_at).getTime() > 3 * 86400000)
-  const byFactoryEntries: [string, number][] = [...byFactory.entries()]
+  const byFactoryEntries: [string, number, string | null][] =
+    [...byFactory.entries()].map(([name, v]) => [name, v.count, v.factoryId])
 
   return (
     <DashboardView

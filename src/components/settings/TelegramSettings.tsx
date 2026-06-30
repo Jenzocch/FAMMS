@@ -126,9 +126,21 @@ export default function TelegramSettings({
               : t('telegram.notConfigured')}
           </p>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          {t('telegram.howToGetGroupId')}
-        </p>
+      </div>
+
+      {/* How to get a Group ID — numbered steps for first-time admins */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <h3 className="font-semibold text-blue-900 text-sm mb-3">{t('telegram.howToTitle')}</h3>
+        <ol className="space-y-2">
+          {[t('telegram.step1'), t('telegram.step2'), t('telegram.step3')].map((step, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-sm text-blue-800">
+              <span className="shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                {i + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
       </div>
 
       {/* Add group */}

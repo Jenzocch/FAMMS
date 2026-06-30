@@ -173,13 +173,13 @@ export default function AssetManager() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')}>
+        <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
           <SelectTrigger><SelectValue placeholder={t('settings.factory')} /></SelectTrigger>
           <SelectContent>
             {factories.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')}>
+        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
           <SelectTrigger><SelectValue placeholder={t('settings.area')} /></SelectTrigger>
           <SelectContent>
             {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -198,7 +198,7 @@ export default function AssetManager() {
           <p className="text-sm font-medium text-gray-700">{editingId ? t('settings.editAsset') : t('settings.addAsset')}</p>
           <div>
             <Label>{t('settings.assetCategory')}</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v ?? 'machine')}>
+            <Select value={category} onValueChange={(v) => setCategory(v ?? 'machine')} items={Object.fromEntries(CATEGORIES.map(c => [c.value, t(c.labelKey, c.label)]))}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{t(c.labelKey, c.label)}</SelectItem>)}

@@ -509,11 +509,11 @@ export const INCIDENT_STATUS_LABELS: Record<IncidentStatus, string> = {
   accepted: 'Diterima',
   analyzing: 'Analisa',
   waiting_parts: 'Menunggu Parts',
-  waiting_approval: 'Menunggu Approval',
+  waiting_approval: 'Menunggu Persetujuan',
   waiting_vendor: 'Menunggu Vendor',
   waiting_shutdown: 'Menunggu Shutdown',
   repairing: 'Perbaikan',
-  testing: 'Testing',
+  testing: 'Pengujian',
   observation: 'Observasi',
   closed: 'Selesai',
 };
@@ -527,10 +527,19 @@ export const DOWNTIME_IMPACT_LABELS: Record<DowntimeImpact, string> = {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   technician: 'Teknisi',
-  supervisor: 'Supervisor',
-  manager: 'Manager',
+  supervisor: 'Pengawas',
+  manager: 'Manajer',
   director: 'Kepala Pabrik',
-  admin: 'Admin',
+  admin: 'Admin Sistem',
+};
+
+// Extended descriptions for admin/settings pages where context helps.
+export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
+  technician: 'Lapor & catat perbaikan',
+  supervisor: 'Terima & assign insiden',
+  manager: 'Pantau KPI & persetujuan',
+  director: 'Lihat laporan strategis',
+  admin: 'Kelola semua master data & akun',
 };
 
 export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
@@ -545,8 +554,8 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
 };
 
 export const COMPLETION_TYPE_LABELS: Record<CompletionType, string> = {
-  temporary_fix: 'Perbaikan Sementara (Temporary)',
-  permanent_fix: 'Perbaikan Permanen (Permanent)',
+  temporary_fix: '⚠️ Perbaikan Sementara — pantau 30 hari, akar masalah belum selesai',
+  permanent_fix: '✅ Perbaikan Permanen — akar masalah terselesaikan',
 };
 
 export const PM_TYPE_LABELS: Record<PMType, string> = {

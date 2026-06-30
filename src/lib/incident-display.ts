@@ -22,11 +22,26 @@ export const ISSUE_TYPE_LABELS: Record<string, string> = {
   other: '📋 其他',
 }
 
+// Label says the production impact in plain words (no abstract A/B/C/D codes),
+// short enough to fit a board card chip.
 export const URGENCY_FROM_IMPACT: Record<string, { label: string; color: string }> = {
-  A: { label: '🔴 緊急', color: 'bg-red-100 text-red-700' },
-  B: { label: '🟠 高', color: 'bg-orange-100 text-orange-700' },
-  C: { label: '🟡 中', color: 'bg-yellow-100 text-yellow-700' },
-  D: { label: '🟢 低', color: 'bg-green-100 text-green-700' },
+  A: { label: '🔴 全廠停工', color: 'bg-red-100 text-red-700' },
+  B: { label: '🟠 產線停止', color: 'bg-orange-100 text-orange-700' },
+  C: { label: '🟡 產能下降', color: 'bg-yellow-100 text-yellow-700' },
+  D: { label: '🟢 不影響', color: 'bg-green-100 text-green-700' },
+}
+
+// SLA: how many days until a case is due, based on its urgency (downtime_impact).
+// The deadline is the single benchmark technicians sort by; urgency just decides
+// how tight it is. Admins/supervisors can still override the date manually.
+export const URGENCY_SLA_DAYS: Record<string, number> = { A: 0, B: 1, C: 3, D: 7 }
+
+// Returns a YYYY-MM-DD due date computed from urgency, counting from `base`.
+export function deadlineFromUrgency(impact: string, base: Date = new Date()): string {
+  const days = URGENCY_SLA_DAYS[impact] ?? 7
+  const d = new Date(base)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 export const STATUS_ZH: Record<IncidentStatus, string> = {

@@ -28,10 +28,11 @@ const NAV: NavItem[] = [
 
 interface SidebarProps {
   profile: Profile | null
+  incidentBadge?: number
 }
 
 // Desktop-only left sidebar. Hidden on mobile, where BottomNav + TopBar are used.
-export default function Sidebar({ profile }: SidebarProps) {
+export default function Sidebar({ profile, incidentBadge = 0 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -53,9 +54,9 @@ export default function Sidebar({ profile }: SidebarProps) {
     <aside className="hidden lg:flex lg:flex-col w-60 shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0">
       {/* Brand */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100">
-        <Link href="/dashboard" className="flex items-center gap-2 text-blue-600 font-bold">
-          <Wrench className="w-5 h-5" />
-          <span className="text-sm">工廠維修系統</span>
+        <Link href="/dashboard" className="flex items-center gap-2 text-blue-600 font-bold min-w-0">
+          <Wrench className="w-5 h-5 shrink-0" />
+          <span className="text-sm truncate">{t('appName', '工廠維修系統')}</span>
         </Link>
         <LanguageSwitcher />
       </div>
@@ -63,9 +64,19 @@ export default function Sidebar({ profile }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {visibleNav.map(({ href, labelKey, icon: Icon }) => {
-          const active = href === '/incidents/new'
-            ? pathname === href
-            : pathname === href || (pathname.startsWith(href + '/') && href !== '/incidents/new')
+          // Active when the path matches exactly, or is a sub-path — but NOT
+          // when a more specific nav item (e.g. /incidents/new) matches better.
+          // This prevents both "Papan" (/incidents) and "Lapor" (/incidents/new)
+          // lighting up at the same time.
+          const active = pathname === href || (
+            pathname.startsWith(href + '/') &&
+            !visibleNav.some(o =>
+              o.href !== href &&
+              o.href.startsWith(href + '/') &&
+              (pathname === o.href || pathname.startsWith(o.href + '/'))
+            )
+          )
+          const showBadge = href === '/incidents' && incidentBadge > 0
           return (
             <Link
               key={href}
@@ -76,7 +87,12 @@ export default function Sidebar({ profile }: SidebarProps) {
               )}
             >
               <Icon className="w-5 h-5 shrink-0" />
-              {t(labelKey)}
+              <span className="flex-1">{t(labelKey)}</span>
+              {showBadge && (
+                <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full">
+                  {incidentBadge > 99 ? '99+' : incidentBadge}
+                </span>
+              )}
             </Link>
           )
         })}

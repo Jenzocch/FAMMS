@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2, Plus, X } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface MachineOption {
   id: string
@@ -25,6 +26,7 @@ const PM_TYPES = Object.keys(PM_TYPE_LABELS) as PMType[]
 export default function PMScheduleForm() {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useI18n()
 
   const [machines, setMachines] = useState<MachineOption[]>([])
   const [machineId, setMachineId] = useState('')
@@ -60,7 +62,7 @@ export default function PMScheduleForm() {
 
   async function submit() {
     if (!machineId || !pmType) {
-      toast.error('Pilih mesin dan tipe PM')
+      toast.error(t('pmForm.selectMachineType', '請選擇機器和保養類型'))
       return
     }
     setSubmitting(true)
@@ -77,12 +79,12 @@ export default function PMScheduleForm() {
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Gagal membuat jadwal PM')
-      toast.success('Jadwal PM dibuat')
+      if (!res.ok) throw new Error(json.error || t('pmForm.createFailed', '建立保養計畫失敗'))
+      toast.success(t('pmForm.created', '保養計畫已建立'))
       router.push('/pm')
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal membuat jadwal PM')
+      toast.error(err instanceof Error ? err.message : t('pmForm.createFailed', '建立保養計畫失敗'))
     } finally {
       setSubmitting(false)
     }
@@ -90,13 +92,13 @@ export default function PMScheduleForm() {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-      <h2 className="text-lg font-semibold text-gray-900">Buat Jadwal PM</h2>
+      <h2 className="text-lg font-semibold text-gray-900">{t('pmForm.title', '建立保養計畫')}</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label>Mesin <span className="text-red-500">*</span></Label>
-          <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih mesin" /></SelectTrigger>
+          <Label>{t('pmForm.machine', '機器')} <span className="text-red-500">*</span></Label>
+          <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={Object.fromEntries(machines.map(m => [m.id, `${m.machine_code} — ${m.machine_name}`]))}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={t('pmForm.selectMachine', '選擇機器')} /></SelectTrigger>
             <SelectContent>
               {machines.map(m => (
                 <SelectItem key={m.id} value={m.id}>
@@ -106,22 +108,22 @@ export default function PMScheduleForm() {
             </SelectContent>
           </Select>
           {machines.length === 0 && (
-            <p className="text-xs text-amber-600 mt-1">Belum ada mesin. Tambah mesin dulu.</p>
+            <p className="text-xs text-amber-600 mt-1">{t('pmForm.noMachines', '尚無機器，請先新增機器')}</p>
           )}
         </div>
         <div>
-          <Label>Tipe PM <span className="text-red-500">*</span></Label>
-          <Select value={pmType} onValueChange={(v) => setPmType((v ?? '') as PMType)}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih frekuensi" /></SelectTrigger>
+          <Label>{t('pm.typeLabel', '保養類型')} <span className="text-red-500">*</span></Label>
+          <Select value={pmType} onValueChange={(v) => setPmType((v ?? '') as PMType)} items={Object.fromEntries(PM_TYPES.map(pt => [pt, t(`pmType.${pt}`, PM_TYPE_LABELS[pt])]))}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={t('pm.selectFrequency', '選擇頻率')} /></SelectTrigger>
             <SelectContent>
-              {PM_TYPES.map(t => <SelectItem key={t} value={t}>{PM_TYPE_LABELS[t]}</SelectItem>)}
+              {PM_TYPES.map(pt => <SelectItem key={pt} value={pt}>{t(`pmType.${pt}`, PM_TYPE_LABELS[pt])}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
       </div>
 
       <div>
-        <Label>Tanggal Jadwal Pertama</Label>
+        <Label>{t('pmForm.firstDueDate', '首次預定日期')}</Label>
         <Input
           type="date"
           value={firstDueDate}
@@ -129,29 +131,29 @@ export default function PMScheduleForm() {
           className="mt-1"
         />
         <p className="text-xs text-gray-400 mt-1">
-          Kosongkan untuk otomatis (1 interval dari hari ini).
+          {t('pmForm.firstDueDateHint', '留空則自動設為今天起一個週期後')}
         </p>
       </div>
 
       <div>
-        <Label>Deskripsi</Label>
+        <Label>{t('pmForm.description', '說明')}</Label>
         <Textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="Ringkasan pekerjaan PM..."
+          placeholder={t('pmForm.descriptionPlaceholder', '保養工作摘要...')}
           rows={2}
           className="mt-1"
         />
       </div>
 
       <div>
-        <Label>Checklist Item</Label>
+        <Label>{t('pmForm.checklistItem', '檢查清單項目')}</Label>
         <div className="flex gap-2 mt-1">
           <Input
             value={checklistInput}
             onChange={e => setChecklistInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addChecklistItem() } }}
-            placeholder="e.g., Cek pelumasan bearing"
+            placeholder={t('pmForm.checklistPlaceholder', '例如：檢查 bearing 潤滑')}
           />
           <Button type="button" variant="outline" onClick={addChecklistItem}>
             <Plus className="w-4 h-4" />
@@ -177,7 +179,7 @@ export default function PMScheduleForm() {
 
       <Button onClick={submit} disabled={submitting} className="w-full">
         {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-        Buat Jadwal PM
+        {t('pmForm.create', '建立計畫')}
       </Button>
     </div>
   )

@@ -5,6 +5,7 @@ import FactoryManager from '@/components/settings/FactoryManager'
 import AreaManager from '@/components/settings/AreaManager'
 import AssetManager from '@/components/settings/AssetManager'
 import IncidentTypeManager from '@/components/settings/IncidentTypeManager'
+import PMScheduleManager from '@/components/settings/PMScheduleManager'
 import UserManager from '@/components/settings/UserManager'
 import { isTelegramConfigured } from '@/lib/telegram'
 import {
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
   const canManageAreas = PERMISSIONS.manageAreas(user.role)
   const canManageFactories = PERMISSIONS.manageFactories(user.role)
   const canManageIncidentTypes = PERMISSIONS.manageIncidentTypes(user.role)
+  const canManagePMSchedules = PERMISSIONS.managePMSchedules(user.role)
   const canManageTelegram = PERMISSIONS.manageTelegram(user.role)
 
   return (
@@ -71,6 +73,14 @@ export default async function SettingsPage() {
         <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <SettingsSectionHeader titleKey="settings.incidentTypeSectionTitle" descKey="settings.incidentTypeSectionDesc" />
           <IncidentTypeManager />
+        </section>
+      )}
+
+      {/* PM Schedule Management — admin only */}
+      {canManagePMSchedules && (
+        <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          <SettingsSectionHeader titleKey="settings.pmSectionTitle" descKey="settings.pmSectionDesc" />
+          <PMScheduleManager />
         </section>
       )}
 

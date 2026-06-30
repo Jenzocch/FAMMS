@@ -1,11 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import IncidentBoard, { BoardRow } from '@/components/incidents/IncidentBoard'
 import IncidentsBoardWithSearch from '@/components/incidents/IncidentsBoardWithSearch'
 
 export const metadata = { title: '案件看板 | 維修系統' }
 
-export default async function IncidentsPage() {
+export default async function IncidentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ factory?: string }>
+}) {
+  const { factory } = await searchParams
   const user = await getCurrentUser()
   const supabase = await createClient()
 
@@ -20,8 +25,23 @@ export default async function IncidentsPage() {
     .order('reported_at', { ascending: false })
     .limit(200)
 
-  // Scope to the user's factory. Admins see every factory's cases.
-  if (user?.factory_id && user.role !== 'admin') query = query.eq('factory_id', user.factory_id)
+  const isFullBoard = !user || PERMISSIONS.boardFull(user.role)
+
+  if (isFullBoard) {
+    // Supervisors/managers see the whole board, scoped to their factory.
+    // Admins see every factory's cases.
+    if (user?.factory_id && user.role !== 'admin') query = query.eq('factory_id', user.factory_id)
+    // Optional factory filter from the dashboard's per-factory rows.
+    if (factory) query = query.eq('factory_id', factory)
+  } else {
+    // Technicians (no full-board access) see cases assigned to them OR reported
+    // by them — across ALL factories, since they can be assigned cross-factory.
+    // No factory .eq() here, so this matches the nav badge count (which also
+    // ignores factory); otherwise an assigned case in another factory would be
+    // counted in the badge but hidden from the board. Canonical PostgREST
+    // array-contains (assigned_user_ids @> {me}) makes multi-assignee match.
+    query = query.or(`assigned_user_ids.cs.{${user.id}},reported_by_id.eq.${user.id}`)
+  }
 
   const { data: incidents } = await query
 

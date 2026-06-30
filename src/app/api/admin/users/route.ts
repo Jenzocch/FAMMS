@@ -1,39 +1,46 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { accountNameToEmail, isValidLoginName } from '@/lib/login-name'
 import type { UserRole } from '@/types'
 
 const VALID_ROLES: UserRole[] = ['technician', 'supervisor', 'manager', 'director', 'admin']
 
-// GET — list all users (auth email + profile fields), admin only
+// GET — list all users, admin only.
+// Source of truth is the profiles table (always reliable). Emails come from the
+// auth admin API as a best-effort enrichment — if that call fails (network,
+// key, proxy), we still return the user list instead of crashing the page.
 export async function GET() {
   const guard = await requireAdmin()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
 
   const admin = createAdminClient()
 
-  const { data: authData, error: authErr } = await admin.auth.admin.listUsers({ perPage: 1000 })
-  if (authErr) return NextResponse.json({ error: authErr.message }, { status: 500 })
-
   const { data: profiles, error: profErr } = await admin
     .from('profiles')
-    .select('id, factory_id, full_name, role, is_active')
+    .select('id, factory_id, full_name, role, is_active, created_at')
   if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 })
 
-  const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
-
-  const users = authData.users.map(u => {
-    const p = profileMap.get(u.id)
-    return {
-      id: u.id,
-      email: u.email ?? '',
-      full_name: p?.full_name ?? '',
-      role: (p?.role ?? 'technician') as UserRole,
-      factory_id: p?.factory_id ?? null,
-      is_active: p?.is_active ?? true,
-      created_at: u.created_at,
+  // Best-effort email lookup. Never let a failure here break the whole list.
+  const emailById = new Map<string, string>()
+  try {
+    const { data: authData, error: authErr } = await admin.auth.admin.listUsers({ perPage: 1000 })
+    if (!authErr && authData?.users) {
+      for (const u of authData.users) emailById.set(u.id, u.email ?? '')
     }
-  })
+  } catch (e) {
+    console.error('listUsers failed (returning profiles without emails):', e)
+  }
+
+  const users = (profiles ?? []).map(p => ({
+    id: p.id,
+    email: emailById.get(p.id) ?? '',
+    full_name: p.full_name ?? '',
+    role: (p.role ?? 'technician') as UserRole,
+    factory_id: p.factory_id ?? null,
+    is_active: p.is_active ?? true,
+    created_at: p.created_at,
+  }))
 
   // newest first
   users.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
@@ -59,15 +66,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '無效的請求' }, { status: 400 })
   }
 
-  const email = body.email?.trim().toLowerCase()
   const password = body.password ?? ''
   const full_name = body.full_name?.trim() || null
   const role = (body.role ?? 'technician') as UserRole
   const factory_id = body.factory_id || null
 
-  if (!email || !password) {
-    return NextResponse.json({ error: '帳號與密碼必填' }, { status: 400 })
+  // Login name (= the assigned full name) is the credential; the email is a
+  // synthetic value derived from it. An explicit email is still honored if sent.
+  const loginName = body.email?.trim() || full_name || ''
+  if (!loginName || !password) {
+    return NextResponse.json({ error: '登入名稱與密碼必填' }, { status: 400 })
   }
+  if (!isValidLoginName(loginName)) {
+    return NextResponse.json({ error: '登入名稱請使用英文或數字' }, { status: 400 })
+  }
+  const email = accountNameToEmail(loginName)
   if (password.length < 6) {
     return NextResponse.json({ error: '密碼至少 6 碼' }, { status: 400 })
   }

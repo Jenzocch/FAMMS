@@ -47,6 +47,8 @@ ALTER TABLE incidents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW(
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS assigned_to TEXT;
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS assigned_dept TEXT;
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS due_date DATE;
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS assigned_user_ids UUID[] DEFAULT '{}';
+CREATE INDEX IF NOT EXISTS idx_incidents_assigned_user_ids ON incidents USING GIN (assigned_user_ids);
 
 -- These may have been created NOT NULL on old schemas — relax them so the
 -- simplified report form (no failure_code / facility) can insert.
