@@ -4,6 +4,11 @@ import { notifyFactory } from '@/lib/telegram'
 import { PERMISSIONS } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 
+// Escape user-supplied text for Telegram HTML parse mode.
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 // POST /api/incidents/[id]/remind — supervisor/admin nudges the assignees via
 // Telegram to update an incident's progress. Broadcasts to the factory's
 // subscribed groups + opted-in users (the assignees see themselves named).
@@ -27,6 +32,8 @@ export async function POST(
   }
 
   const { id } = await params
+  const body = await req.json().catch(() => ({}))
+  const note = typeof body?.note === 'string' ? body.note.trim().slice(0, 500) : ''
 
   const { data: incident, error: loadErr } = await supabase
     .from('incidents')
@@ -56,6 +63,7 @@ export async function POST(
     incident.assigned_to ? `<b>負責人:</b> ${incident.assigned_to}` : '<b>負責人:</b> （尚未指派）',
     incident.due_date ? `<b>預計完成:</b> ${incident.due_date}` : '',
     `${profile?.full_name || '主管'} 請您更新此案件的處理進度。`,
+    note ? `<b>📝 補充:</b> ${esc(note)}` : '',
     `<a href="${appUrl}/incidents/${incident.id}">更新進度 →</a>`,
   ].filter(Boolean).join('\n')
 

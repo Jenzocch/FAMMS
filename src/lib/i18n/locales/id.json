@@ -33,6 +33,7 @@
   "remind": {
     "button": "Ingatkan Progres (notifikasi Telegram)",
     "cardButton": "Ingatkan",
+    "notePlaceholder": "Opsional: pesan untuk penanggung jawab (mis. bos menanyakan, bisa selesai hari ini?)",
     "sent": "Pengingat dikirim via Telegram ({count} penerima)",
     "noRecipients": "Terkirim, tetapi belum ada penerima Telegram yang berlangganan",
     "failed": "Gagal mengirim pengingat"

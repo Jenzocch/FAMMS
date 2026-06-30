@@ -33,6 +33,7 @@
   "remind": {
     "button": "Nudge for Progress (Telegram)",
     "cardButton": "Nudge",
+    "notePlaceholder": "Optional: a message for the assignee (e.g. the boss is asking — can it be done today?)",
     "sent": "Reminder sent via Telegram ({count} recipients)",
     "noRecipients": "Sent, but no subscribed Telegram recipients yet",
     "failed": "Failed to send reminder"

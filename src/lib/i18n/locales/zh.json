@@ -33,6 +33,7 @@
   "remind": {
     "button": "催進度（Telegram 通知負責人）",
     "cardButton": "催進度",
+    "notePlaceholder": "可選：補充想對負責人說的話（例如：老闆在問了，今天能好嗎？）",
     "sent": "已透過 Telegram 催進度（{count} 位接收者）",
     "noRecipients": "已送出，但目前沒有訂閱的 Telegram 接收者",
     "failed": "催進度發送失敗"
