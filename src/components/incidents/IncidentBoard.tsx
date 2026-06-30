@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { AlertCircle, ChevronRight, UserCheck, Lock, CalendarClock } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
-import { zhTW } from 'date-fns/locale'
+import { zhTW, enUS, id as idLocale } from 'date-fns/locale'
 import type { IncidentStatus, UserRole } from '@/types'
 import {
   URGENCY_FROM_IMPACT, STATUS_ZH_COLOR, BOARD_FILTERS,
@@ -34,7 +34,8 @@ interface IncidentBoardProps {
 }
 
 export default function IncidentBoard({ rows, userRole = 'technician' }: IncidentBoardProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
   const typeLabel = useIncidentTypeLabel()
   const [filter, setFilter] = useState('all')
   const canAssign = PERMISSIONS.assignIncident(userRole)
@@ -140,7 +141,7 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-gray-400">
                     {inc.reporter_name ? `${inc.reporter_name} · ` : ''}
-                    {formatDistanceToNow(new Date(inc.reported_at), { addSuffix: true, locale: zhTW })}
+                    {formatDistanceToNow(new Date(inc.reported_at), { addSuffix: true, locale: dateLocale })}
                   </p>
                   {inc.status !== 'closed' && (
                     inc.assigned_to ? (

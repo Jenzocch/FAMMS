@@ -31,9 +31,11 @@ export default async function IncidentsPage({
   // Optional factory filter from the dashboard's per-factory rows.
   if (factory) query = query.eq('factory_id', factory)
 
-  // Technicians (no full-board access) only see cases assigned to them.
+  // Technicians (no full-board access) see cases assigned to them OR reported
+  // by them. Uses the canonical PostgREST array-contains syntax inside or()
+  // (assigned_user_ids @> {me}) so multi-assignee cases match reliably.
   if (user && !PERMISSIONS.boardFull(user.role)) {
-    query = query.contains('assigned_user_ids', [user.id])
+    query = query.or(`assigned_user_ids.cs.{${user.id}},reported_by_id.eq.${user.id}`)
   }
 
   const { data: incidents } = await query

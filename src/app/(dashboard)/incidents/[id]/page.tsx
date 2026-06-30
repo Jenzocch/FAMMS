@@ -55,10 +55,12 @@ export default async function IncidentDetailPage({
 
   if (!incident) notFound()
 
-  // Technicians (no full-board access) may only open cases assigned to them.
+  // Technicians (no full-board access) may open cases assigned to them or that
+  // they reported.
   if (user && !PERMISSIONS.boardFull(user.role)) {
     const assignedIds: string[] = incident.assigned_user_ids ?? []
-    if (!assignedIds.includes(user.id)) notFound()
+    const isReporter = incident.reported_by_id === user.id
+    if (!assignedIds.includes(user.id) && !isReporter) notFound()
   }
 
   const { data: updates } = await supabase

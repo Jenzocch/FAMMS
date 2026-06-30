@@ -34,7 +34,18 @@ export function useIncidentTypeLabel(): (code: string, fallback?: string) => str
   }, [types])
   return useCallback((code: string, fallback?: string): string => {
     const ty = byCode.get(code)
-    if (ty) return pickIncidentTypeLabel(ty, locale)
-    return t(`issueTypes.${code}`, fallback ?? code)
+    // 1. An admin-filled label for the active locale always wins.
+    const localeLabel = ty && (
+      locale === 'zh' ? ty.label_zh : locale === 'en' ? ty.label_en : ty.label_id
+    )
+    if (localeLabel) return localeLabel
+    // 2. Built-in codes have i18n translations (issueTypes.*) — prefer those
+    //    over the legacy single `label`, which is Chinese-only. This keeps the
+    //    board translated even before the per-language columns are populated.
+    const i18nLabel = t(`issueTypes.${code}`, '')
+    if (i18nLabel) return i18nLabel
+    // 3. Otherwise any filled DB label, then the provided fallback / code.
+    if (ty) return ty.label || ty.label_id || ty.label_en || ty.label_zh || ty.code
+    return fallback ?? code
   }, [byCode, locale, t])
 }
