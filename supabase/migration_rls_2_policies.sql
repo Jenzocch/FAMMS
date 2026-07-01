@@ -71,7 +71,7 @@ END $$;
 DO $$
 DECLARE tbl TEXT;
 BEGIN
-  FOREACH tbl IN ARRAY ARRAY['incident_actions','incident_relations','incident_comments','work_order_blocks','incident_updates'] LOOP
+  FOREACH tbl IN ARRAY ARRAY['incident_actions','incident_relations','incident_comments','incident_updates'] LOOP
     IF to_regclass('public.'||tbl) IS NULL THEN CONTINUE; END IF;
     EXECUTE format('DROP POLICY IF EXISTS %I_sel ON %I', tbl, tbl);
     EXECUTE format('DROP POLICY IF EXISTS %I_wr  ON %I', tbl, tbl);
@@ -81,6 +81,19 @@ BEGIN
       USING (app_can_access((SELECT factory_id FROM incidents i WHERE i.id = %I.incident_id)))
       WITH CHECK (app_can_access((SELECT factory_id FROM incidents i WHERE i.id = %I.incident_id)))$f$, tbl, tbl, tbl, tbl);
   END LOOP;
+END $$;
+
+-- === work_order_blocks: grandchild via incident_action_id -> incident ===
+DO $$ BEGIN
+  IF to_regclass('public.work_order_blocks') IS NOT NULL THEN
+    DROP POLICY IF EXISTS work_order_blocks_sel ON work_order_blocks;
+    DROP POLICY IF EXISTS work_order_blocks_wr  ON work_order_blocks;
+    CREATE POLICY work_order_blocks_sel ON work_order_blocks FOR SELECT
+      USING (app_can_access((SELECT i.factory_id FROM incident_actions a JOIN incidents i ON i.id = a.incident_id WHERE a.id = work_order_blocks.incident_action_id)));
+    CREATE POLICY work_order_blocks_wr ON work_order_blocks FOR ALL
+      USING (app_can_access((SELECT i.factory_id FROM incident_actions a JOIN incidents i ON i.id = a.incident_id WHERE a.id = work_order_blocks.incident_action_id)))
+      WITH CHECK (app_can_access((SELECT i.factory_id FROM incident_actions a JOIN incidents i ON i.id = a.incident_id WHERE a.id = work_order_blocks.incident_action_id)));
+  END IF;
 END $$;
 
 -- === machine children scoped via machines.factory_id ===
@@ -123,10 +136,10 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS spare_part_transactions_sel ON spare_part_transactions;
     DROP POLICY IF EXISTS spare_part_transactions_wr  ON spare_part_transactions;
     CREATE POLICY spare_part_transactions_sel ON spare_part_transactions FOR SELECT
-      USING (app_can_access((SELECT factory_id FROM spare_parts p WHERE p.id = spare_part_transactions.spare_part_id)));
+      USING (app_can_access((SELECT factory_id FROM spare_parts p WHERE p.id = spare_part_transactions.part_id)));
     CREATE POLICY spare_part_transactions_wr ON spare_part_transactions FOR ALL
-      USING (app_can_access((SELECT factory_id FROM spare_parts p WHERE p.id = spare_part_transactions.spare_part_id)))
-      WITH CHECK (app_can_access((SELECT factory_id FROM spare_parts p WHERE p.id = spare_part_transactions.spare_part_id)));
+      USING (app_can_access((SELECT factory_id FROM spare_parts p WHERE p.id = spare_part_transactions.part_id)))
+      WITH CHECK (app_can_access((SELECT factory_id FROM spare_parts p WHERE p.id = spare_part_transactions.part_id)));
   END IF;
 END $$;
 
