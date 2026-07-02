@@ -262,7 +262,11 @@ export default function IncidentActions({
       </div>
 
       <div className="flex gap-2">
-        <Button onClick={saveEdit} disabled={submitting}>
+        <Button
+          onClick={saveEdit}
+          disabled={submitting}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
           {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           {tr('caseEdit.save')}
         </Button>
