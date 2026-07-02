@@ -65,6 +65,28 @@ $$;
 DROP FUNCTION IF EXISTS public.user_factory_id();
 
 -- ============================================================================
+-- CLEAN SLATE — drop EVERY existing policy on the tables Phase 2 manages.
+-- Policies are OR'd together, so any stale permissive policy left over from an
+-- earlier setup (e.g. incidents_sel / profiles_upd / *_wr) would silently
+-- bypass the rules below. Only these 9 tables are touched; everything else
+-- keeps its Phase 1 blanket policy.
+-- ============================================================================
+
+DO $$
+DECLARE p RECORD;
+BEGIN
+  FOR p IN
+    SELECT tablename, policyname FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('profiles','incidents','incident_updates','incident_actions',
+                        'incident_comments','incident_relations','work_order_blocks',
+                        'pm_schedules','audit_logs')
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.%I', p.policyname, p.tablename);
+  END LOOP;
+END $$;
+
+-- ============================================================================
 -- PROFILES — read open (name joins everywhere); self-update cannot change role
 -- ============================================================================
 
