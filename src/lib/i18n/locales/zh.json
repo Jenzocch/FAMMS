@@ -12,7 +12,11 @@
     "staleCases": "停滯案件（逾 3 天未更新）",
     "noStale": "沒有停滯案件",
     "overdueMachines": "保養逾期機台",
-    "noOverdue": "沒有逾期保養"
+    "noOverdue": "沒有逾期保養",
+    "inbox": "需要你處理",
+    "inboxAccept": "未接單",
+    "inboxWaiting": "等待中",
+    "inboxConfirm": "待確認結案"
   },
   "assign": {
     "title": "派工指派",
@@ -615,6 +619,7 @@
     "onlySupervisorAssign": "只有主管可以派工",
     "problem": "問題",
     "overdue": "逾期",
+    "obsDue": "觀察期已滿",
     "tabBoard": "看板",
     "tabSearch": "搜索",
     "searchSubtitle": "按日期範圍、機器、類型搜索案件",

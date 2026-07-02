@@ -12,7 +12,11 @@
     "staleCases": "Stale cases (no update in 3+ days)",
     "noStale": "No stale cases",
     "overdueMachines": "Machines overdue for maintenance",
-    "noOverdue": "No overdue maintenance"
+    "noOverdue": "No overdue maintenance",
+    "inbox": "Needs your action",
+    "inboxAccept": "To accept",
+    "inboxWaiting": "Waiting",
+    "inboxConfirm": "To confirm & close"
   },
   "assign": {
     "title": "Assignment",
@@ -616,6 +620,7 @@
     "onlySupervisorAssign": "Only supervisors can assign",
     "problem": "Issue",
     "overdue": "Overdue",
+    "obsDue": "Observation ended",
     "tabBoard": "Board",
     "tabSearch": "Search",
     "searchSubtitle": "Search incidents by date range, machine, type",

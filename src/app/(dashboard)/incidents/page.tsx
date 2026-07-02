@@ -8,15 +8,15 @@ export const metadata = { title: '案件看板 | 維修系統' }
 export default async function IncidentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ factory?: string }>
+  searchParams: Promise<{ factory?: string; filter?: string }>
 }) {
-  const { factory } = await searchParams
+  const { factory, filter } = await searchParams
   const user = await getCurrentUser()
   const supabase = await createClient()
 
   const SELECT = `
     id, incident_no, status, downtime_impact, incident_type,
-    title, reporter_name, reported_at, assigned_to, due_date,
+    title, reporter_name, reported_at, assigned_to, due_date, observation_end_date,
     machine:machines(machine_code, machine_name),
     factory:factories(name)
   `
@@ -65,5 +65,5 @@ export default async function IncidentsPage({
     )
   }
 
-  return <IncidentsBoardWithSearch rows={rows} userRole={user?.role} />
+  return <IncidentsBoardWithSearch rows={rows} userRole={user?.role} initialFilter={filter} />
 }

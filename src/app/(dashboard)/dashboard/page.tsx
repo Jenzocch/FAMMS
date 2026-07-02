@@ -111,6 +111,15 @@ export default async function DashboardPage() {
     })
   }
 
+  // Action inbox — the three queues a supervisor drains daily. Keys map to the
+  // board's filter tabs so each card deep-links to the matching filtered list.
+  const WAITING: IncidentStatus[] = ['waiting_parts', 'waiting_approval', 'waiting_vendor', 'waiting_shutdown']
+  const inbox = {
+    reported: open.filter(r => r.status === 'reported').length,
+    waiting: open.filter(r => WAITING.includes(r.status)).length,
+    confirm: open.filter(r => r.status === 'testing' || r.status === 'observation').length,
+  }
+
   // "Urgent" = Critical (A). New cases only use A/C/D; 'B' (legacy "High") is
   // kept here so any older B-coded cases still surface as urgent.
   const urgent = open.filter(r => r.downtime_impact === 'A' || r.downtime_impact === 'B')
@@ -124,6 +133,7 @@ export default async function DashboardPage() {
       openCount={open.length}
       urgentCount={urgent.length}
       staleCount={stale.length}
+      inbox={inbox}
       byFactory={byFactoryEntries}
       urgent={urgent}
       stale={stale}

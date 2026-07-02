@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertTriangle, Clock, Factory, ChevronRight, CheckCircle2, Wrench } from 'lucide-react'
+import { AlertTriangle, Clock, Factory, ChevronRight, CheckCircle2, Wrench, Inbox } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { zhTW, enUS, id as idLocale } from 'date-fns/locale'
 import { IncidentStatus, UserRole } from '@/types'
@@ -34,6 +34,8 @@ interface DashboardViewProps {
   openCount: number
   urgentCount: number
   staleCount: number
+  // Action queues: new reports to accept / blocked cases / cases to confirm-close
+  inbox: { reported: number; waiting: number; confirm: number }
   // [factory name, open count, factory id (null = unspecified)]
   byFactory: [string, number, (string | null)?][]
   urgent: DashboardRow[]
@@ -48,7 +50,7 @@ const PM_TYPE_KEYS: Record<string, string> = {
 }
 
 export default function DashboardView({
-  openCount, urgentCount, staleCount, byFactory, urgent, stale, overdue, userRole,
+  openCount, urgentCount, staleCount, inbox, byFactory, urgent, stale, overdue, userRole,
 }: DashboardViewProps) {
   const { t, locale } = useI18n()
   const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
@@ -60,6 +62,31 @@ export default function DashboardView({
         <h1 className="text-xl font-bold text-gray-900">{t('dash.title')}</h1>
         <p className="text-sm text-gray-500 mt-1">{t('dash.overview')}</p>
       </div>
+
+      {/* Action inbox — the three queues to drain daily; each deep-links to the
+          board pre-set to the matching filter tab */}
+      <Section icon={<Inbox className="w-4 h-4 text-blue-500" />} title={t('dash.inbox', '需要你處理')}>
+        <div className="grid grid-cols-3 gap-2">
+          <InboxCard
+            href="/incidents?filter=reported"
+            label={t('dash.inboxAccept', '未接單')}
+            count={inbox.reported}
+            activeClass="border-blue-300 bg-blue-50 text-blue-700"
+          />
+          <InboxCard
+            href="/incidents?filter=waiting"
+            label={t('dash.inboxWaiting', '等待中')}
+            count={inbox.waiting}
+            activeClass="border-amber-300 bg-amber-50 text-amber-700"
+          />
+          <InboxCard
+            href="/incidents?filter=confirm"
+            label={t('dash.inboxConfirm', '待確認結案')}
+            count={inbox.confirm}
+            activeClass="border-teal-300 bg-teal-50 text-teal-700"
+          />
+        </div>
+      </Section>
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-2">
@@ -138,6 +165,23 @@ export default function DashboardView({
         )}
       </Section>
     </div>
+  )
+}
+
+// Tappable queue card: colored while there's work in it, muted when drained.
+function InboxCard({ href, label, count, activeClass }: {
+  href: string; label: string; count: number; activeClass: string
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-xl border p-3 text-center transition-colors active:opacity-80 ${
+        count > 0 ? activeClass : 'border-gray-200 bg-white text-gray-400'
+      }`}
+    >
+      <p className="text-2xl font-bold">{count}</p>
+      <p className="text-xs mt-0.5 font-medium">{label}</p>
+    </Link>
   )
 }
 

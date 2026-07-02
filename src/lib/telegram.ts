@@ -71,6 +71,30 @@ export function formatNewIncident(args: {
   return lines.join('\n')
 }
 
+// Personal "you've been assigned" message. Recipients are Indonesian field
+// technicians → Bahasa Indonesia per the project language convention.
+export function formatAssignment(args: {
+  incidentNo: string
+  title: string
+  locationLabel: string
+  impact: DowntimeImpact
+  dueDate?: string | null
+  appUrl?: string
+  incidentId?: string
+}): string {
+  const lines = [
+    `🔧 <b>Anda ditugaskan</b> — ${esc(args.incidentNo)}`,
+    `📋 ${esc(args.title)}`,
+    `📍 ${esc(args.locationLabel)}`,
+    `📉 Dampak: ${esc(DOWNTIME_IMPACT_LABELS[args.impact])}`,
+  ]
+  if (args.dueDate) lines.push(`📅 Target selesai: ${esc(args.dueDate)}`)
+  if (args.appUrl && args.incidentId) {
+    lines.push(`🔗 ${args.appUrl}/incidents/${args.incidentId}`)
+  }
+  return lines.join('\n')
+}
+
 export function formatSLAAlert(args: { incidentNo: string; machineLabel: string; minutesLate: number }): string {
   return [
     `⏰ <b>SLA Terlewati</b> — ${esc(args.incidentNo)}`,
@@ -150,6 +174,39 @@ export async function notifyFactory(
     .from('telegram_users')
     .select('id, telegram_chat_id')
     .eq('factory_id', args.factoryId)
+    .eq('notification_enabled', true)
+
+  for (const u of users ?? []) {
+    const r = await sendTelegramMessage(u.telegram_chat_id, args.html)
+    await supabase.from('notification_logs').insert({
+      notification_type: args.type,
+      recipient_type: 'user',
+      recipient_id: u.id,
+      telegram_message_id: r.messageId ?? null,
+      status: r.ok ? 'sent' : 'failed',
+    })
+    r.ok ? sent++ : failed++
+  }
+
+  return { sent, failed }
+}
+
+// Send a personal message to specific profiles (e.g. newly assigned
+// technicians). Only reaches users who linked their Telegram chat via /start
+// and have notifications enabled; everyone else is silently skipped.
+export async function notifyProfiles(
+  supabase: SupabaseClient,
+  args: { profileIds: string[]; type: NotificationType; html: string }
+): Promise<{ sent: number; failed: number }> {
+  if (!TOKEN || args.profileIds.length === 0) return { sent: 0, failed: 0 }
+
+  let sent = 0
+  let failed = 0
+
+  const { data: users } = await supabase
+    .from('telegram_users')
+    .select('id, telegram_chat_id')
+    .in('profile_id', args.profileIds)
     .eq('notification_enabled', true)
 
   for (const u of users ?? []) {

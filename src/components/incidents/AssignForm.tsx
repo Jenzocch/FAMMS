@@ -134,6 +134,18 @@ export default function AssignForm({
         changeSummary: displaySummary ? `已指派給 ${displaySummary}${dept ? ` · ${dept}` : ''}` : '已取消指派',
       })
 
+      // Personal Telegram ping for NEWLY added assignees only (re-saving the
+      // same assignment stays silent). Best-effort — never blocks the save.
+      const previousIds = new Set(assignedUserIds ?? [])
+      const addedUserIds = selectedIds.filter(id => !previousIds.has(id))
+      if (addedUserIds.length > 0) {
+        fetch(`/api/incidents/${incidentId}/notify-assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ addedUserIds }),
+        }).catch(() => {})
+      }
+
       toast.success(t('assign.saved', '派工已更新'))
       router.refresh()
     } catch (err) {

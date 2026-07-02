@@ -12,7 +12,11 @@
     "staleCases": "Kasus tertunda (tidak diperbarui 3+ hari)",
     "noStale": "Tidak ada kasus tertunda",
     "overdueMachines": "Mesin terlambat pemeliharaan",
-    "noOverdue": "Tidak ada pemeliharaan terlambat"
+    "noOverdue": "Tidak ada pemeliharaan terlambat",
+    "inbox": "Perlu tindakan Anda",
+    "inboxAccept": "Belum diterima",
+    "inboxWaiting": "Menunggu",
+    "inboxConfirm": "Konfirmasi & tutup"
   },
   "assign": {
     "title": "Penugasan",
@@ -615,6 +619,7 @@
     "onlySupervisorAssign": "Hanya supervisor yang dapat menugaskan",
     "problem": "Masalah",
     "overdue": "Terlambat",
+    "obsDue": "Masa observasi selesai",
     "tabBoard": "Papan",
     "tabSearch": "Cari",
     "searchSubtitle": "Cari laporan berdasarkan rentang tanggal, mesin, jenis",
