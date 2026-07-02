@@ -818,6 +818,15 @@
     "observation": "Menunggu Konfirmasi",
     "closed": "Selesai"
   },
+  "workflowStep": {
+    "reported": "Baru",
+    "accepted": "Diterima",
+    "analyzing": "Analisis",
+    "repairing": "Perbaikan",
+    "testing": "Pengujian",
+    "observation": "Menunggu Konfirmasi",
+    "closed": "Selesai"
+  },
   "appName": "Perawatan Pabrik",
   "caseEdit": {
     "edit": "Edit kasus",

@@ -818,6 +818,15 @@
     "observation": "Awaiting Confirmation",
     "closed": "Closed"
   },
+  "workflowStep": {
+    "reported": "New",
+    "accepted": "Accepted",
+    "analyzing": "Analyzing",
+    "repairing": "Repairing",
+    "testing": "Testing",
+    "observation": "Awaiting Confirmation",
+    "closed": "Closed"
+  },
   "appName": "Factory Maintenance",
   "caseEdit": {
     "edit": "Edit case",

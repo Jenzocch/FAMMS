@@ -818,6 +818,15 @@
     "observation": "待現場確認",
     "closed": "已結案"
   },
+  "workflowStep": {
+    "reported": "新回報",
+    "accepted": "已接收",
+    "analyzing": "分析中",
+    "repairing": "維修中",
+    "testing": "測試中",
+    "observation": "待現場確認",
+    "closed": "已結案"
+  },
   "appName": "工廠維修系統",
   "caseEdit": {
     "edit": "編輯案件",

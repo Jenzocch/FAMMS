@@ -20,10 +20,10 @@ export default function WorkflowProgress({ status }: { status: IncidentStatus })
   const activeIndex = isWaiting ? -1 : MAIN_STEPS.indexOf(status)
   const isClosed = status === 'closed'
 
-  const stepLabel = (s: IncidentStatus) => {
-    const key = `boardStatus.${s}`
-    return t(key, STATUS_ZH[s])
-  }
+  // Use workflowStep labels so the 7 linear steps stay distinct — the board
+  // deliberately collapses analyzing/repairing to one "In Progress" label, but
+  // in a step-by-step progress bar two identical steps look like a bug.
+  const stepLabel = (s: IncidentStatus) => t(`workflowStep.${s}`, STATUS_ZH[s])
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
