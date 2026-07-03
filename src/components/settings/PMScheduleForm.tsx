@@ -164,7 +164,11 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
         />
       </div>
 
-      <Button onClick={submit} disabled={submitting} className="w-full">
+      <Button
+        onClick={submit}
+        disabled={submitting}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+      >
         {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
         建立計畫
       </Button>
