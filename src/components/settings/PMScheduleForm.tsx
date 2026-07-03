@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Plus, X } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 
 interface Machine { id: string; machine_name: string; machine_code: string | null }

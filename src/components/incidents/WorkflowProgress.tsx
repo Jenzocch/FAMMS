@@ -27,7 +27,7 @@ export default function WorkflowProgress({ status }: { status: IncidentStatus })
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs font-medium text-gray-500 mb-3">流程進度</p>
+      <p className="text-xs font-medium text-gray-500 mb-3">{t('workflowStep.heading', '流程進度')}</p>
 
       {/* Main flow steps */}
       <div className="flex items-center gap-0">

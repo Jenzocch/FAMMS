@@ -99,7 +99,9 @@
     "submit": "提交",
     "reset": "重置",
     "noData": "暂无数据",
-    "update": "更新"
+    "update": "更新",
+    "deleted": "已刪除",
+    "deleteFailed": "刪除失敗"
   },
   "navigation": {
     "dashboard": "儀表板",
@@ -459,7 +461,12 @@
     "costPlaceholder": "費用（可選）",
     "confirmComplete2": "確認完成",
     "skipReasonPlaceholder": "跳過原因（必填）",
-    "confirmSkip2": "確認跳過"
+    "confirmSkip2": "確認跳過",
+    "badgeOverdueDays": "逾期 {count} 天",
+    "badgeInDays": "{count} 天後",
+    "searchMachine": "搜尋機器名稱或代碼...",
+    "noMatchingMachines": "找不到符合的機器",
+    "noUpcoming": "近期沒有待辦保養"
   },
   "weekdays": {
     "0": "日",
@@ -836,7 +843,8 @@
     "repairing": "維修中",
     "testing": "測試中",
     "observation": "待現場確認",
-    "closed": "已結案"
+    "closed": "已結案",
+    "heading": "流程進度"
   },
   "appName": "工廠維修系統",
   "caseEdit": {
@@ -883,5 +891,21 @@
     "zoomOut": "縮小",
     "zoomIn": "放大",
     "download": "下載原圖"
+  },
+  "audit": {
+    "heading": "操作歷史",
+    "loading": "載入歷史記錄中...",
+    "empty": "沒有操作記錄",
+    "create": "建立",
+    "update": "編輯",
+    "delete": "刪除",
+    "status_change": "狀態變更",
+    "assign": "指派",
+    "comment": "評論"
+  },
+  "accountDisabled": {
+    "title": "帳號已停用",
+    "desc": "此帳號目前無法使用，請聯絡系統管理員。",
+    "logout": "登出"
   }
 }

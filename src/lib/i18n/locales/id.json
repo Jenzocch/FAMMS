@@ -99,7 +99,9 @@
     "submit": "Kirim",
     "reset": "Atur Ulang",
     "noData": "Tidak ada data",
-    "update": "Perbarui"
+    "update": "Perbarui",
+    "deleted": "Dihapus",
+    "deleteFailed": "Gagal menghapus"
   },
   "navigation": {
     "dashboard": "Dasbor",
@@ -459,7 +461,12 @@
     "costPlaceholder": "Biaya (opsional)",
     "confirmComplete2": "Konfirmasi Selesai",
     "skipReasonPlaceholder": "Alasan melewati (wajib)",
-    "confirmSkip2": "Konfirmasi Lewati"
+    "confirmSkip2": "Konfirmasi Lewati",
+    "badgeOverdueDays": "Terlambat {count} hr",
+    "badgeInDays": "{count} hr lagi",
+    "searchMachine": "Cari nama atau kode mesin...",
+    "noMatchingMachines": "Tidak ada mesin yang cocok",
+    "noUpcoming": "Tidak ada pemeliharaan mendatang"
   },
   "weekdays": {
     "0": "Min",
@@ -836,7 +843,8 @@
     "repairing": "Perbaikan",
     "testing": "Pengujian",
     "observation": "Menunggu Konfirmasi",
-    "closed": "Selesai"
+    "closed": "Selesai",
+    "heading": "Progres Alur"
   },
   "appName": "Perawatan Pabrik",
   "caseEdit": {
@@ -883,5 +891,21 @@
     "zoomOut": "Perkecil",
     "zoomIn": "Perbesar",
     "download": "Unduh asli"
+  },
+  "audit": {
+    "heading": "Riwayat Aktivitas",
+    "loading": "Memuat riwayat...",
+    "empty": "Belum ada aktivitas",
+    "create": "Dibuat",
+    "update": "Diedit",
+    "delete": "Dihapus",
+    "status_change": "Status diubah",
+    "assign": "Ditugaskan",
+    "comment": "Komentar"
+  },
+  "accountDisabled": {
+    "title": "Akun dinonaktifkan",
+    "desc": "Akun ini tidak dapat digunakan saat ini. Hubungi admin sistem.",
+    "logout": "Keluar"
   }
 }

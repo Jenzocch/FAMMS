@@ -99,7 +99,9 @@
     "submit": "Submit",
     "reset": "Reset",
     "noData": "No data available",
-    "update": "Update"
+    "update": "Update",
+    "deleted": "Deleted",
+    "deleteFailed": "Delete failed"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -459,7 +461,12 @@
     "costPlaceholder": "Cost (optional)",
     "confirmComplete2": "Confirm Complete",
     "skipReasonPlaceholder": "Skip reason (required)",
-    "confirmSkip2": "Confirm Skip"
+    "confirmSkip2": "Confirm Skip",
+    "badgeOverdueDays": "Overdue {count}d",
+    "badgeInDays": "in {count}d",
+    "searchMachine": "Search machine name or code...",
+    "noMatchingMachines": "No matching machines",
+    "noUpcoming": "No upcoming maintenance"
   },
   "weekdays": {
     "0": "Sun",
@@ -836,7 +843,8 @@
     "repairing": "Repairing",
     "testing": "Testing",
     "observation": "Awaiting Confirmation",
-    "closed": "Closed"
+    "closed": "Closed",
+    "heading": "Workflow Progress"
   },
   "appName": "Factory Maintenance",
   "caseEdit": {
@@ -883,5 +891,21 @@
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
     "download": "Download original"
+  },
+  "audit": {
+    "heading": "Activity History",
+    "loading": "Loading history...",
+    "empty": "No activity yet",
+    "create": "Created",
+    "update": "Edited",
+    "delete": "Deleted",
+    "status_change": "Status changed",
+    "assign": "Assigned",
+    "comment": "Comment"
+  },
+  "accountDisabled": {
+    "title": "Account disabled",
+    "desc": "This account is currently unavailable. Please contact the system administrator.",
+    "logout": "Sign out"
   }
 }
