@@ -830,7 +830,7 @@
   "appName": "Factory Maintenance",
   "caseEdit": {
     "edit": "Edit case",
-    "delete": "Delete",
+    "delete": "Delete Case",
     "onlySupervisorDelete": "Only supervisors can delete a case",
     "confirmDelete": "Delete this case? This cannot be undone and all progress records will be removed too.",
     "deleted": "Case deleted",

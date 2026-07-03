@@ -830,7 +830,7 @@
   "appName": "工廠維修系統",
   "caseEdit": {
     "edit": "編輯案件",
-    "delete": "刪除",
+    "delete": "刪除案件",
     "onlySupervisorDelete": "只有主管可以刪除案件",
     "confirmDelete": "確認刪除此案件？此動作無法復原，所有處理紀錄也會一併刪除。",
     "deleted": "案件已刪除",
