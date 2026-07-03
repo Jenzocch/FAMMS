@@ -187,7 +187,18 @@
     "selectMachineType": "Pilih mesin dan tipe PM",
     "created": "Jadwal PM dibuat",
     "createFailed": "Gagal membuat jadwal PM",
-    "create": "Buat Jadwal PM"
+    "create": "Buat Jadwal PM",
+    "addTitle": "Tambah Jadwal PM",
+    "factory": "Pabrik",
+    "pmTypeLabel": "Jenis PM",
+    "intervalDays": "Interval (hari)",
+    "intervalPlaceholder": "mis. 30",
+    "descChecklist": "Deskripsi / Checklist",
+    "descChecklistPlaceholder": "mis. Cek pelumasan bearing, bersihkan heat sink, ukur suhu…",
+    "selectFactoryPlaceholder": "Pilih pabrik",
+    "errSelectAll": "Pilih pabrik, mesin dan jenis PM",
+    "errInterval": "Masukkan jumlah hari untuk interval khusus",
+    "createFailedShort": "Gagal membuat"
   },
   "incidents": {
     "title": "Laporan",

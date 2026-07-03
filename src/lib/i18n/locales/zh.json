@@ -187,7 +187,18 @@
     "selectMachineType": "請選擇機器和保養類型",
     "created": "保養計畫已建立",
     "createFailed": "建立保養計畫失敗",
-    "create": "建立計畫"
+    "create": "建立計畫",
+    "addTitle": "新增保養計畫",
+    "factory": "工廠",
+    "pmTypeLabel": "保養類型",
+    "intervalDays": "間隔天數",
+    "intervalPlaceholder": "如：30",
+    "descChecklist": "描述/檢查清單",
+    "descChecklistPlaceholder": "如：檢查軸承潤滑、清潔散熱片、測量溫度…",
+    "selectFactoryPlaceholder": "選擇工廠",
+    "errSelectAll": "請選擇工廠、機器和保養類型",
+    "errInterval": "自訂間隔請輸入天數",
+    "createFailedShort": "建立失敗"
   },
   "incidents": {
     "title": "案件",

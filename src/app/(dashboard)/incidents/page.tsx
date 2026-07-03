@@ -3,7 +3,7 @@ import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import IncidentBoard, { BoardRow } from '@/components/incidents/IncidentBoard'
 import IncidentsBoardWithSearch from '@/components/incidents/IncidentsBoardWithSearch'
 
-export const metadata = { title: '案件看板 | 維修系統' }
+export const metadata = { title: '案件看板 | FAMMS' }
 
 export default async function IncidentsPage({
   searchParams,
