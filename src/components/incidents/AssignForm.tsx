@@ -13,6 +13,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { ROLE_ZH } from '@/lib/incident-display'
 import { logAuditEvent } from '@/lib/audit'
 import { useI18n } from '@/lib/i18n'
+import { useVendors } from '@/lib/useVendors'
 
 interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null }
 
@@ -35,6 +36,8 @@ export default function AssignForm({
 
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>(assignedUserIds ?? [])
+  const { vendors } = useVendors()
+  const [selectedVendorNames, setSelectedVendorNames] = useState<string[]>([])
   const [extraNames, setExtraNames] = useState('')
   const [accountSearch, setAccountSearch] = useState('')
   const [showAllAccounts, setShowAllAccounts] = useState(false)
@@ -69,6 +72,14 @@ export default function AssignForm({
     a => a.role === 'technician' && (!factoryId || !a.factory_id || a.factory_id === factoryId)
   )
 
+  // Vendors scoped to this incident's factory, plus any that apply to every
+  // factory (factory_id null).
+  const factoryVendors = vendors.filter(v => !v.factory_id || !factoryId || v.factory_id === factoryId)
+
+  function toggleVendor(name: string) {
+    setSelectedVendorNames(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name])
+  }
+
   function assignAllTechnicians() {
     setSelectedIds(prev => Array.from(new Set([...prev, ...factoryTechnicians.map(a => a.id)])))
   }
@@ -78,7 +89,8 @@ export default function AssignForm({
   }
 
   // Initial free-text names = whatever in assigned_to that doesn't match a
-  // linked account name (e.g. external vendors typed in before).
+  // linked account name or a roster vendor name (e.g. ad-hoc names typed in
+  // before the vendor existed in the roster, or a one-off name never added).
   useEffect(() => {
     if (accounts.length === 0) return
     const linkedNames = new Set(
@@ -86,11 +98,13 @@ export default function AssignForm({
         .map(id => accounts.find(a => a.id === id)?.full_name)
         .filter(Boolean) as string[]
     )
+    const vendorNames = new Set(vendors.map(v => v.name))
     const leftovers = (assignedTo ?? '')
       .split(/[,，]/).map(s => s.trim()).filter(Boolean)
       .filter(n => !linkedNames.has(n))
-    setExtraNames(leftovers.join(', '))
-  }, [accounts])
+    setSelectedVendorNames(leftovers.filter(n => vendorNames.has(n)))
+    setExtraNames(leftovers.filter(n => !vendorNames.has(n)).join(', '))
+  }, [accounts, vendors])
 
   const accountName = (a: Account) => a.full_name || `(${ROLE_ZH[a.role] ?? a.role})`
 
@@ -125,7 +139,7 @@ export default function AssignForm({
         .filter(Boolean)
         .map(a => accountName(a as Account))
       const extras = extraNames.split(/[,，]/).map(s => s.trim()).filter(Boolean)
-      const allNames = [...accountNames, ...extras]
+      const allNames = [...accountNames, ...selectedVendorNames, ...extras]
       const displaySummary = allNames.length > 0 ? allNames.join(', ') : null
 
       const { error } = await supabase
@@ -256,7 +270,37 @@ export default function AssignForm({
         )}
       </div>
 
-      {/* Free-text extra names (external vendors etc.) */}
+      {/* Vendor roster — reusable chips maintained in Settings, so the same
+          contractor name is consistent across incidents (no typos splitting
+          KPI stats between "ABC 外包" and "ABC维修"). */}
+      {factoryVendors.length > 0 && (
+        <div>
+          <Label>{t('assign.vendors', '常用廠商')}</Label>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {factoryVendors.map(v => {
+              const on = selectedVendorNames.includes(v.name)
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  disabled={!canAssign}
+                  aria-pressed={on}
+                  onClick={() => toggleVendor(v.name)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                  }`}
+                >
+                  {on && <Check className="w-3 h-3" />}
+                  {v.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Free-text extra names — for one-off vendors not worth adding to the
+          roster, or before it's been set up in Settings. */}
       <div>
         <Label>{t('assign.extraNames', '其他人員（外部/廠商，逗號分隔）')}</Label>
         <Input

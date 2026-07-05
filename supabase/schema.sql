@@ -727,6 +727,22 @@ INSERT INTO incident_types (code, label, sort_order) VALUES
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================================
+-- VENDORS (常用外包廠商名冊 — 派工時可重複選用，取代每次手打自由文字)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS vendors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  factory_id UUID REFERENCES factories(id),  -- NULL = available to every factory
+  name TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE vendors DISABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_vendors_factory ON vendors(factory_id);
+
+-- ============================================================================
 -- MIGRATION: add simplified report fields + make codes optional
 -- (safe to re-run on an existing database)
 -- ============================================================================

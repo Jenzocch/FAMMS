@@ -32,7 +32,8 @@
     "searchPlaceholder": "Search name…",
     "noMatch": "No matching accounts",
     "showAllAccounts": "Show accounts from other factories ({count})",
-    "showFactoryOnly": "Show this factory only"
+    "showFactoryOnly": "Show this factory only",
+    "vendors": "Vendors"
   },
   "remind": {
     "button": "Nudge for Progress (Telegram)",
@@ -645,7 +646,18 @@
     "loginNamePlaceholder": "e.g. teknisi1",
     "loginNameHint": "The user signs in with this name (letters/numbers), set by you.",
     "loginNameShort": "Login",
-    "userFallback": "User"
+    "userFallback": "User",
+    "vendorSectionTitle": "Vendor Roster",
+    "vendorSectionDesc": "Manage frequently used contractors/vendors for reuse when assigning",
+    "vendorHint": "Contractor/vendor roster — reusable when assigning, instead of retyping names each time",
+    "addVendor": "Add Vendor",
+    "vendorName": "Vendor Name",
+    "vendorFactoryScope": "Applies to Factory",
+    "vendorAllFactories": "All Factories",
+    "vendorNameRequired": "Please enter a vendor name",
+    "vendorAdded": "Vendor added",
+    "vendorConfirmDelete": "Remove this vendor?",
+    "vendorEmpty": "No vendors yet — add one above"
   },
   "telegram": {
     "configured": "Telegram bot configured (TELEGRAM_BOT_TOKEN active).",

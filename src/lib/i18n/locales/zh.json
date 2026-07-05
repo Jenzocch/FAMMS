@@ -32,7 +32,8 @@
     "searchPlaceholder": "搜尋姓名…",
     "noMatch": "找不到符合的帳號",
     "showAllAccounts": "顯示其他工廠人員（{count}）",
-    "showFactoryOnly": "只顯示本廠人員"
+    "showFactoryOnly": "只顯示本廠人員",
+    "vendors": "常用廠商"
   },
   "remind": {
     "button": "催進度（Telegram 通知負責人）",
@@ -645,7 +646,18 @@
     "loginNamePlaceholder": "例如：teknisi1",
     "loginNameHint": "使用者用這個名稱登入（英文或數字），由你設定。",
     "loginNameShort": "登入",
-    "userFallback": "使用者"
+    "userFallback": "使用者",
+    "vendorSectionTitle": "外包廠商名冊",
+    "vendorSectionDesc": "管理常用外包/廠商，派工時可重複選用",
+    "vendorHint": "外包/廠商名冊 — 派工時可重複選用，取代每次手打名字",
+    "addVendor": "新增廠商",
+    "vendorName": "廠商名稱",
+    "vendorFactoryScope": "適用工廠",
+    "vendorAllFactories": "所有工廠",
+    "vendorNameRequired": "請輸入廠商名稱",
+    "vendorAdded": "廠商已新增",
+    "vendorConfirmDelete": "確定要移除這個廠商嗎？",
+    "vendorEmpty": "尚無廠商，點擊上方新增"
   },
   "telegram": {
     "configured": "Telegram Bot 已設定（TELEGRAM_BOT_TOKEN 已啟用）。",

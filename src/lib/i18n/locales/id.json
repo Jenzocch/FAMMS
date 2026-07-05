@@ -32,7 +32,8 @@
     "searchPlaceholder": "Cari nama…",
     "noMatch": "Tidak ada akun yang cocok",
     "showAllAccounts": "Tampilkan akun pabrik lain ({count})",
-    "showFactoryOnly": "Hanya pabrik ini"
+    "showFactoryOnly": "Hanya pabrik ini",
+    "vendors": "Vendor"
   },
   "remind": {
     "button": "Ingatkan Progres (notifikasi Telegram)",
@@ -645,7 +646,18 @@
     "loginNamePlaceholder": "mis. teknisi1",
     "loginNameHint": "Pengguna masuk dengan nama ini (huruf/angka), Anda yang menentukan.",
     "loginNameShort": "Login",
-    "userFallback": "Pengguna"
+    "userFallback": "Pengguna",
+    "vendorSectionTitle": "Daftar Vendor",
+    "vendorSectionDesc": "Kelola kontraktor/vendor yang sering digunakan untuk penugasan",
+    "vendorHint": "Daftar kontraktor/vendor — dapat dipakai ulang saat penugasan, tanpa perlu ketik ulang nama",
+    "addVendor": "Tambah Vendor",
+    "vendorName": "Nama Vendor",
+    "vendorFactoryScope": "Berlaku untuk Pabrik",
+    "vendorAllFactories": "Semua Pabrik",
+    "vendorNameRequired": "Silakan masukkan nama vendor",
+    "vendorAdded": "Vendor ditambahkan",
+    "vendorConfirmDelete": "Hapus vendor ini?",
+    "vendorEmpty": "Belum ada vendor — tambahkan di atas"
   },
   "telegram": {
     "configured": "Bot Telegram terkonfigurasi (TELEGRAM_BOT_TOKEN aktif).",
