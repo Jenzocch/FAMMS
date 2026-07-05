@@ -316,7 +316,7 @@ export default function ProgressUpdate({
                 <div key={i} className="relative group">
                   <img
                     src={photoPreviews[i]}
-                    alt=""
+                    alt={`${t('progressUpdate.photos')} ${i + 1}`}
                     className="w-20 h-20 object-cover rounded-lg border border-gray-200 group-hover:opacity-80 transition-opacity"
                   />
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/0 group-hover:bg-black/40 rounded-lg transition-all">
@@ -327,6 +327,7 @@ export default function ProgressUpdate({
                   </div>
                   <button
                     type="button"
+                    aria-label={`${t('common.delete')} ${i + 1}`}
                     onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
                     className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-lg hover:bg-red-600"
                   >

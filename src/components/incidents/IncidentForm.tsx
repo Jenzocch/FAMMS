@@ -462,7 +462,7 @@ export default function IncidentForm() {
                 <div key={i} className="relative group">
                   <img
                     src={photoPreviews[i]}
-                    alt=""
+                    alt={`${t('report.photos')} ${i + 1}`}
                     className="w-24 h-24 object-cover rounded-lg border border-gray-200 group-hover:opacity-80 transition-opacity"
                   />
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/0 group-hover:bg-black/40 rounded-lg transition-all">
@@ -473,6 +473,7 @@ export default function IncidentForm() {
                   </div>
                   <button
                     type="button"
+                    aria-label={`${t('common.delete')} ${i + 1}`}
                     onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
                   >

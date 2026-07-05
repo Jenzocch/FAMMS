@@ -302,7 +302,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={navigatePrev}>
+        <Button variant="outline" size="sm" onClick={navigatePrev} aria-label="Previous">
           <ChevronLeft className="w-4 h-4" />
         </Button>
         <div className="text-center">
@@ -313,7 +313,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
             {t('pm.todayBtn')}
           </button>
         </div>
-        <Button variant="outline" size="sm" onClick={navigateNext}>
+        <Button variant="outline" size="sm" onClick={navigateNext} aria-label="Next">
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
@@ -442,7 +442,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
         <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-100">
             <h4 className="font-semibold text-sm text-blue-900">{selectedDate}</h4>
-            <button onClick={() => { setSelectedDate(null); setAction(null) }} className="text-blue-400 hover:text-blue-600">
+            <button onClick={() => { setSelectedDate(null); setAction(null) }} aria-label="Close" className="text-blue-400 hover:text-blue-600 p-1 -m-1">
               <X className="w-4 h-4" />
             </button>
           </div>

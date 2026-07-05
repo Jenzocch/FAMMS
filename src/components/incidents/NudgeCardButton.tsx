@@ -38,7 +38,7 @@ export default function NudgeCardButton({
     <button
       onClick={click}
       disabled={sending}
-      className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50 ${
+      className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
         armed
           ? 'border-amber-500 text-white bg-amber-500 hover:bg-amber-600'
           : 'border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100'

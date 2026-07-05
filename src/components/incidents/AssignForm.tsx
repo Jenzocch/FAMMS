@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -36,6 +36,8 @@ export default function AssignForm({
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>(assignedUserIds ?? [])
   const [extraNames, setExtraNames] = useState('')
+  const [accountSearch, setAccountSearch] = useState('')
+  const [showAllAccounts, setShowAllAccounts] = useState(false)
   const [dept, setDept] = useState(assignedDept || '')
   const [due, setDue] = useState(dueDate || '')
   const [submitting, setSubmitting] = useState(false)
@@ -91,6 +93,21 @@ export default function AssignForm({
   }, [accounts])
 
   const accountName = (a: Account) => a.full_name || `(${ROLE_ZH[a.role] ?? a.role})`
+
+  // With many users the chip list explodes — by default show only accounts
+  // relevant to this incident (same factory / no factory / already selected).
+  // Searching by name always looks across ALL accounts; a toggle reveals all.
+  const CHIP_LIMIT = 12
+  const relevantAccounts = useMemo(() => accounts.filter(a =>
+    selectedIds.includes(a.id) || !a.factory_id || !factoryId || a.factory_id === factoryId
+  ), [accounts, selectedIds, factoryId])
+  const visibleAccounts = useMemo(() => {
+    const q = accountSearch.trim().toLowerCase()
+    if (q) return accounts.filter(a => (a.full_name ?? '').toLowerCase().includes(q))
+    if (showAllAccounts || accounts.length <= CHIP_LIMIT) return accounts
+    return relevantAccounts
+  }, [accounts, relevantAccounts, accountSearch, showAllAccounts])
+  const hiddenCount = accounts.length - visibleAccounts.length
 
   function toggle(id: string) {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -182,25 +199,60 @@ export default function AssignForm({
         {accounts.length === 0 ? (
           <p className="text-xs text-gray-400 mt-1">{t('assign.noAccounts', '尚無可指派的帳號')}</p>
         ) : (
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {accounts.map(a => {
-              const on = selectedIds.includes(a.id)
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  disabled={!canAssign}
-                  onClick={() => toggle(a.id)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                  }`}
-                >
-                  {on && <Check className="w-3 h-3" />}
-                  {accountName(a)}
-                </button>
-              )
-            })}
-          </div>
+          <>
+            {/* Name search — only worth showing once the list is big */}
+            {accounts.length > CHIP_LIMIT && (
+              <Input
+                value={accountSearch}
+                onChange={e => setAccountSearch(e.target.value)}
+                placeholder={t('assign.searchPlaceholder', '搜尋姓名…')}
+                className="mt-1"
+                disabled={!canAssign}
+              />
+            )}
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {visibleAccounts.map(a => {
+                const on = selectedIds.includes(a.id)
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    disabled={!canAssign}
+                    aria-pressed={on}
+                    onClick={() => toggle(a.id)}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    }`}
+                  >
+                    {on && <Check className="w-3 h-3" />}
+                    {accountName(a)}
+                  </button>
+                )
+              })}
+              {visibleAccounts.length === 0 && (
+                <p className="text-xs text-gray-400 py-1">{t('assign.noMatch', '找不到符合的帳號')}</p>
+              )}
+            </div>
+            {/* Reveal cross-factory accounts hidden by the default filter */}
+            {!accountSearch.trim() && hiddenCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllAccounts(true)}
+                className="mt-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+              >
+                {t('assign.showAllAccounts', '顯示其他工廠人員（{count}）').replace('{count}', String(hiddenCount))}
+              </button>
+            )}
+            {!accountSearch.trim() && showAllAccounts && accounts.length > CHIP_LIMIT && (
+              <button
+                type="button"
+                onClick={() => setShowAllAccounts(false)}
+                className="mt-1.5 text-xs font-medium text-gray-500 hover:text-gray-700"
+              >
+                {t('assign.showFactoryOnly', '只顯示本廠人員')}
+              </button>
+            )}
+          </>
         )}
       </div>
 

@@ -28,7 +28,11 @@
     "save": "儲存派工",
     "saved": "派工已更新",
     "onlySupervisor": "只有主管可以派工",
-    "contactSupervisor": "請聯繫您的主管執行此操作。"
+    "contactSupervisor": "請聯繫您的主管執行此操作。",
+    "searchPlaceholder": "搜尋姓名…",
+    "noMatch": "找不到符合的帳號",
+    "showAllAccounts": "顯示其他工廠人員（{count}）",
+    "showFactoryOnly": "只顯示本廠人員"
   },
   "remind": {
     "button": "催進度（Telegram 通知負責人）",

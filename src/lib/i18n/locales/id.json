@@ -28,7 +28,11 @@
     "save": "Simpan penugasan",
     "saved": "Penugasan diperbarui",
     "onlySupervisor": "Hanya supervisor yang bisa menugaskan",
-    "contactSupervisor": "Hubungi supervisor Anda untuk melakukan ini."
+    "contactSupervisor": "Hubungi supervisor Anda untuk melakukan ini.",
+    "searchPlaceholder": "Cari nama…",
+    "noMatch": "Tidak ada akun yang cocok",
+    "showAllAccounts": "Tampilkan akun pabrik lain ({count})",
+    "showFactoryOnly": "Hanya pabrik ini"
   },
   "remind": {
     "button": "Ingatkan Progres (notifikasi Telegram)",

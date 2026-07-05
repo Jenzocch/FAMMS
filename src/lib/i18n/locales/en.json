@@ -28,7 +28,11 @@
     "save": "Save assignment",
     "saved": "Assignment updated",
     "onlySupervisor": "Only supervisors can assign",
-    "contactSupervisor": "Contact your supervisor to perform this action."
+    "contactSupervisor": "Contact your supervisor to perform this action.",
+    "searchPlaceholder": "Search name…",
+    "noMatch": "No matching accounts",
+    "showAllAccounts": "Show accounts from other factories ({count})",
+    "showFactoryOnly": "Show this factory only"
   },
   "remind": {
     "button": "Nudge for Progress (Telegram)",

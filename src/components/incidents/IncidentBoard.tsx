@@ -82,7 +82,8 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              aria-pressed={active}
+              className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-medium transition-colors ${
                 active ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600'
               }`}
             >
