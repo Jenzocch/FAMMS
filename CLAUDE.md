@@ -379,13 +379,14 @@ Before first run:
 
 1. ✅ Create `.env.local` with Supabase + OpenAI + Telegram keys
 2. ✅ Run `supabase/schema.sql` in Supabase SQL editor (creates tables + 3 factories + 5 level-1 failure categories)
-3. ✅ Run `supabase/seed_fault_tree.sql` (subcategories + 100+ failure codes, Bahasa Indonesia + English)
-4. ✅ Create Supabase storage buckets:
+3. ✅ Run `supabase/SYNC_SCHEMA_LATEST.sql` — **idempotent; run after every `git pull`**. Adds all columns/tables later features need (PM assignee, incident `assigned_user_ids`/`location_note`, vendors, audit/maintenance logs…). This is the single source of "the DB has everything the app expects"; skip it and features silently fail to save/show.
+4. ✅ Run `supabase/seed_fault_tree.sql` (subcategories + 100+ failure codes, Bahasa Indonesia + English)
+5. ✅ Create Supabase storage buckets:
    - `incident-photos` (public, for before/during/after)
    - `attachments` (private, for PDFs/docs)
-5. ✅ Set up Telegram bot (get token from @BotFather)
-6. ✅ `npm install` (if node_modules missing)
-7. ✅ `npm run dev`
+6. ✅ Set up Telegram bot (get token from @BotFather)
+7. ✅ `npm install` (if node_modules missing)
+8. ✅ `npm run dev`
 
 ---
 
