@@ -321,7 +321,7 @@
   "pm": {
     "manageTitle": "保養管理",
     "manageSubtitle": "追蹤機器保養頻率與計畫",
-    "plansBtn": "保養計畫",
+    "plansBtn": "PM 計畫",
     "calendarHeading": "📅 保養日曆",
     "plannedTag": "計畫保養",
     "adhocTag": "臨時保養",

@@ -135,6 +135,16 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
           factory:factories(name)
         `)
 
+      // Same visibility rule as the board: technicians (no full-board access)
+      // only search cases assigned to them or reported by them.
+      if (!PERMISSIONS.boardFull(userRole)) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          query = query.or(`assigned_user_ids.cs.{${user.id}},reported_by_id.eq.${user.id}`)
+        }
+      }
+
+      if (factoryId) query = query.eq('factory_id', factoryId)
       if (machineId) query = query.eq('machine_id', machineId)
       if (incidentType) query = query.eq('incident_type', incidentType)
       if (status) query = query.eq('status', status)

@@ -321,7 +321,7 @@
   "pm": {
     "manageTitle": "Manajemen PM",
     "manageSubtitle": "Lacak frekuensi & rencana perawatan mesin",
-    "plansBtn": "Rencana",
+    "plansBtn": "Rencana PM",
     "calendarHeading": "📅 Kalender Perawatan",
     "plannedTag": "Terjadwal",
     "adhocTag": "Tak terjadwal",

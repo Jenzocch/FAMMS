@@ -321,7 +321,7 @@
   "pm": {
     "manageTitle": "PM Management",
     "manageSubtitle": "Track machine maintenance frequency & plans",
-    "plansBtn": "Plans",
+    "plansBtn": "PM Plans",
     "calendarHeading": "📅 Maintenance Calendar",
     "plannedTag": "Planned",
     "adhocTag": "Ad-hoc",

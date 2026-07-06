@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Plus, Wrench, Clock, CheckCircle, Settings } from 'lucide-react'
+import { Loader2, Plus, Wrench, Clock, CheckCircle, CalendarCog } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useDateLocale } from '@/lib/date-locale'
 import OverdueMaintenanceAlert from './OverdueMaintenanceAlert'
@@ -200,7 +200,7 @@ export default function PMPage({ role = 'technician' }: { role?: UserRole }) {
         <div className="flex gap-2">
           {canManageSchedules && (
             <Button onClick={() => setShowSchedules(!showSchedules)} variant="outline" className="gap-2">
-              <Settings className="w-4 h-4" /> {t('pm.plansBtn')}
+              <CalendarCog className="w-4 h-4" /> {t('pm.plansBtn')}
             </Button>
           )}
           <Button onClick={() => setShowForm(!showForm)} className="gap-2">
