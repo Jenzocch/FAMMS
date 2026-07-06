@@ -44,13 +44,14 @@ export default async function DashboardPage() {
     .limit(500)
   if (user.factory_id && user.role !== 'admin') incidentQuery = incidentQuery.eq('factory_id', user.factory_id)
 
-  const { data } = await incidentQuery
-  const rows = (data ?? []) as unknown as DashboardRow[]
-  const open = rows.filter(r => OPEN_STATUSES.includes(r.status))
+  // Only maintenance within the last year can affect "overdue" (anything older
+  // means the machine shows overdue either way) — time-bound the history reads
+  // so the dashboard doesn't scan every row ever written.
+  const historyFloor = new Date(Date.now() - 366 * 86400000).toISOString()
 
-  // Get overdue machines: fetch both maintenance_logs and pm_records to determine
-  // the last actual maintenance date, whichever is more recent.
-  const [schedulesRes, logsRes, pmRecordsRes] = await Promise.all([
+  // All four reads are independent — run them in parallel.
+  const [{ data }, schedulesRes, logsRes, pmRecordsRes] = await Promise.all([
+    incidentQuery,
     supabase
       .from('pm_schedules')
       .select('id, machine_id, pm_type, interval_days, machines(machine_name, machine_code)')
@@ -58,13 +59,20 @@ export default async function DashboardPage() {
     supabase
       .from('maintenance_logs')
       .select('machine_id, performed_at')
-      .order('performed_at', { ascending: false }),
+      .gte('performed_at', historyFloor)
+      .order('performed_at', { ascending: false })
+      .limit(2000),
     supabase
       .from('pm_records')
       .select('pm_schedule_id, completed_at')
       .eq('status', 'completed')
-      .order('completed_at', { ascending: false }),
+      .gte('completed_at', historyFloor)
+      .order('completed_at', { ascending: false })
+      .limit(2000),
   ])
+
+  const rows = (data ?? []) as unknown as DashboardRow[]
+  const open = rows.filter(r => OPEN_STATUSES.includes(r.status))
 
   // pm_records is keyed by pm_schedule_id, so map through the schedules.
   const scheduleToMachine: Record<string, string> = {}

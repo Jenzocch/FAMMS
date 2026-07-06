@@ -62,10 +62,23 @@ export default function OverdueMaintenanceAlert() {
 
   async function loadOverdue() {
     try {
-      const { data: schedules } = await supabase
-        .from('pm_schedules')
-        .select('id, machine_id, pm_type, interval_days, machines(id, machine_name, machine_code)')
-        .eq('is_active', true)
+      // Only maintenance within the last year can affect "overdue" — bound the
+      // history reads so this widget stays fast as records accumulate. All
+      // three reads are independent, so run them in parallel.
+      const historyFloor = new Date(Date.now() - 366 * 86400000).toISOString()
+      const [{ data: schedules }, logsRes, pmRecordsRes] = await Promise.all([
+        supabase
+          .from('pm_schedules')
+          .select('id, machine_id, pm_type, interval_days, machines(id, machine_name, machine_code)')
+          .eq('is_active', true),
+        supabase.from('maintenance_logs').select('machine_id, performed_at')
+          .gte('performed_at', historyFloor)
+          .order('performed_at', { ascending: false }).limit(2000),
+        supabase.from('pm_records').select('pm_schedule_id, completed_at')
+          .eq('status', 'completed')
+          .gte('completed_at', historyFloor)
+          .order('completed_at', { ascending: false }).limit(2000),
+      ])
 
       if (!schedules || schedules.length === 0) {
         setOverdue([])
@@ -77,12 +90,6 @@ export default function OverdueMaintenanceAlert() {
       // the schedules we just loaded. Last-done date = completed_at.
       const scheduleToMachine: Record<string, string> = {}
       for (const s of schedules as any[]) scheduleToMachine[s.id] = s.machine_id
-
-      // Check both maintenance_logs and pm_records for last-done date
-      const [logsRes, pmRecordsRes] = await Promise.all([
-        supabase.from('maintenance_logs').select('machine_id, performed_at').order('performed_at', { ascending: false }),
-        supabase.from('pm_records').select('pm_schedule_id, completed_at').eq('status', 'completed').order('completed_at', { ascending: false }),
-      ])
 
       const lastByMachine: Record<string, string> = {}
       const recordLatest = (machineId: string, date: string) => {

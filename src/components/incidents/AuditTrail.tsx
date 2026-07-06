@@ -62,6 +62,7 @@ export default function AuditTrail({ resourceId, resourceType, showHeading = tru
         .eq('resource_id', resourceId)
         .eq('resource_type', resourceType)
         .order('timestamp', { ascending: false })
+        .limit(100)
 
       if (error) throw error
       setLogs(data ?? [])
