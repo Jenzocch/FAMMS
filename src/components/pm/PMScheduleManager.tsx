@@ -18,6 +18,7 @@ interface Area { id: string; factory_id: string; name: string }
 interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null }
 interface Machine {
   id: string
+  factory_id?: string
   machine_name: string
   machine_code: string | null
   maintenance_cycle: number
@@ -111,7 +112,7 @@ export default function PMScheduleManager() {
 
   useEffect(() => {
     if (!areaId) { setMachines([]); setMachineId(''); return }
-    supabase.from('machines').select('id, machine_name, machine_code, maintenance_cycle')
+    supabase.from('machines').select('id, factory_id, machine_name, machine_code, maintenance_cycle')
       .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
       .then(({ data }) => setMachines(data ?? []))
     setMachineId('')
@@ -178,9 +179,20 @@ export default function PMScheduleManager() {
         if (error) throw error
         toast.success(t('pm.scheduleUpdated'))
       } else {
+        // factory_id is NOT NULL — the schedule's factory comes from the
+        // selected machine's cascade (factory → area → machine), so it's
+        // always set here. Without it the insert silently fails and the
+        // "Simpan" button appears to do nothing.
+        const factoryForMachine = factoryId || machines.find(m => m.id === machineId)?.factory_id
+        if (!factoryForMachine) {
+          toast.error(t('pm.selectFactoryErr', '請先選擇工廠'))
+          setSubmitting(false)
+          return
+        }
         const { error } = await supabase
           .from('pm_schedules')
           .insert({
+            factory_id: factoryForMachine,
             machine_id: machineId,
             pm_type: pmType,
             interval_days: intervalValue,

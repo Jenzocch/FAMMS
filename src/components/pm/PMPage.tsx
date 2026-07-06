@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Plus, Wrench, Clock, CheckCircle, Settings } from 'lucide-react'
+import { Loader2, Wrench, Clock, CheckCircle, CalendarClock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 import OverdueMaintenanceAlert from './OverdueMaintenanceAlert'
@@ -175,11 +175,11 @@ export default function PMPage() {
           <p className="text-sm text-gray-500 mt-1">{t('pm.manageSubtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowSchedules(!showSchedules)} variant="outline" className="gap-2">
-            <Settings className="w-4 h-4" /> {t('pm.plansBtn')}
+          <Button onClick={() => { setShowSchedules(!showSchedules); setShowForm(false) }} variant="outline" className="gap-2">
+            <CalendarClock className="w-4 h-4" /> {t('pm.plansBtn')}
           </Button>
-          <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-            <Plus className="w-4 h-4" /> {t('pm.addMaintenance')}
+          <Button onClick={() => { setShowForm(!showForm); setShowSchedules(false) }} className="gap-2">
+            <Wrench className="w-4 h-4" /> {t('pm.addMaintenance')}
           </Button>
         </div>
       </div>
@@ -210,17 +210,30 @@ export default function PMPage() {
         <OverdueMaintenanceAlert />
       </div>
 
-      {/* PM Schedule Manager */}
+      {/* PM Schedule Manager — set up RECURRING plans */}
       {showSchedules && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <CalendarClock className="w-5 h-5 text-green-700 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-green-900">{t('pm.plansBtn')}</h3>
+              <p className="text-xs text-green-700 mt-0.5">{t('pm.plansHint')}</p>
+            </div>
+          </div>
           <PMScheduleManager />
         </div>
       )}
 
-      {/* Add Maintenance Form */}
+      {/* Add Maintenance Form — log a ONE-OFF job already done */}
       {showForm && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-4">
-          <h3 className="font-semibold text-blue-900">{t('pm.logMaintenance')}</h3>
+          <div className="flex items-start gap-2">
+            <Wrench className="w-5 h-5 text-blue-700 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-blue-900">{t('pm.logMaintenance')}</h3>
+              <p className="text-xs text-blue-700 mt-0.5">{t('pm.logHint')}</p>
+            </div>
+          </div>
 
           <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={factoryItems}>
             <SelectTrigger><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
