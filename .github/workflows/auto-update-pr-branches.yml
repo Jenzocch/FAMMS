@@ -1,0 +1,64 @@
+name: Auto-update PR branches
+
+# Whenever main moves forward (e.g. another PR merges), merge the new main into
+# every open PR branch so they never drift behind and stop showing GitHub's
+# "This branch has conflicts / is out of date" state.
+#
+# This only resolves *drift* (branch simply behind main) — GitHub's update-branch
+# does a normal merge, so a genuine content conflict (same lines edited on both
+# sides) still can't be auto-resolved and is reported as a warning for a human.
+#
+# Pushes made with GITHUB_TOKEN do not trigger further workflow runs, so this
+# cannot loop.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# If several merges land on main in quick succession, let the latest run win.
+concurrency:
+  group: auto-update-pr-branches
+  cancel-in-progress: true
+
+jobs:
+  update-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge latest main into open PR branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          prs=$(gh pr list --repo "$REPO" --base main --state open \
+                  --json number --jq '.[].number')
+
+          if [ -z "$prs" ]; then
+            echo "No open PRs targeting main — nothing to update."
+            exit 0
+          fi
+
+          for pr in $prs; do
+            echo "::group::PR #$pr"
+            # gh pr update-branch merges the base (main) into the PR head branch.
+            # Returns success when it updates OR is already up to date; only a
+            # real merge conflict makes it fail.
+            if out=$(gh pr update-branch "$pr" --repo "$REPO" 2>&1); then
+              echo "PR #$pr: $out"
+            else
+              case "$out" in
+                *"up to date"*|*"up-to-date"*)
+                  echo "PR #$pr: already up to date." ;;
+                *)
+                  echo "PR #$pr could not be auto-updated:"
+                  echo "$out"
+                  echo "::warning title=PR #$pr needs manual merge::Auto-update failed, likely a real conflict. Resolve it by merging main into the branch locally." ;;
+              esac
+            fi
+            echo "::endgroup::"
+          done
