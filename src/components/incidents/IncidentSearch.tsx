@@ -22,6 +22,7 @@ import { useI18n } from '@/lib/i18n'
 import { useIncidentTypes } from '@/lib/useIncidentTypes'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { useProgressNudge } from '@/lib/useProgressNudge'
+import { loadFactories } from '@/lib/useFactories'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; name: string }
@@ -86,7 +87,7 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
   ]
 
   useEffect(() => {
-    loadFactories()
+    loadFactories().then(data => setFactories(data ?? []))
   }, [])
 
   useEffect(() => {
@@ -98,11 +99,6 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
     if (!areaId) { setMachines([]); setMachineId(''); return }
     loadMachines(areaId)
   }, [areaId])
-
-  async function loadFactories() {
-    const { data } = await supabase.from('factories').select('*').order('name')
-    setFactories(data ?? [])
-  }
 
   async function loadAreas(fId: string) {
     const { data } = await supabase

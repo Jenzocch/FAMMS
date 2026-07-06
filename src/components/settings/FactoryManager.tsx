@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { Loader2, Trash2, Edit2, Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { invalidateFactories } from '@/lib/useFactories'
 
 interface Factory {
   id: string
@@ -67,6 +68,7 @@ export default function FactoryManager() {
       setEditing(null)
       setShowForm(false)
       loadFactories()
+      invalidateFactories() // refresh the shared cache every picker reads
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('settings.operationFailed'))
     } finally {
@@ -81,6 +83,7 @@ export default function FactoryManager() {
       if (error) throw error
       toast.success(t('settings.factoryDeleted'))
       loadFactories()
+      invalidateFactories()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('settings.deleteFailed'))
     }

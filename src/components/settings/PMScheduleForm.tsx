@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Loader2, Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { loadMyFactoryId } from '@/lib/useMyFactory'
+import { loadFactories } from '@/lib/useFactories'
 
 interface Machine { id: string; machine_name: string; machine_code: string | null }
 interface Factory { id: string; name: string }
@@ -41,9 +42,9 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
 
   useEffect(() => {
     Promise.all([
-      supabase.from('factories').select('*').order('name'),
+      loadFactories(),
       loadMyFactoryId(),
-    ]).then(([{ data }, myFactoryId]) => {
+    ]).then(([data, myFactoryId]) => {
       setFactories(data ?? [])
       // Auto-populate the user's own factory (fallback: first factory) so the
       // machine selector appears without an extra click.

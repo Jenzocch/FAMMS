@@ -19,6 +19,7 @@ import { deadlineFromUrgency } from '@/lib/incident-display'
 import { useIncidentTypes } from '@/lib/useIncidentTypes'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { loadMyFactoryId } from '@/lib/useMyFactory'
+import { loadFactories } from '@/lib/useFactories'
 
 interface Factory { id: string; name: string; code: string }
 interface Area { id: string; factory_id: string; name: string }
@@ -87,10 +88,10 @@ export default function IncidentForm() {
     // Preselect the reporter's own factory so the report form is one step
     // shorter for technicians (they can still switch factory manually).
     Promise.all([
-      supabase.from('factories').select('*').order('name'),
+      loadFactories(),
       loadMyFactoryId(),
-    ]).then(([{ data }, myFactoryId]) => {
-      setFactories(data ?? [])
+    ]).then(([data, myFactoryId]) => {
+      setFactories((data ?? []) as Factory[])
       if (myFactoryId && (data ?? []).some(f => f.id === myFactoryId)) {
         setFactoryId(prev => prev || myFactoryId)
       }

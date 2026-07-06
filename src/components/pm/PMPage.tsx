@@ -18,6 +18,7 @@ import PMFullCalendar from './PMFullCalendar'
 import PMDueList from './PMDueList'
 import { useI18n } from '@/lib/i18n'
 import { loadMyFactoryId } from '@/lib/useMyFactory'
+import { loadFactories } from '@/lib/useFactories'
 import { PERMISSIONS } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 
@@ -80,8 +81,8 @@ export default function PMPage({ role = 'technician' }: { role?: UserRole }) {
     // Load factories, then preselect the signed-in user's own factory (falling
     // back to the first factory) so technicians land straight on their calendar.
     async function init() {
-      const [{ data: facs }, myFactoryId] = await Promise.all([
-        supabase.from('factories').select('*').order('name'),
+      const [facs, myFactoryId] = await Promise.all([
+        loadFactories(),
         loadMyFactoryId(),
       ])
       setFactories(facs ?? [])

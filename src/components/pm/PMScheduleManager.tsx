@@ -13,6 +13,7 @@ import { useI18n } from '@/lib/i18n'
 import type { UserRole } from '@/types'
 import { ROLE_ZH } from '@/lib/incident-display'
 import { loadMyFactoryId } from '@/lib/useMyFactory'
+import { loadFactories } from '@/lib/useFactories'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; factory_id: string; name: string }
@@ -81,9 +82,9 @@ export default function PMScheduleManager() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('factories').select('*').order('name'),
+      loadFactories(),
       loadMyFactoryId(),
-    ]).then(([{ data }, myFactoryId]) => {
+    ]).then(([data, myFactoryId]) => {
       setFactories(data ?? [])
       if (data && data.length > 0) {
         // Preselect the user's own factory so technicians see their machines.
