@@ -39,7 +39,13 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    supabase.from('factories').select('*').order('name').then(({ data }) => setFactories(data ?? []))
+    supabase.from('factories').select('*').order('name').then(({ data }) => {
+      setFactories(data ?? [])
+      // Auto-populate first factory so machine selector appears
+      if (data && data.length > 0 && !selectedFactory) {
+        setSelectedFactory(data[0].id)
+      }
+    })
   }, [])
 
   useEffect(() => {
