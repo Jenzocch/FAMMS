@@ -159,8 +159,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC
 CREATE OR REPLACE VIEW incident_audit_trail AS
   SELECT al.id, al.user_id, al.user_name, al.action_type, al.change_summary,
          al.old_value, al.new_value, al.timestamp, al.resource_id AS incident_id
-  FROM audit_logs
-  WHERE resource_type = 'incident';
+  FROM audit_logs al
+  WHERE al.resource_type = 'incident';
 
 -- ---------------------------------------------------------------------------
 -- VENDORS (reusable contractor roster for assignment)
