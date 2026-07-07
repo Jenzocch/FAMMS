@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertTriangle, Clock, Factory, ChevronRight, CheckCircle2, Wrench } from 'lucide-react'
+import { AlertTriangle, Clock, Factory, ChevronRight, CheckCircle2, Wrench, Inbox } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { zhTW, enUS, id as idLocale } from 'date-fns/locale'
-import { IncidentStatus } from '@/types'
+import { IncidentStatus, UserRole } from '@/types'
 import { URGENCY_FROM_IMPACT, STATUS_ZH, STATUS_ZH_COLOR } from '@/lib/incident-display'
 import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
+import NextStepHint from '@/components/incidents/NextStepHint'
 
 export interface DashboardRow {
   id: string
@@ -33,11 +34,14 @@ interface DashboardViewProps {
   openCount: number
   urgentCount: number
   staleCount: number
+  // Action queues: new reports to accept / blocked cases / cases to confirm-close
+  inbox: { reported: number; waiting: number; confirm: number }
   // [factory name, open count, factory id (null = unspecified)]
   byFactory: [string, number, (string | null)?][]
   urgent: DashboardRow[]
   stale: DashboardRow[]
   overdue: OverdueRow[]
+  userRole: UserRole
 }
 
 const PM_TYPE_KEYS: Record<string, string> = {
@@ -46,7 +50,7 @@ const PM_TYPE_KEYS: Record<string, string> = {
 }
 
 export default function DashboardView({
-  openCount, urgentCount, staleCount, byFactory, urgent, stale, overdue,
+  openCount, urgentCount, staleCount, inbox, byFactory, urgent, stale, overdue, userRole,
 }: DashboardViewProps) {
   const { t, locale } = useI18n()
   const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
@@ -58,6 +62,31 @@ export default function DashboardView({
         <h1 className="text-xl font-bold text-gray-900">{t('dash.title')}</h1>
         <p className="text-sm text-gray-500 mt-1">{t('dash.overview')}</p>
       </div>
+
+      {/* Action inbox — the three queues to drain daily; each deep-links to the
+          board pre-set to the matching filter tab */}
+      <Section icon={<Inbox className="w-4 h-4 text-blue-500" />} title={t('dash.inbox', '需要你處理')}>
+        <div className="grid grid-cols-3 gap-2">
+          <InboxCard
+            href="/incidents?filter=reported"
+            label={t('dash.inboxAccept', '未接單')}
+            count={inbox.reported}
+            activeClass="border-blue-300 bg-blue-50 text-blue-700"
+          />
+          <InboxCard
+            href="/incidents?filter=waiting"
+            label={t('dash.inboxWaiting', '等待中')}
+            count={inbox.waiting}
+            activeClass="border-amber-300 bg-amber-50 text-amber-700"
+          />
+          <InboxCard
+            href="/incidents?filter=confirm"
+            label={t('dash.inboxConfirm', '待確認結案')}
+            count={inbox.confirm}
+            activeClass="border-teal-300 bg-teal-50 text-teal-700"
+          />
+        </div>
+      </Section>
 
       {/* Summary cards — each jumps to its detail (board / section below) */}
       <div className="grid grid-cols-3 gap-2">
@@ -103,12 +132,12 @@ export default function DashboardView({
 
       {/* Urgent cases */}
       <Section id="dash-urgent" icon={<AlertTriangle className="w-4 h-4 text-red-500" />} title={t('dash.urgentCases')}>
-        {urgent.length === 0 ? <Empty text={t('dash.noUrgent')} /> : <CaseList rows={urgent} t={t} dateLocale={dateLocale} />}
+        {urgent.length === 0 ? <Empty text={t('dash.noUrgent')} /> : <CaseList rows={urgent} t={t} dateLocale={dateLocale} userRole={userRole} />}
       </Section>
 
       {/* Stale cases */}
       <Section id="dash-stale" icon={<Clock className="w-4 h-4 text-amber-500" />} title={t('dash.staleCases')}>
-        {stale.length === 0 ? <Empty text={t('dash.noStale')} /> : <CaseList rows={stale} t={t} dateLocale={dateLocale} />}
+        {stale.length === 0 ? <Empty text={t('dash.noStale')} /> : <CaseList rows={stale} t={t} dateLocale={dateLocale} userRole={userRole} />}
       </Section>
 
       {/* Overdue maintenance */}
@@ -136,6 +165,23 @@ export default function DashboardView({
         )}
       </Section>
     </div>
+  )
+}
+
+// Tappable queue card: colored while there's work in it, muted when drained.
+function InboxCard({ href, label, count, activeClass }: {
+  href: string; label: string; count: number; activeClass: string
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-xl border p-3 text-center transition-colors active:opacity-80 ${
+        count > 0 ? activeClass : 'border-gray-200 bg-white text-gray-400'
+      }`}
+    >
+      <p className="text-2xl font-bold">{count}</p>
+      <p className="text-xs mt-0.5 font-medium">{label}</p>
+    </Link>
   )
 }
 
@@ -172,11 +218,12 @@ function Empty({ text }: { text: string }) {
 }
 
 function CaseList({
-  rows, t, dateLocale,
+  rows, t, dateLocale, userRole,
 }: {
   rows: DashboardRow[]
   t: (key: string, fallback?: string) => string
   dateLocale: Locale
+  userRole: UserRole
 }) {
   const typeLabel = useIncidentTypeLabel()
   return (
@@ -196,6 +243,11 @@ function CaseList({
             <p className="text-xs text-gray-400 mt-0.5">
               {r.factory?.name || ''} · {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: dateLocale })}
             </p>
+            {r.status !== 'closed' && (
+              <div className="mt-1.5 pt-1.5 border-t border-gray-100">
+                <NextStepHint status={r.status} variant="inline" userRole={userRole} />
+              </div>
+            )}
           </Link>
         )
       })}

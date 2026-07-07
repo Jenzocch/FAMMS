@@ -14,6 +14,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { useProgressNudge } from '@/lib/useProgressNudge'
+import NextStepHint from '@/components/incidents/NextStepHint'
 
 export interface BoardRow {
   id: string
@@ -26,6 +27,7 @@ export interface BoardRow {
   reported_at: string
   assigned_to: string | null
   due_date: string | null
+  observation_end_date: string | null
   machine: { machine_code: string | null; machine_name: string } | null
   factory: { name: string } | null
 }
@@ -33,13 +35,16 @@ export interface BoardRow {
 interface IncidentBoardProps {
   rows: BoardRow[]
   userRole?: UserRole
+  initialFilter?: string
 }
 
-export default function IncidentBoard({ rows, userRole = 'technician' }: IncidentBoardProps) {
+export default function IncidentBoard({ rows, userRole = 'technician', initialFilter }: IncidentBoardProps) {
   const { t, locale } = useI18n()
   const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
   const typeLabel = useIncidentTypeLabel()
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(
+    initialFilter && BOARD_FILTERS.some(f => f.key === initialFilter) ? initialFilter : 'all'
+  )
   const canAssign = PERMISSIONS.assignIncident(userRole)
   const canRemind = PERMISSIONS.remindProgress(userRole)
   const { remindingId, nudge } = useProgressNudge()
@@ -49,16 +54,22 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
     ? rows.filter(r => activeFilter.statuses!.includes(r.status))
     : rows
 
-  // Surface the most pressing work first: overdue cases, then by urgency
+  // Surface the most pressing work first: overdue cases, then observation
+  // periods that have ended (ready for close review), then by urgency
   // (A > B > C > D), then most recently reported. Helps technicians see what
   // to tackle next at a glance.
   const today = new Date(new Date().toDateString())
+  const todayStr = format(today, 'yyyy-MM-dd')
   const URGENCY_RANK: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 }
   const isOverdue = (r: BoardRow) =>
     !!r.due_date && r.status !== 'closed' && new Date(r.due_date) < today
+  const isObsDue = (r: BoardRow) =>
+    r.status === 'observation' && !!r.observation_end_date &&
+    r.observation_end_date.slice(0, 10) <= todayStr
+  const attentionRank = (r: BoardRow) => (isOverdue(r) ? 0 : isObsDue(r) ? 1 : 2)
   const sorted = [...filtered].sort((a, b) => {
-    const ov = (isOverdue(a) ? 0 : 1) - (isOverdue(b) ? 0 : 1)
-    if (ov !== 0) return ov
+    const at = attentionRank(a) - attentionRank(b)
+    if (at !== 0) return at
     const ur = (URGENCY_RANK[a.downtime_impact] ?? 9) - (URGENCY_RANK[b.downtime_impact] ?? 9)
     if (ur !== 0) return ur
     return new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()
@@ -98,7 +109,24 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">{t('board.noIncidents')}</p>
+          {filter !== 'all' ? (
+            // A specific tab is empty — the other tabs may still have cases.
+            <p className="text-sm">{t('board.noInFilter', '此分類目前沒有案件')}</p>
+          ) : (
+            <>
+              <p className="text-sm">
+                {PERMISSIONS.boardFull(userRole)
+                  ? t('board.noIncidents')
+                  : t('board.emptyMine', '目前沒有指派給你或你回報的案件')}
+              </p>
+              <Link
+                href="/incidents/new"
+                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium active:bg-blue-700"
+              >
+                {t('board.reportCta', '回報問題')}
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -124,6 +152,11 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${urgency.color}`}>
                     {t(`urgency.${inc.downtime_impact}`, urgency.label)}
                   </span>
+                  {isObsDue(inc) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-teal-600 text-white">
+                      {t('board.obsDue', '觀察期已滿')}
+                    </span>
+                  )}
                   {inc.due_date && (
                     <span className={`inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full font-medium ${
                       overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
@@ -169,6 +202,12 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
                   )}
                 </div>
 
+                {/* Next-step nudge: what this case needs next, at a glance */}
+                {inc.status !== 'closed' && (
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <NextStepHint status={inc.status} variant="inline" userRole={userRole} />
+                  </div>
+                )}
               </Link>
 
               {/* Nudge for progress — supervisors+ only, open cases only.

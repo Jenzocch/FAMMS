@@ -20,6 +20,7 @@ interface Area { id: string; factory_id: string; name: string }
 interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null }
 interface Machine {
   id: string
+  factory_id?: string
   machine_name: string
   machine_code: string | null
   maintenance_cycle: number
@@ -105,6 +106,11 @@ export default function PMScheduleManager() {
   const factoryTechnicians = accounts.filter(
     a => a.role === 'technician' && (!factoryId || !a.factory_id || a.factory_id === factoryId)
   )
+  // Accounts selectable for this schedule's factory. Cross-factory accounts and
+  // anyone already assigned stay visible so they can still be de-selected.
+  const factoryAccounts = accounts.filter(
+    a => assignees.includes(a.id) || !factoryId || !a.factory_id || a.factory_id === factoryId
+  )
 
   useEffect(() => {
     if (!factoryId) { setAreas([]); setAreaId(''); return }
@@ -115,7 +121,7 @@ export default function PMScheduleManager() {
 
   useEffect(() => {
     if (!areaId) { setMachines([]); setMachineId(''); return }
-    supabase.from('machines').select('id, machine_name, machine_code, maintenance_cycle')
+    supabase.from('machines').select('id, factory_id, machine_name, machine_code, maintenance_cycle')
       .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
       .then(({ data }) => setMachines(data ?? []))
     setMachineId('')
@@ -202,7 +208,8 @@ export default function PMScheduleManager() {
       } else {
         // Create through the API so the first pending pm_record is generated
         // too — a schedule without records only ever shows projected calendar
-        // tasks. One code path for every creation source.
+        // tasks. One code path for every creation source (the API derives
+        // factory_id from the machine, so the NOT NULL insert can't fail).
         const res = await fetch('/api/pm/schedules', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -374,11 +381,11 @@ export default function PMScheduleManager() {
                 )}
               </div>
             </div>
-            {accounts.length === 0 ? (
+            {factoryAccounts.length === 0 ? (
               <p className="text-xs text-gray-400 mt-1">{t('assign.noAccounts', '尚無可指派的帳號')}</p>
             ) : (
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {accounts.map(a => {
+                {factoryAccounts.map(a => {
                   const on = assignees.includes(a.id)
                   return (
                     <button

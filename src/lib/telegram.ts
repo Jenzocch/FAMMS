@@ -15,8 +15,10 @@ export function isTelegramConfigured(): boolean {
   return !!TOKEN
 }
 
-// Escape HTML special chars for Telegram HTML parse mode.
-function esc(s: string): string {
+// Escape HTML special chars for Telegram HTML parse mode. Exported so route
+// handlers building their own messages can't forget to sanitize user input
+// (titles, reporter names) — unescaped '<' breaks the whole send.
+export function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
@@ -65,6 +67,30 @@ export function formatNewIncident(args: {
     `🔧 Failure: ${esc(args.failureName)}`,
     `📉 Dampak: ${esc(DOWNTIME_IMPACT_LABELS[args.impact])} (SLA ${esc(SLA_LABELS[args.impact])})`,
   ]
+  if (args.appUrl && args.incidentId) {
+    lines.push(`🔗 ${args.appUrl}/incidents/${args.incidentId}`)
+  }
+  return lines.join('\n')
+}
+
+// Personal "you've been assigned" message. Recipients are Indonesian field
+// technicians → Bahasa Indonesia per the project language convention.
+export function formatAssignment(args: {
+  incidentNo: string
+  title: string
+  locationLabel: string
+  impact: DowntimeImpact
+  dueDate?: string | null
+  appUrl?: string
+  incidentId?: string
+}): string {
+  const lines = [
+    `🔧 <b>Anda ditugaskan</b> — ${esc(args.incidentNo)}`,
+    `📋 ${esc(args.title)}`,
+    `📍 ${esc(args.locationLabel)}`,
+    `📉 Dampak: ${esc(DOWNTIME_IMPACT_LABELS[args.impact])}`,
+  ]
+  if (args.dueDate) lines.push(`📅 Target selesai: ${esc(args.dueDate)}`)
   if (args.appUrl && args.incidentId) {
     lines.push(`🔗 ${args.appUrl}/incidents/${args.incidentId}`)
   }

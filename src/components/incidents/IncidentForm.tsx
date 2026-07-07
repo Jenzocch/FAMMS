@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import imageCompression from 'browser-image-compression'
@@ -37,6 +37,11 @@ const DEFAULT_ISSUE_TYPES: IssueType[] = [
   { value: 'cleanliness', label: '🧹 衛生/清潔' },
   { value: 'other', label: '📋 其他' },
 ]
+
+// Remembers where the last report was filed. Field staff report from the same
+// factory/area every day — restoring it turns the 3-step location cascade into
+// "just pick the machine" for repeat reports.
+const LAST_LOCATION_KEY = 'famms.lastReportLocation'
 
 // Three urgency levels (mapped to impact codes A / C / D). "High" (B) is
 // retired from the picker but still renders for any legacy incident that has it.
@@ -78,6 +83,8 @@ export default function IncidentForm() {
   const [photos, setPhotos] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [compressing, setCompressing] = useState(false)
+  // Area waiting to be re-applied once its factory's areas finish loading.
+  const restoredAreaRef = useRef<string | null>(null)
 
   // Stable preview URLs — created once per photo list and revoked when the
   // list changes/unmounts, instead of leaking a new blob URL every render.
@@ -100,12 +107,42 @@ export default function IncidentForm() {
     supabase.from('profiles').select('id, full_name').eq('is_active', true).order('full_name')
       .then(({ data }) => setAccounts((data ?? []) as Account[]))
     // Issue types come from the shared cache (useIncidentTypes) above.
+
+    // Default the reporter to the logged-in account — most reports are
+    // self-reports. Picking someone else / typing a name stays possible for
+    // on-behalf reporting, and anything the user already entered is kept.
+    // (getSession = local read, keeps the form opening instantly.)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const uid = session?.user.id
+      if (!uid) return
+      supabase.from('profiles').select('id, full_name').eq('id', uid).single()
+        .then(({ data }) => {
+          if (!data) return
+          setReporterAccountId(prev => prev || data.id)
+          setReporterName(prev => prev || data.full_name || '')
+        })
+    })
+
+    // Restore the last-used factory/area for repeat reports.
+    try {
+      const saved = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY) ?? 'null')
+      if (saved?.factoryId) {
+        restoredAreaRef.current = typeof saved.areaId === 'string' ? saved.areaId : null
+        setFactoryId(saved.factoryId)
+      }
+    } catch { /* corrupt storage — start blank */ }
   }, [])
 
   useEffect(() => {
     if (!factoryId) { setAreas([]); setAreaId(''); return }
     supabase.from('areas').select('*').eq('factory_id', factoryId).order('name')
-      .then(({ data }) => setAreas(data ?? []))
+      .then(({ data }) => {
+        setAreas(data ?? [])
+        // Apply the remembered area once, only while its options actually exist.
+        const pending = restoredAreaRef.current
+        restoredAreaRef.current = null
+        if (pending && (data ?? []).some(a => a.id === pending)) setAreaId(pending)
+      })
     setAreaId('')
     setAssetId('')
   }, [factoryId])
@@ -255,6 +292,11 @@ export default function IncidentForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ incidentId: incident.id }),
       }).catch(() => {})
+
+      // Remember this location for the next report.
+      try {
+        localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({ factoryId, areaId }))
+      } catch { /* storage full/blocked — skip */ }
 
       toast.success(`案件 ${incident_no} 已建立`)
       router.push(`/incidents/${incident.id}`)

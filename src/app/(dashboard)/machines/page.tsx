@@ -6,8 +6,8 @@ import MachinesList, { MachineRow } from '@/components/machines/MachinesList'
 export const metadata = { title: 'Machines | FAMMS' }
 
 export default async function MachinesPage() {
-  // getCurrentUser is cache()-wrapped: this reuses the layout's auth+profile
-  // lookup instead of re-running both queries for this page.
+  // getCurrentUser is cache()-wrapped and claims-based: reuses the layout's
+  // auth+profile lookup instead of re-running both queries for this page.
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 

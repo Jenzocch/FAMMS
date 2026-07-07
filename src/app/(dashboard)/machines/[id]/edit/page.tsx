@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthClaims } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import MachineForm from '@/components/machines/MachineForm'
 
 export const metadata = { title: 'Edit Machine | FAMMS' }
 
 export default async function EditMachinePage({ params }: { params: { id: string } }) {
+  const claims = await getAuthClaims()
+  if (!claims) redirect('/login')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const { data: machine } = await supabase
     .from('machines')

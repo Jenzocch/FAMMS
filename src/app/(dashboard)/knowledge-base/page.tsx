@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthClaims } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, BookOpen } from 'lucide-react'
@@ -13,9 +14,9 @@ export default async function KnowledgeBasePage({
 }: {
   searchParams: Promise<{ q?: string }>
 }) {
+  const claims = await getAuthClaims()
+  if (!claims) redirect('/login')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const { q } = await searchParams
 

@@ -49,9 +49,12 @@ export function DueDateChip({ dueDate, isClosed }: { dueDate: string; isClosed: 
 export function ClosedBanner({ closedAt }: { closedAt: string | null }) {
   const { t } = useI18n()
   return (
-    <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center text-sm text-green-700">
-      ✅ {t('incidentDetail.closed')}
-      {closedAt && ` · ${format(new Date(closedAt), 'yyyy-MM-dd HH:mm')}`}
+    <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center text-sm text-green-700 space-y-1">
+      <p>
+        ✅ {t('incidentDetail.closed')}
+        {closedAt && ` · ${format(new Date(closedAt), 'yyyy-MM-dd HH:mm')}`}
+      </p>
+      <p className="text-xs text-green-600">{t('nextStep.doneNote')}</p>
     </div>
   )
 }

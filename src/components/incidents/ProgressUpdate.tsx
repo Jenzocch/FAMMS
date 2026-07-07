@@ -47,7 +47,11 @@ function allowedStatuses(currentStatus: IncidentStatus, allowRollback: boolean =
     return SELECTABLE.filter(s => s !== 'reported')
   }
 
-  const currentIndex = MAIN_ORDER.indexOf(currentStatus)
+  // A "waiting" side-state isn't on the main line, so resume it at 處理中
+  // (analyzing) — otherwise a case parked in e.g. waiting_parts could never
+  // move forward without ticking rollback, contradicting the next-step hint.
+  const effectiveStatus = WAITING_STATES.includes(currentStatus) ? 'analyzing' : currentStatus
+  const currentIndex = MAIN_ORDER.indexOf(effectiveStatus)
   return SELECTABLE.filter(s => {
     if (WAITING_STATES.includes(s)) return currentStatus !== 'closed'
     const index = MAIN_ORDER.indexOf(s)
@@ -85,7 +89,12 @@ export default function ProgressUpdate({
 
   // Status options based on rollback setting. Only supervisors+ may move a case to "closed".
   const availableStatuses = allowedStatuses(currentStatus, allowRollback)
-  const selectableStatuses = canClose ? availableStatuses : availableStatuses.filter(s => s !== 'closed')
+  const base = canClose ? availableStatuses : availableStatuses.filter(s => s !== 'closed')
+  // Always include the current status as a (selected, no-op) option. Some
+  // statuses aren't forward targets in SELECTABLE (e.g. 'reported', or the
+  // waiting_vendor/approval/shutdown side-states), so without this the Select's
+  // default value would not match any item and render blank.
+  const selectableStatuses = base.includes(currentStatus) ? base : [currentStatus, ...base]
 
   async function addPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])

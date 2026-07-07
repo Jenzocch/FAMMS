@@ -9,15 +9,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Plus, Wrench, Clock, CheckCircle, CalendarCog } from 'lucide-react'
+import { Loader2, Wrench, Clock, CheckCircle, CalendarClock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useDateLocale } from '@/lib/date-locale'
-import OverdueMaintenanceAlert from './OverdueMaintenanceAlert'
 import PMScheduleManager from './PMScheduleManager'
 import PMFullCalendar from './PMFullCalendar'
 import PMDueList from './PMDueList'
 import { useI18n } from '@/lib/i18n'
-import { loadMyFactoryId } from '@/lib/useMyFactory'
 import { loadFactories } from '@/lib/useFactories'
 import { PERMISSIONS } from '@/lib/permissions'
 import type { UserRole } from '@/types'
@@ -57,7 +55,7 @@ const PM_TYPE_KEYS: Record<string, string> = {
   yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
 }
 
-export default function PMPage({ role = 'technician' }: { role?: UserRole }) {
+export default function PMPage({ role = 'technician', defaultFactoryId }: { role?: UserRole; defaultFactoryId?: string | null }) {
   const supabase = createClient()
   const { t } = useI18n()
   const dateLocale = useDateLocale()
@@ -77,21 +75,20 @@ export default function PMPage({ role = 'technician' }: { role?: UserRole }) {
   const [showSchedules, setShowSchedules] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  // Auto-pick a factory so the calendar shows immediately (one less step):
+  // the user's own factory when known, otherwise the first factory.
   useEffect(() => {
-    // Load factories, then preselect the signed-in user's own factory (falling
-    // back to the first factory) so technicians land straight on their calendar.
-    async function init() {
-      const [facs, myFactoryId] = await Promise.all([
-        loadFactories(),
-        loadMyFactoryId(),
-      ])
+    // Load factories (shared cache) and preselect the user's own factory —
+    // passed from the server, so no extra client round-trip — falling back to
+    // the first factory. Technicians land straight on their calendar.
+    loadFactories().then(facs => {
       setFactories(facs ?? [])
       if (!facs || facs.length === 0) return
-      const preferred = myFactoryId && facs.some(f => f.id === myFactoryId) ? myFactoryId : ''
-      setFactoryId(prev => prev || preferred || facs[0].id)
-    }
-    init()
-  }, [])
+      const preferred = defaultFactoryId && facs.some(f => f.id === defaultFactoryId)
+        ? defaultFactoryId : facs[0].id
+      setFactoryId(prev => prev || preferred)
+    })
+  }, [defaultFactoryId])
 
   useEffect(() => {
     if (!factoryId) { setAreas([]); setAreaId(''); return }
@@ -200,12 +197,12 @@ export default function PMPage({ role = 'technician' }: { role?: UserRole }) {
         </div>
         <div className="flex gap-2">
           {canManageSchedules && (
-            <Button onClick={() => setShowSchedules(!showSchedules)} variant="outline" className="gap-2 flex-1 sm:flex-none">
-              <CalendarCog className="w-4 h-4" /> {t('pm.plansBtn')}
+            <Button onClick={() => { setShowSchedules(!showSchedules); setShowForm(false) }} variant="outline" className="gap-2 flex-1 sm:flex-none">
+              <CalendarClock className="w-4 h-4" /> {t('pm.plansBtn')}
             </Button>
           )}
-          <Button onClick={() => setShowForm(!showForm)} className="gap-2 flex-1 sm:flex-none">
-            <Plus className="w-4 h-4" /> {t('pm.addMaintenance')}
+          <Button onClick={() => { setShowForm(!showForm); setShowSchedules(false) }} className="gap-2 flex-1 sm:flex-none">
+            <Wrench className="w-4 h-4" /> {t('pm.addMaintenance')}
           </Button>
         </div>
       </div>
@@ -220,26 +217,35 @@ export default function PMPage({ role = 'technician' }: { role?: UserRole }) {
         </SelectContent>
       </Select>
 
-      {/* PM Schedule Manager — rendered up top so the "Rencana" button visibly
-          opens it (it used to render below the calendar, off-screen). */}
+      {/* PM Schedule Manager — set up RECURRING plans. Rendered up top so the
+          button visibly opens it (it used to render below the calendar). */}
       {canManageSchedules && showSchedules && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <CalendarClock className="w-5 h-5 text-green-700 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-green-900">{t('pm.plansBtn')}</h3>
+              <p className="text-xs text-green-700 mt-0.5">{t('pm.plansHint')}</p>
+            </div>
+          </div>
           <PMScheduleManager />
         </div>
       )}
 
-      {/* Add Maintenance Form — same reason, open right where the user clicked */}
+      {/* Add Maintenance Form — log a ONE-OFF job already done; opens right
+          where the user clicked */}
       {showForm && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-4">
-          <h3 className="font-semibold text-blue-900">{t('pm.logMaintenance')}</h3>
+          <div className="flex items-start gap-2">
+            <Wrench className="w-5 h-5 text-blue-700 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-blue-900">{t('pm.logMaintenance')}</h3>
+              <p className="text-xs text-blue-700 mt-0.5">{t('pm.logHint')}</p>
+            </div>
+          </div>
 
-          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={factoryItems}>
-            <SelectTrigger><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
-            <SelectContent>
-              {factories.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
+          {/* Factory is already chosen at the top of the page — the form just
+              needs area → machine, so there's no duplicate factory picker here. */}
           {areas.length > 0 && (
             <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={areaItems}>
               <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
@@ -303,12 +309,6 @@ export default function PMPage({ role = 'technician' }: { role?: UserRole }) {
           <PMFullCalendar factoryId={factoryId} />
         </div>
       )}
-
-      {/* Overdue Alert */}
-      <div className="border-l-4 border-amber-500 bg-amber-50 rounded-lg p-4">
-        <OverdueMaintenanceAlert />
-      </div>
-
 
       {/* Recent Records — merged ad-hoc logs + scheduled PM completions */}
       <div className="space-y-2">

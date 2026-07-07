@@ -8,6 +8,7 @@ import RemindButton from '@/components/incidents/RemindButton'
 import StatusChip from '@/components/incidents/StatusChip'
 import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection } from '@/components/incidents/IncidentDetailChrome'
 import AssignForm from '@/components/incidents/AssignForm'
+import NextStepHint from '@/components/incidents/NextStepHint'
 import IncidentActions from '@/components/incidents/IncidentActions'
 import AuditTrail from '@/components/incidents/AuditTrail'
 import IncidentTypeText from '@/components/incidents/IncidentTypeText'
@@ -130,8 +131,12 @@ export default async function IncidentDetailPage({
         )}
       </div>
 
-      {/* Workflow progress bar — visual status pipeline */}
+{/* Workflow progress bar — visual status pipeline */}
       <WorkflowProgress status={status} />
+
+      {/* "What to do next" guidance — forward steps only; closed cases are
+          covered by the ClosedBanner below (avoids a duplicate green banner). */}
+      {!isClosed && <NextStepHint status={status} userRole={user?.role} />}
 
       {/* Progress timeline (client component → labels follow app language) */}
       <ProgressTimeline

@@ -18,8 +18,10 @@ import type { PMType } from '@/types'
  */
 export async function GET(req: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  // Local JWT check — this endpoint is hit on every PM calendar month change,
+  // so it must not add an auth round-trip. RLS enforces real data access.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  if (!claimsData?.claims) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
   const factoryId = url.searchParams.get('factory_id')
