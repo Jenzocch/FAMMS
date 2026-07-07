@@ -400,6 +400,33 @@
     "checklistLabel": "Checklist (optional, one item per line)",
     "checklistPlaceholder": "e.g.\nCheck bearing lubrication\nClean heat sink\nMeasure running temperature"
   },
+  "parts": {
+    "sectionHeading": "Parts / Materials Request",
+    "request": "Request Parts / Materials",
+    "none": "No parts requests yet",
+    "nameRequired": "Please enter the part name",
+    "namePlaceholder": "Part name (e.g. oil seal)",
+    "codePlaceholder": "Part code (optional)",
+    "warehousePlaceholder": "Warehouse (e.g. HARDWARE)",
+    "qty": "Qty",
+    "unitPlaceholder": "Unit (optional, e.g. pcs)",
+    "markUrgent": "Mark as urgent",
+    "urgent": "Urgent",
+    "notePlaceholder": "Note (optional)",
+    "submit": "Submit Request",
+    "submitted": "Parts request submitted",
+    "submitFailed": "Failed to submit",
+    "updateFailed": "Update failed",
+    "markOrdered": "Mark Ordered",
+    "markReceived": "Mark Received",
+    "reject": "Cancel",
+    "status": {
+      "requested": "Requested",
+      "ordered": "Ordered",
+      "received": "Received",
+      "rejected": "Cancelled"
+    }
+  },
   "weekdays": {
     "0": "Sun",
     "1": "Mon",

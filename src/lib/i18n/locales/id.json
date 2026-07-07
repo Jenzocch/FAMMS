@@ -400,6 +400,33 @@
     "checklistLabel": "Checklist (opsional, satu item per baris)",
     "checklistPlaceholder": "mis.\nCek pelumasan bearing\nBersihkan heatsink\nUkur suhu operasi"
   },
+  "parts": {
+    "sectionHeading": "Permintaan Parts / Material",
+    "request": "Ajukan Parts / Material",
+    "none": "Belum ada permintaan parts",
+    "nameRequired": "Silakan isi nama parts",
+    "namePlaceholder": "Nama parts (contoh: oil seal)",
+    "codePlaceholder": "Kode parts (opsional)",
+    "warehousePlaceholder": "Gudang (contoh: HARDWARE)",
+    "qty": "Jumlah",
+    "unitPlaceholder": "Satuan (opsional, contoh: pcs)",
+    "markUrgent": "Tandai sebagai mendesak",
+    "urgent": "Mendesak",
+    "notePlaceholder": "Catatan (opsional)",
+    "submit": "Kirim Permintaan",
+    "submitted": "Permintaan parts terkirim",
+    "submitFailed": "Gagal mengirim",
+    "updateFailed": "Gagal memperbarui",
+    "markOrdered": "Tandai Dipesan",
+    "markReceived": "Tandai Diterima",
+    "reject": "Batalkan",
+    "status": {
+      "requested": "Diminta",
+      "ordered": "Dipesan",
+      "received": "Diterima",
+      "rejected": "Dibatalkan"
+    }
+  },
   "weekdays": {
     "0": "Min",
     "1": "Sen",

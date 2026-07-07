@@ -30,3 +30,10 @@ export const RCA_TRIGGER_WINDOW_DAYS = 90
 export const MAX_PHOTOS_PER_STAGE = 6
 export const MAX_FILE_SIZE_MB = 10
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+// Default warehouse per factory (factories.code) for the parts-request form.
+// Only confirmed mappings go here — unlisted factories fall back to a free-text
+// field so we never guess a warehouse name that hasn't been verified.
+export const WAREHOUSE_BY_FACTORY_CODE: Record<string, string> = {
+  DIN: 'HARDWARE',
+}

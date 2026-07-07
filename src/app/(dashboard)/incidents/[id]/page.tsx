@@ -11,6 +11,7 @@ import AssignForm from '@/components/incidents/AssignForm'
 import NextStepHint from '@/components/incidents/NextStepHint'
 import IncidentActions from '@/components/incidents/IncidentActions'
 import AuditTrail from '@/components/incidents/AuditTrail'
+import PartsRequestPanel from '@/components/incidents/PartsRequestPanel'
 import IncidentTypeText from '@/components/incidents/IncidentTypeText'
 import { IncidentStatus } from '@/types'
 import { URGENCY_FROM_IMPACT } from '@/lib/incident-display'
@@ -50,7 +51,7 @@ export default async function IncidentDetailPage({
     .select(`
       *,
       machine:machines(machine_code, machine_name),
-      factory:factories(name)
+      factory:factories(name, code)
     `)
     .eq('id', id)
     .single()
@@ -72,7 +73,7 @@ export default async function IncidentDetailPage({
     .order('created_at', { ascending: false })
 
   const machine = incident.machine as { machine_code: string | null; machine_name: string } | null
-  const factory = incident.factory as { name: string } | null
+  const factory = incident.factory as { name: string; code: string | null } | null
   const status = incident.status as IncidentStatus
   const urgency = URGENCY_FROM_IMPACT[incident.downtime_impact as 'A' | 'B' | 'C' | 'D']
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -174,6 +175,16 @@ export default async function IncidentDetailPage({
       {!isClosed && user && PERMISSIONS.remindProgress(user.role) && (
         <RemindButton incidentId={id} />
       )}
+
+      {/* Parts/material request — structured request instead of a free-text
+          note, so a future warehouse-system sync has something to read. */}
+      <CollapsibleSection titleKey="parts.sectionHeading" fallback="零件 / 物料申請">
+        <PartsRequestPanel
+          incidentId={id}
+          factoryCode={factory?.code ?? null}
+          canManage={!!user && PERMISSIONS.managePartsRequests(user.role)}
+        />
+      </CollapsibleSection>
 
       {/* Low-frequency sections collapsed by default to keep the page short */}
       <CollapsibleSection titleKey="incidentDetail.manageSection" fallback="編輯 / 刪除案件">
