@@ -81,7 +81,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 md:space-y-5">
       <h1 className="text-xl font-bold text-gray-900">{t('board.heading')}</h1>
 
       {/* Filter tabs */}
@@ -129,7 +129,11 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        // One column on phones (thumb-scroll), but fan out into 2–3 columns on
+        // wider screens so the desktop's horizontal space is used instead of
+        // one long vertical scroll. Gaps widen with the viewport — cramped
+        // columns read worse than fewer columns.
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5 items-start">
           {sorted.map(inc => {
             const urgency = URGENCY_FROM_IMPACT[inc.downtime_impact]
             const overdue = isOverdue(inc)
@@ -139,75 +143,75 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
               // the anchor (invalid HTML + screen-reader confusion).
               <div
                 key={inc.id}
-                className="bg-white rounded-xl border border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400 transition-all"
+                className="bg-white rounded-2xl border border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400 transition-all"
               >
               <Link
                 href={`/incidents/${inc.id}`}
-                className="block p-3.5 rounded-xl active:bg-gray-50"
+                className="block p-4 md:p-5 rounded-2xl active:bg-gray-50"
               >
+                {/* Top row — the two things a technician triages on: how urgent,
+                    and what state it's in. Everything else (case no., reporter)
+                    is demoted so the card reads at a glance. */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_ZH_COLOR[inc.status]}`}>
-                    {t(`boardStatus.${inc.status}`)}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${urgency.color}`}>
+                  <span className={`text-sm px-2.5 py-1 rounded-full font-semibold ${urgency.color}`}>
                     {t(`urgency.${inc.downtime_impact}`, urgency.label)}
                   </span>
-                  {isObsDue(inc) && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-teal-600 text-white">
+                  <span className={`text-sm px-2.5 py-1 rounded-full font-medium ${STATUS_ZH_COLOR[inc.status]}`}>
+                    {t(`boardStatus.${inc.status}`)}
+                  </span>
+                  {/* One attention badge, never both — overdue wins over obs-due */}
+                  {overdue ? (
+                    <span className="inline-flex items-center gap-1 text-sm px-2.5 py-1 rounded-full font-semibold bg-red-600 text-white">
+                      <CalendarClock className="w-3.5 h-3.5" />
+                      {t('board.overdue', '逾期')} {format(new Date(inc.due_date!), 'MM/dd')}
+                    </span>
+                  ) : isObsDue(inc) ? (
+                    <span className="text-sm px-2.5 py-1 rounded-full font-semibold bg-teal-600 text-white">
                       {t('board.obsDue', '觀察期已滿')}
                     </span>
-                  )}
-                  {inc.due_date && (
-                    <span className={`inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full font-medium ${
-                      overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      <CalendarClock className="w-3 h-3" />
-                      {format(new Date(inc.due_date), 'MM/dd')}
-                      {overdue ? ` ${t('board.overdue', '逾期')}` : ''}
-                    </span>
-                  )}
-                  <span className="text-sm text-gray-800 font-mono font-semibold ml-auto bg-gray-100 px-2 py-0.5 rounded">{inc.incident_no}</span>
+                  ) : null}
+                  <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 ml-auto" />
                 </div>
 
-                <p className="font-semibold text-base text-gray-900 mt-2 line-clamp-1">
+                {/* Title — the biggest thing on the card */}
+                <p className="font-bold text-lg text-gray-900 mt-2.5 leading-snug line-clamp-2">
                   {inc.title || typeLabel(inc.incident_type, t('board.problem')) }
                 </p>
 
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-sm text-gray-700 truncate">
-                    {typeLabel(inc.incident_type)}
-                    {inc.factory ? ` · ${inc.factory.name}` : ''}
-                    {inc.machine ? ` · ${inc.machine.machine_name}` : ''}
-                  </p>
-                  <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-                </div>
+                {/* Where — machine first (that's what a technician walks to) */}
+                <p className="text-base text-gray-600 mt-1 truncate">
+                  {inc.machine ? inc.machine.machine_name : typeLabel(inc.incident_type)}
+                  {inc.factory ? ` · ${inc.factory.name}` : ''}
+                </p>
 
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-gray-600">
+                {/* Next-step nudge: what this case needs next, at a glance */}
+                {inc.status !== 'closed' && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <NextStepHint status={inc.status} variant="inline" userRole={userRole} />
+                  </div>
+                )}
+
+                {/* Footer meta — demoted: who/when, assignee, case no. */}
+                <div className="flex items-center justify-between gap-2 mt-3 text-xs text-gray-400">
+                  <span className="truncate">
                     {inc.reporter_name ? `${inc.reporter_name} · ` : ''}
                     {formatDistanceToNow(new Date(inc.reported_at), { addSuffix: true, locale: dateLocale })}
-                  </p>
+                    {!overdue && inc.due_date ? ` · ${t('board.due', '截止')} ${format(new Date(inc.due_date), 'MM/dd')}` : ''}
+                  </span>
                   {inc.status !== 'closed' && (
                     inc.assigned_to ? (
-                      <span className="inline-flex items-center gap-0.5 text-xs text-blue-600">
-                        <UserCheck className="w-3 h-3" /> {inc.assigned_to}
+                      <span className="inline-flex items-center gap-0.5 text-blue-600 shrink-0">
+                        <UserCheck className="w-3.5 h-3.5" /> {inc.assigned_to}
                       </span>
                     ) : canAssign ? (
-                      <span className="text-xs text-amber-600">{t('board.unassigned')}</span>
+                      <span className="text-amber-600 shrink-0">{t('board.unassigned')}</span>
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 text-xs text-gray-400" title={t('board.onlySupervisorAssign')}>
-                        <Lock className="w-3 h-3" /> {t('board.unassigned')}
+                      <span className="inline-flex items-center gap-0.5 text-gray-400 shrink-0" title={t('board.onlySupervisorAssign')}>
+                        <Lock className="w-3.5 h-3.5" /> {t('board.unassigned')}
                       </span>
                     )
                   )}
                 </div>
-
-                {/* Next-step nudge: what this case needs next, at a glance */}
-                {inc.status !== 'closed' && (
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <NextStepHint status={inc.status} variant="inline" userRole={userRole} />
-                  </div>
-                )}
               </Link>
 
               {/* Nudge for progress — supervisors+ only, open cases only.
@@ -229,7 +233,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
               exist but are only reachable via search, instead of silently
               truncating. */}
           {rows.length >= 200 && (
-            <p className="text-center text-xs text-gray-400 py-2">
+            <p className="col-span-full text-center text-xs text-gray-400 py-2">
               {t('board.limitNote', '僅顯示最近 200 筆案件，較舊案件請使用搜尋')}
             </p>
           )}

@@ -676,6 +676,7 @@
     "onlySupervisorAssign": "Only supervisors can assign",
     "problem": "Issue",
     "overdue": "Overdue",
+    "due": "Due",
     "obsDue": "Observation ended",
     "noInFilter": "No cases in this tab",
     "emptyMine": "No cases assigned to or reported by you",

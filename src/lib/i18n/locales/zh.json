@@ -676,6 +676,7 @@
     "onlySupervisorAssign": "只有主管可以派工",
     "problem": "問題",
     "overdue": "逾期",
+    "due": "截止",
     "obsDue": "觀察期已滿",
     "noInFilter": "此分類目前沒有案件",
     "emptyMine": "目前沒有指派給你或你回報的案件",

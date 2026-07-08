@@ -676,6 +676,7 @@
     "onlySupervisorAssign": "Hanya supervisor yang dapat menugaskan",
     "problem": "Masalah",
     "overdue": "Terlambat",
+    "due": "Tenggat",
     "obsDue": "Masa observasi selesai",
     "noInFilter": "Tidak ada kasus di tab ini",
     "emptyMine": "Tidak ada kasus yang ditugaskan atau dilaporkan oleh Anda",
