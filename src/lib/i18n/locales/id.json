@@ -907,5 +907,22 @@
     "title": "Akun dinonaktifkan",
     "desc": "Akun ini tidak dapat digunakan saat ini. Hubungi admin sistem.",
     "logout": "Keluar"
+  },
+  "gudang": {
+    "open": "Minta ke Gudang (Gudang One)",
+    "title": "Minta ke Gudang (Gudang One)",
+    "itemName": "Nama part/material",
+    "partNo": "No. part (opsional)",
+    "removeRow": "Hapus baris ini",
+    "addRow": "Tambah baris",
+    "urgent": "🔴 Mendesak (mesin berhenti)",
+    "normal": "🟡 Normal",
+    "low": "🟢 Tidak mendesak",
+    "notePlaceholder": "Catatan (opsional): spek, merek, pesan untuk gudang",
+    "cancel": "Batal",
+    "submit": "Kirim permintaan",
+    "noItems": "Isi minimal satu part (nama + qty)",
+    "failed": "Permintaan gagal, coba lagi nanti",
+    "sent": "Sudah dikirim ke gudang (Gudang One) — mereka akan dapat notifikasi Telegram"
   }
 }

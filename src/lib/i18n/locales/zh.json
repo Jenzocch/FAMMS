@@ -907,5 +907,22 @@
     "title": "帳號已停用",
     "desc": "此帳號目前無法使用，請聯絡系統管理員。",
     "logout": "登出"
+  },
+  "gudang": {
+    "open": "向倉庫叫料（Gudang One）",
+    "title": "向倉庫叫料（Gudang One）",
+    "itemName": "零件/物料名稱",
+    "partNo": "料號(選填)",
+    "removeRow": "刪除此列",
+    "addRow": "加一項",
+    "urgent": "🔴 急件(停機)",
+    "normal": "🟡 一般",
+    "low": "🟢 不急",
+    "notePlaceholder": "備註（選填）：例如規格、品牌、給倉管的說明",
+    "cancel": "取消",
+    "submit": "送出叫料",
+    "noItems": "至少填一項零件（名稱＋數量）",
+    "failed": "叫料失敗，稍後再試",
+    "sent": "已送到倉庫（Gudang One），倉管會收到 Telegram 通知"
   }
 }
