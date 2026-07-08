@@ -907,5 +907,22 @@
     "title": "Account disabled",
     "desc": "This account is currently unavailable. Please contact the system administrator.",
     "logout": "Sign out"
+  },
+  "gudang": {
+    "open": "Request from Warehouse (Gudang One)",
+    "title": "Request from Warehouse (Gudang One)",
+    "itemName": "Part/material name",
+    "partNo": "Part No. (optional)",
+    "removeRow": "Remove this row",
+    "addRow": "Add row",
+    "urgent": "🔴 Urgent (machine down)",
+    "normal": "🟡 Normal",
+    "low": "🟢 Not urgent",
+    "notePlaceholder": "Note (optional): spec, brand, message for the warehouse",
+    "cancel": "Cancel",
+    "submit": "Send request",
+    "noItems": "Fill in at least one part (name + qty)",
+    "failed": "Request failed, please try again later",
+    "sent": "Sent to warehouse (Gudang One) — they'll get a Telegram notification"
   }
 }
