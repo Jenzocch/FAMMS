@@ -97,7 +97,10 @@ CREATE TABLE IF NOT EXISTS maintenance_logs (
   performed_at TIMESTAMP DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW()
 );
-ALTER TABLE maintenance_logs DISABLE ROW LEVEL SECURITY;
+-- RLS state is intentionally NOT touched here — this script re-runs on every
+-- `git pull`, and forcing RLS off would silently undo migration_rls_3's
+-- staged enablement every time. Table starts RLS-off by Postgres default on
+-- first creation; if you've run the staged RLS rollout, its state is left alone.
 CREATE INDEX IF NOT EXISTS idx_maintenance_logs_machine       ON maintenance_logs(machine_id);
 CREATE INDEX IF NOT EXISTS idx_maintenance_logs_performed_at  ON maintenance_logs(performed_at DESC);
 
@@ -114,7 +117,6 @@ CREATE TABLE IF NOT EXISTS incident_updates (
   photos TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
-ALTER TABLE incident_updates DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_incident_updates_incident ON incident_updates(incident_id);
 
 -- ---------------------------------------------------------------------------
@@ -128,7 +130,6 @@ CREATE TABLE IF NOT EXISTS incident_types (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW()
 );
-ALTER TABLE incident_types DISABLE ROW LEVEL SECURITY;
 ALTER TABLE incident_types ADD COLUMN IF NOT EXISTS label_zh TEXT;
 ALTER TABLE incident_types ADD COLUMN IF NOT EXISTS label_en TEXT;
 ALTER TABLE incident_types ADD COLUMN IF NOT EXISTS label_id TEXT;
@@ -157,7 +158,6 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   factory_id UUID REFERENCES factories(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
-ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_audit_logs_resource  ON audit_logs(resource_type, resource_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
 
@@ -177,7 +177,6 @@ CREATE TABLE IF NOT EXISTS vendors (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW()
 );
-ALTER TABLE vendors DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_vendors_factory ON vendors(factory_id);
 
 -- ---------------------------------------------------------------------------
@@ -215,15 +214,19 @@ CREATE TABLE IF NOT EXISTS parts_requests (
   requested_at TIMESTAMP DEFAULT NOW(),
   resolved_at TIMESTAMP
 );
-ALTER TABLE parts_requests DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_parts_requests_incident ON parts_requests(incident_id);
 CREATE INDEX IF NOT EXISTS idx_parts_requests_status   ON parts_requests(status);
 
 -- ---------------------------------------------------------------------------
 -- Make PostgREST (the Supabase API) pick up all of the above immediately.
+-- `anon` is deliberately excluded: the anon key ships in the browser bundle
+-- (NEXT_PUBLIC_SUPABASE_ANON_KEY), so granting it table access defeats
+-- migration_security_phase1_revoke_anon.sql every time this script re-runs.
+-- The app only uses `anon` pre-login; all in-app reads/writes are via
+-- `authenticated` (RLS-scoped) or the service-role admin client.
 -- ---------------------------------------------------------------------------
-GRANT ALL ON ALL TABLES    IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES    IN SCHEMA public TO authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
 
 -- Sanity check: confirm the columns/tables that caused the "won't save / won't

@@ -28,6 +28,9 @@ export const PERMISSIONS = {
   // case (add a colleague, hand it over) without waiting for a supervisor.
   assignIncident: (_role: UserRole) => true,
   closeIncident: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
+  // RCA records satisfy the mandatory-RCA close-gate — same tier as closing,
+  // since a technician self-approving their own RCA would defeat the gate.
+  submitRCA: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
   // Supervisors+ can poke the assignees via Telegram to update progress.
   remindProgress: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
   editIncident: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
