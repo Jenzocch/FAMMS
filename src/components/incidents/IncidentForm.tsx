@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import imageCompression from 'browser-image-compression'
@@ -18,6 +18,8 @@ import { logAuditEvent } from '@/lib/audit'
 import { deadlineFromUrgency } from '@/lib/incident-display'
 import { useIncidentTypes } from '@/lib/useIncidentTypes'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
+import { loadMyFactoryId } from '@/lib/useMyFactory'
+import { loadFactories } from '@/lib/useFactories'
 
 interface Factory { id: string; name: string; code: string }
 interface Area { id: string; factory_id: string; name: string }
@@ -36,6 +38,11 @@ const DEFAULT_ISSUE_TYPES: IssueType[] = [
   { value: 'other', label: '📋 其他' },
 ]
 
+// Remembers where the last report was filed. Field staff report from the same
+// factory/area every day — restoring it turns the 3-step location cascade into
+// "just pick the machine" for repeat reports.
+const LAST_LOCATION_KEY = 'famms.lastReportLocation'
+
 // Three urgency levels (mapped to impact codes A / C / D). "High" (B) is
 // retired from the picker but still renders for any legacy incident that has it.
 const URGENCY = [
@@ -44,7 +51,7 @@ const URGENCY = [
   { value: 'low', labelKey: 'report.urgencyLow', descKey: 'report.urgencyLowDesc' },
 ]
 
-export default function IncidentForm() {
+export default function IncidentForm({ presetMachineId }: { presetMachineId?: string } = {}) {
   const router = useRouter()
   const supabase = createClient()
   const { t } = useI18n()
@@ -76,19 +83,89 @@ export default function IncidentForm() {
   const [photos, setPhotos] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [compressing, setCompressing] = useState(false)
+  // Area waiting to be re-applied once its factory's areas finish loading.
+  const restoredAreaRef = useRef<string | null>(null)
+  // Machine waiting to be applied once its area's machines finish loading
+  // (set by the QR scan-to-report flow).
+  const restoredAssetRef = useRef<string | null>(null)
+
+  // Stable preview URLs — created once per photo list and revoked when the
+  // list changes/unmounts, instead of leaking a new blob URL every render.
+  const photoPreviews = useMemo(() => photos.map(p => URL.createObjectURL(p)), [photos])
+  useEffect(() => () => { photoPreviews.forEach(u => URL.revokeObjectURL(u)) }, [photoPreviews])
 
   useEffect(() => {
-    supabase.from('factories').select('*').order('name').then(({ data }) => setFactories(data ?? []))
+    // Preselect the reporter's own factory so the report form is one step
+    // shorter for technicians (they can still switch factory manually).
+    // Skipped when a QR preset is present — otherwise the two async setters
+    // can race and swallow the preset's area/machine restore.
+    Promise.all([
+      loadFactories(),
+      loadMyFactoryId(),
+    ]).then(([data, myFactoryId]) => {
+      setFactories((data ?? []) as Factory[])
+      if (!presetMachineId && myFactoryId && (data ?? []).some(f => f.id === myFactoryId)) {
+        setFactoryId(prev => prev || myFactoryId)
+      }
+    })
     // Active accounts for the reporter picker (still allows manual entry).
     supabase.from('profiles').select('id, full_name').eq('is_active', true).order('full_name')
       .then(({ data }) => setAccounts((data ?? []) as Account[]))
     // Issue types come from the shared cache (useIncidentTypes) above.
+
+    // Default the reporter to the logged-in account — most reports are
+    // self-reports. Picking someone else / typing a name stays possible for
+    // on-behalf reporting, and anything the user already entered is kept.
+    // (getSession = local read, keeps the form opening instantly.)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const uid = session?.user.id
+      if (!uid) return
+      supabase.from('profiles').select('id, full_name').eq('id', uid).single()
+        .then(({ data }) => {
+          if (!data) return
+          setReporterAccountId(prev => prev || data.id)
+          setReporterName(prev => prev || data.full_name || '')
+        })
+    })
+
+    // QR scan-to-report: ?machine=<id> preselects the whole location cascade
+    // (factory → area → machine), overriding the last-used restore below.
+    if (presetMachineId) {
+      supabase
+        .from('machines')
+        .select('id, area_id, area:areas(factory_id)')
+        .eq('id', presetMachineId)
+        .single()
+        .then(({ data }) => {
+          const factoryId = (data?.area as { factory_id?: string } | null)?.factory_id
+          if (!data || !factoryId) return
+          restoredAreaRef.current = data.area_id
+          restoredAssetRef.current = data.id
+          setFactoryId(factoryId)
+        })
+      return
+    }
+
+    // Restore the last-used factory/area for repeat reports.
+    try {
+      const saved = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY) ?? 'null')
+      if (saved?.factoryId) {
+        restoredAreaRef.current = typeof saved.areaId === 'string' ? saved.areaId : null
+        setFactoryId(saved.factoryId)
+      }
+    } catch { /* corrupt storage — start blank */ }
   }, [])
 
   useEffect(() => {
     if (!factoryId) { setAreas([]); setAreaId(''); return }
     supabase.from('areas').select('*').eq('factory_id', factoryId).order('name')
-      .then(({ data }) => setAreas(data ?? []))
+      .then(({ data }) => {
+        setAreas(data ?? [])
+        // Apply the remembered area once, only while its options actually exist.
+        const pending = restoredAreaRef.current
+        restoredAreaRef.current = null
+        if (pending && (data ?? []).some(a => a.id === pending)) setAreaId(pending)
+      })
     setAreaId('')
     setAssetId('')
   }, [factoryId])
@@ -97,7 +174,13 @@ export default function IncidentForm() {
     if (!areaId) { setAssets([]); setAssetId(''); return }
     supabase.from('machines').select('id, area_id, machine_name, machine_code')
       .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
-      .then(({ data }) => setAssets(data ?? []))
+      .then(({ data }) => {
+        setAssets(data ?? [])
+        // Apply the QR-preset machine once, only while it actually exists here.
+        const pending = restoredAssetRef.current
+        restoredAssetRef.current = null
+        if (pending && (data ?? []).some(m => m.id === pending)) setAssetId(pending)
+      })
     setAssetId('')
   }, [areaId])
 
@@ -238,6 +321,11 @@ export default function IncidentForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ incidentId: incident.id }),
       }).catch(() => {})
+
+      // Remember this location for the next report.
+      try {
+        localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({ factoryId, areaId }))
+      } catch { /* storage full/blocked — skip */ }
 
       toast.success(`案件 ${incident_no} 已建立`)
       router.push(`/incidents/${incident.id}`)
@@ -456,8 +544,8 @@ export default function IncidentForm() {
               {photos.map((p, i) => (
                 <div key={i} className="relative group">
                   <img
-                    src={URL.createObjectURL(p)}
-                    alt=""
+                    src={photoPreviews[i]}
+                    alt={`${t('report.photos')} ${i + 1}`}
                     className="w-24 h-24 object-cover rounded-lg border border-gray-200 group-hover:opacity-80 transition-opacity"
                   />
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/0 group-hover:bg-black/40 rounded-lg transition-all">
@@ -468,6 +556,7 @@ export default function IncidentForm() {
                   </div>
                   <button
                     type="button"
+                    aria-label={`${t('common.delete')} ${i + 1}`}
                     onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
                   >

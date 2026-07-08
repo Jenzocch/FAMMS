@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, X, CheckCircle, SkipForward, Loader2, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, CheckCircle, SkipForward, Loader2, Users, AlertTriangle, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,9 +11,15 @@ import {
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
+import { useOverdueMaintenanceData } from '@/lib/hooks/useOverdueMaintenanceData'
+import { formatDistanceToNow } from 'date-fns'
+import { zhTW, id as idLocale, enUS } from 'date-fns/locale'
+import type { Locale as DateFnsLocale } from 'date-fns'
 
 interface PMTask {
   record_id: string
+  schedule_id?: string
+  checklist?: string[]
   projected: boolean
   ad_hoc?: boolean
   machine_id: string
@@ -56,6 +62,12 @@ const PM_TYPE_KEYS: Record<string, string> = {
   quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly', yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
 }
 
+const DATE_LOCALES: Record<string, DateFnsLocale> = {
+  zh: zhTW,
+  en: enUS,
+  id: idLocale,
+}
+
 const STATUS_KEYS: Record<string, string> = {
   completed: 'pm.stCompleted',
   pending: 'pm.stPending',
@@ -90,9 +102,12 @@ const STATUS_LABELS: Record<string, string> = {
 
 const DAY_ABBRS = ['日', '一', '二', '三', '四', '五', '六']
 
-// A task can be actioned (completed/skipped) only if it's a real, not-yet-done record.
+// A task can be actioned (completed/skipped) if it's not yet done. Projected
+// occurrences (no stored record yet) are actionable too — the API materialises
+// the record on save, so nothing shown on the calendar is ever a dead end.
 function isActionable(task: PMTask) {
-  return !task.projected && (task.status === 'pending' || task.status === 'overdue')
+  if (task.ad_hoc) return false
+  return task.status === 'pending' || task.status === 'overdue' || task.status === 'scheduled'
 }
 
 function getWeekDates(date: Date): string[] {
@@ -108,7 +123,10 @@ function getWeekDates(date: Date): string[] {
 }
 
 export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const dateLocale = DATE_LOCALES[locale]
+  const pmTypeLabel = (pmType: string) =>
+    t(PM_TYPE_KEYS[pmType] ?? '', PM_TYPE_LABELS[pmType] || pmType)
   // Short label for a task's kind: cadence or ad-hoc maintenance label.
   const typeLabel = (task: PMTask): string => {
     if (task.ad_hoc) return t('pm.adhocLabel')
@@ -118,6 +136,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
   const statusLabel = (status: string) =>
     t(STATUS_KEYS[status] ?? '', STATUS_LABELS[status] || status)
   const dayAbbr = (idx: number) => t(`weekdays.${idx}`, DAY_ABBRS[idx])
+  const { overdue, loading: overdueLoading } = useOverdueMaintenanceData()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
   const [selectedMachineId, setSelectedMachineId] = useState('all')
@@ -127,15 +146,17 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [myId, setMyId] = useState<string | null>(null)
   const [onlyMine, setOnlyMine] = useState(false)
+  const [showOverdueList, setShowOverdueList] = useState(false)
 
   // Current user id, so "only my maintenance" can filter to schedules this
-  // person is assigned to.
+  // person is assigned to. (getSession = local read, no network call.)
   useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => setMyId(data.user?.id ?? null))
+    createClient().auth.getSession().then(({ data }) => setMyId(data.session?.user.id ?? null))
   }, [])
 
-  // Inline action state for completing/skipping a real task from the detail panel
-  const [action, setAction] = useState<{ taskId: string; mode: 'complete' | 'skip'; findings: string; cost: string; reason: string } | null>(null)
+  // Inline action state for completing/skipping a task from the detail panel.
+  // `task` is kept so projected occurrences can be materialised on save.
+  const [action, setAction] = useState<{ taskId: string; task: PMTask; mode: 'complete' | 'skip'; findings: string; cost: string; reason: string; checks: boolean[] } | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const year = currentDate.getFullYear()
@@ -178,17 +199,37 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
     }
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/pm/records/${action.taskId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: action.mode === 'complete' ? 'completed' : 'skipped',
-          findings: action.findings || undefined,
-          cost: action.cost ? parseFloat(action.cost) : undefined,
-          delay_reason: action.mode === 'skip' ? action.reason : undefined,
-        }),
-      })
-      if (!res.ok) throw new Error('failed')
+      const checklist = action.task.checklist ?? []
+      const payload = {
+        status: action.mode === 'complete' ? 'completed' : 'skipped',
+        findings: action.findings || undefined,
+        cost: action.cost ? parseFloat(action.cost) : undefined,
+        delay_reason: action.mode === 'skip' ? action.reason : undefined,
+        checklist_results: action.mode === 'complete' && checklist.length > 0
+          ? checklist.map((item, i) => ({ item, done: action.checks[i] ?? false }))
+          : undefined,
+      }
+      // Projected occurrences have no stored record yet — POST materialises
+      // one for (schedule, date). Stored records PATCH in place.
+      const res = action.task.projected
+        ? await fetch('/api/pm/records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...payload,
+              pm_schedule_id: action.task.schedule_id,
+              scheduled_date: action.task.scheduled_date,
+            }),
+          })
+        : await fetch(`/api/pm/records/${action.taskId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+      if (!res.ok) {
+        const j = await res.json().catch(() => null)
+        throw new Error(j?.error || 'failed')
+      }
       toast.success(action.mode === 'complete' ? t('pm.completedMaintenance') : t('pm.skippedDone'))
       setAction(null)
       loadData()
@@ -256,6 +297,54 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
 
   return (
     <div className="space-y-3">
+      {/* Overdue Alert Summary — compact banner */}
+      {!overdueLoading && overdue.length > 0 && (
+        <div className="border-l-4 border-red-500 bg-red-50 rounded-lg p-3">
+          <button
+            onClick={() => setShowOverdueList(!showOverdueList)}
+            className="w-full flex items-center gap-2 hover:opacity-75 transition-opacity"
+          >
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-sm text-red-900">
+                {t('pm.machinesOverdue', '逾期警示').replace('{count}', String(overdue.length))}
+              </p>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-red-600 shrink-0 transition-transform ${showOverdueList ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Expandable overdue list */}
+          {showOverdueList && (
+            <div className="mt-3 space-y-2 border-t border-red-200 pt-3">
+              {overdue.map(m => (
+                <div key={m.machine_id} className="bg-white rounded-lg p-2.5 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">
+                        {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+                      </p>
+                      <p className="text-gray-600 mt-0.5">
+                        {pmTypeLabel(m.pm_type)}
+                      </p>
+                      {m.last_maintained_at && (
+                        <p className="text-gray-500 mt-0.5">
+                          {formatDistanceToNow(new Date(m.last_maintained_at), { addSuffix: true, locale: dateLocale })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-red-600">
+                        {m.days_overdue}d
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Controls row */}
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={selectedMachineId} onValueChange={v => setSelectedMachineId(v ?? 'all')} items={machineItems}>
@@ -302,7 +391,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={navigatePrev}>
+        <Button variant="outline" size="sm" onClick={navigatePrev} aria-label="Previous">
           <ChevronLeft className="w-4 h-4" />
         </Button>
         <div className="text-center">
@@ -313,7 +402,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
             {t('pm.todayBtn')}
           </button>
         </div>
-        <Button variant="outline" size="sm" onClick={navigateNext}>
+        <Button variant="outline" size="sm" onClick={navigateNext} aria-label="Next">
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
@@ -442,7 +531,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
         <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-100">
             <h4 className="font-semibold text-sm text-blue-900">{selectedDate}</h4>
-            <button onClick={() => { setSelectedDate(null); setAction(null) }} className="text-blue-400 hover:text-blue-600">
+            <button onClick={() => { setSelectedDate(null); setAction(null) }} aria-label="Close" className="text-blue-400 hover:text-blue-600 p-1 -m-1">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -489,7 +578,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                             <Button
                               size="sm"
                               className="h-7 gap-1 bg-green-600 hover:bg-green-700 text-xs"
-                              onClick={() => setAction({ taskId: task.record_id, mode: 'complete', findings: '', cost: '', reason: '' })}
+                              onClick={() => setAction({ taskId: task.record_id, task, mode: 'complete', findings: '', cost: '', reason: '', checks: (task.checklist ?? []).map(() => false) })}
                             >
                               <CheckCircle className="w-3.5 h-3.5" /> {t('pm.complete')}
                             </Button>
@@ -497,7 +586,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                               size="sm"
                               variant="outline"
                               className="h-7 gap-1 border-orange-300 text-orange-600 hover:bg-orange-50 text-xs"
-                              onClick={() => setAction({ taskId: task.record_id, mode: 'skip', findings: '', cost: '', reason: '' })}
+                              onClick={() => setAction({ taskId: task.record_id, task, mode: 'skip', findings: '', cost: '', reason: '', checks: [] })}
                             >
                               <SkipForward className="w-3.5 h-3.5" /> {t('pm.skip')}
                             </Button>
@@ -509,6 +598,26 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
                     {/* Inline complete form */}
                     {acting?.mode === 'complete' && (
                       <div className="mt-3 ml-5 space-y-2 bg-green-50 rounded-lg p-3 border border-green-200">
+                        {(acting.task.checklist ?? []).length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-green-900">{t('pm.checklistHeading', '檢查清單 Checklist')}</p>
+                            {(acting.task.checklist ?? []).map((item, i) => (
+                              <label key={i} className="flex items-start gap-2 text-sm text-gray-700 bg-white rounded-lg border border-green-100 px-2.5 py-1.5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={acting.checks[i] ?? false}
+                                  onChange={e => {
+                                    const checks = [...acting.checks]
+                                    checks[i] = e.target.checked
+                                    setAction({ ...acting, checks })
+                                  }}
+                                  className="mt-0.5 w-4 h-4 accent-green-600 shrink-0"
+                                />
+                                <span className={acting.checks[i] ? 'line-through text-gray-400' : ''}>{item}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
                         <Textarea
                           value={acting.findings}
                           onChange={e => setAction({ ...acting, findings: e.target.value })}

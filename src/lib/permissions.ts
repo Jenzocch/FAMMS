@@ -32,7 +32,6 @@ export const PERMISSIONS = {
   remindProgress: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
   editIncident: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
   deleteIncident: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
-
   // --- Preventive maintenance ---
   // Technicians execute PM tasks; managers + admins also manage PM schedules.
   viewPM: (_role: UserRole) => true,
@@ -44,6 +43,7 @@ export const PERMISSIONS = {
   manageAreas: (role: UserRole) => ['manager', 'admin'].includes(role),
   manageFactories: (role: UserRole) => ['manager', 'admin'].includes(role),
   manageIncidentTypes: (role: UserRole) => role === 'admin',
+  manageVendors: (role: UserRole) => ['manager', 'admin'].includes(role),
 
   // --- Settings ---
   // The Settings page is visible to managers and admins. Individual sections

@@ -12,6 +12,8 @@ import {
 import { toast } from 'sonner'
 import { Loader2, Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { loadMyFactoryId } from '@/lib/useMyFactory'
+import { loadFactories } from '@/lib/useFactories'
 
 interface Machine { id: string; machine_name: string; machine_code: string | null }
 interface Factory { id: string; name: string }
@@ -39,7 +41,18 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    supabase.from('factories').select('*').order('name').then(({ data }) => setFactories(data ?? []))
+    Promise.all([
+      loadFactories(),
+      loadMyFactoryId(),
+    ]).then(([data, myFactoryId]) => {
+      setFactories(data ?? [])
+      // Auto-populate the user's own factory (fallback: first factory) so the
+      // machine selector appears without an extra click.
+      if (data && data.length > 0 && !selectedFactory) {
+        const preferred = myFactoryId && data.some(f => f.id === myFactoryId) ? myFactoryId : data[0].id
+        setSelectedFactory(preferred)
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -65,15 +78,22 @@ export default function PMScheduleForm({ factoryId, onSaved }: PMScheduleFormPro
 
     setSubmitting(true)
     try {
-      const { error } = await supabase.from('pm_schedules').insert([{
-        factory_id: selectedFactory,
-        machine_id: selectedMachine,
-        pm_type: pmType,
-        interval_days: pmType === 'custom' ? parseInt(intervalDays, 10) : null,
-        description: description || null,
-        is_active: true,
-      }])
-      if (error) throw error
+      // Create through the API so the first pending pm_record is generated
+      // too (schedules without records only show as projected calendar tasks).
+      const res = await fetch('/api/pm/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          machine_id: selectedMachine,
+          pm_type: pmType,
+          interval_days: pmType === 'custom' ? parseInt(intervalDays, 10) : null,
+          description: description || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => null)
+        throw new Error(j?.error || t('pmForm.createFailedShort', '建立失敗'))
+      }
 
       toast.success(t('pmForm.created', '保養計畫已建立'))
       setSelectedMachine('')

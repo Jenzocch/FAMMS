@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { notifyFactory } from '@/lib/telegram'
+import { getAuthClaims } from '@/lib/auth'
+import { notifyFactory, esc } from '@/lib/telegram'
 
 // Telegram messages are in Bahasa Indonesia — the factory floor audience.
 const ISSUE_TYPE_LABELS: Record<string, string> = {
@@ -17,15 +18,15 @@ const URGENCY_LABELS: Record<string, string> = {
   A: '🔴 Kritis', B: '🟠 Tinggi', C: '🟡 Sedang', D: '🟢 Rendah',
 }
 
-// Escape user-supplied text before it goes into Telegram HTML parse mode.
-// Without this, a title/name containing <, >, or & makes Telegram reject the
-// whole message (400), silently dropping the factory-wide alert.
-function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
 // POST /api/incidents/notify — send Telegram alert for a new report
 export async function POST(req: Request) {
+  // Login required — without this, anyone on the internet could POST incident
+  // ids and spam every registered Telegram group/user.
+  const claims = await getAuthClaims()
+  if (!claims) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
   const supabase = await createClient()
 
   // Require a logged-in user — otherwise anyone could POST an incidentId and
@@ -68,6 +69,8 @@ export async function POST(req: Request) {
     .maybeSingle()
   if (typeRow) typeLabel = (typeRow as any).label_id || (typeRow as any).label || typeLabel
 
+  // User-entered fields (title, names) must be escaped — a stray '<' would
+  // otherwise make Telegram reject the whole message as bad HTML.
   const html = [
     `<b>🆕 Laporan Baru</b>`,
     `<b>No:</b> ${esc(incident.incident_no)}`,

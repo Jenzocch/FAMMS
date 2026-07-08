@@ -5,7 +5,7 @@ import { addDays, addWeeks, addMonths } from 'date-fns'
 import { IncidentStatus } from '@/types'
 import DashboardView, { DashboardRow } from '@/components/dashboard/DashboardView'
 
-export const metadata = { title: 'FAMMS · 主管追蹤' }
+export const metadata = { title: 'Dashboard | FAMMS' }
 
 const UNSPECIFIED = '__unspecified__'
 
@@ -44,13 +44,14 @@ export default async function DashboardPage() {
     .limit(500)
   if (user.factory_id && user.role !== 'admin') incidentQuery = incidentQuery.eq('factory_id', user.factory_id)
 
-  const { data } = await incidentQuery
-  const rows = (data ?? []) as unknown as DashboardRow[]
-  const open = rows.filter(r => OPEN_STATUSES.includes(r.status))
+  // Only maintenance within the last year can affect "overdue" (anything older
+  // means the machine shows overdue either way) — time-bound the history reads
+  // so the dashboard doesn't scan every row ever written.
+  const historyFloor = new Date(Date.now() - 366 * 86400000).toISOString()
 
-  // Get overdue machines: fetch both maintenance_logs and pm_records to determine
-  // the last actual maintenance date, whichever is more recent.
-  const [schedulesRes, logsRes, pmRecordsRes] = await Promise.all([
+  // All four reads are independent — run them in parallel.
+  const [{ data }, schedulesRes, logsRes, pmRecordsRes] = await Promise.all([
+    incidentQuery,
     supabase
       .from('pm_schedules')
       .select('id, machine_id, pm_type, interval_days, machines(machine_name, machine_code)')
@@ -58,13 +59,20 @@ export default async function DashboardPage() {
     supabase
       .from('maintenance_logs')
       .select('machine_id, performed_at')
-      .order('performed_at', { ascending: false }),
+      .gte('performed_at', historyFloor)
+      .order('performed_at', { ascending: false })
+      .limit(2000),
     supabase
       .from('pm_records')
       .select('pm_schedule_id, completed_at')
       .eq('status', 'completed')
-      .order('completed_at', { ascending: false }),
+      .gte('completed_at', historyFloor)
+      .order('completed_at', { ascending: false })
+      .limit(2000),
   ])
+
+  const rows = (data ?? []) as unknown as DashboardRow[]
+  const open = rows.filter(r => OPEN_STATUSES.includes(r.status))
 
   // pm_records is keyed by pm_schedule_id, so map through the schedules.
   const scheduleToMachine: Record<string, string> = {}
@@ -111,6 +119,17 @@ export default async function DashboardPage() {
     })
   }
 
+  // Action inbox — the three queues a supervisor drains daily. Keys map to the
+  // board's filter tabs so each card deep-links to the matching filtered list.
+  const WAITING: IncidentStatus[] = ['waiting_parts', 'waiting_approval', 'waiting_vendor', 'waiting_shutdown']
+  const inbox = {
+    reported: open.filter(r => r.status === 'reported').length,
+    waiting: open.filter(r => WAITING.includes(r.status)).length,
+    confirm: open.filter(r => r.status === 'testing' || r.status === 'observation').length,
+  }
+
+  // "Urgent" = Critical (A). New cases only use A/C/D; 'B' (legacy "High") is
+  // kept here so any older B-coded cases still surface as urgent.
   const urgent = open.filter(r => r.downtime_impact === 'A' || r.downtime_impact === 'B')
   const now = Date.now()
   const stale = open.filter(r => now - new Date(r.updated_at).getTime() > 3 * 86400000)
@@ -122,10 +141,12 @@ export default async function DashboardPage() {
       openCount={open.length}
       urgentCount={urgent.length}
       staleCount={stale.length}
+      inbox={inbox}
       byFactory={byFactoryEntries}
       urgent={urgent}
       stale={stale}
       overdue={overdue}
+      userRole={user.role}
     />
   )
 }

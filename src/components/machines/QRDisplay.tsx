@@ -20,7 +20,8 @@ export default function QRDisplay({ machineCode, machineId, appUrl = 'http://loc
   useEffect(() => {
     async function generateQR() {
       try {
-        const url = `${appUrl}/machines/${machineId}`
+        // Scan → straight into the report form with this machine preselected.
+        const url = `${appUrl}/incidents/new?machine=${machineId}`
         const dataUrl = await QRCode.toDataURL(url, {
           errorCorrectionLevel: 'H',
           type: 'image/webp',
@@ -57,7 +58,7 @@ export default function QRDisplay({ machineCode, machineId, appUrl = 'http://loc
     <div className="bg-white rounded-xl border border-gray-200 p-8 space-y-6">
       <div className="text-center">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">QR Code — {machineCode}</h2>
-        <p className="text-sm text-gray-500">Scan untuk akses detail mesin</p>
+        <p className="text-sm text-gray-500">Scan untuk lapor masalah mesin ini · 掃描直接報修</p>
       </div>
 
       {loading ? (

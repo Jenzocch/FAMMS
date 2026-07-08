@@ -31,7 +31,7 @@ export default function TopBar({ profile }: TopBarProps) {
     : 'U'
 
   return (
-    <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
+    <header className="print:hidden bg-white border-b border-gray-100 sticky top-0 z-40">
       <div className="flex items-center justify-between px-4 h-12 max-w-lg mx-auto">
         <div className="flex items-center gap-2 text-blue-600 min-w-0">
           <Wrench className="w-5 h-5 shrink-0" />

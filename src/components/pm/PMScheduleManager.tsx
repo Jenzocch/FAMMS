@@ -12,12 +12,15 @@ import { Loader2, Plus, Trash2, Edit2, Users, Check, X } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import type { UserRole } from '@/types'
 import { ROLE_ZH } from '@/lib/incident-display'
+import { loadMyFactoryId } from '@/lib/useMyFactory'
+import { loadFactories } from '@/lib/useFactories'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; factory_id: string; name: string }
 interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null }
 interface Machine {
   id: string
+  factory_id?: string
   machine_name: string
   machine_code: string | null
   maintenance_cycle: number
@@ -28,6 +31,7 @@ interface PMSchedule {
   pm_type: string
   interval_days: number | null
   description: string | null
+  checklist: string | null
   is_active: boolean
   assigned_user_ids: string[]
   assigned_to: string | null
@@ -73,15 +77,24 @@ export default function PMScheduleManager() {
   const [pmType, setPmType] = useState('monthly')
   const [intervalDays, setIntervalDays] = useState('')
   const [description, setDescription] = useState('')
+  // One checklist item per line; stored as a JSON array string on the schedule.
+  const [checklistText, setChecklistText] = useState('')
   const [assignees, setAssignees] = useState<string[]>([])
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.from('factories').select('*').order('name').then(({ data }) => {
+    Promise.all([
+      loadFactories(),
+      loadMyFactoryId(),
+    ]).then(([data, myFactoryId]) => {
       setFactories(data ?? [])
-      if (data && data.length > 0) setFactoryId(data[0].id)
+      if (data && data.length > 0) {
+        // Preselect the user's own factory so technicians see their machines.
+        const preferred = myFactoryId && data.some(f => f.id === myFactoryId) ? myFactoryId : data[0].id
+        setFactoryId(preferred)
+      }
       setLoading(false)
     })
     supabase.from('profiles').select('id, full_name, role, factory_id').eq('is_active', true).order('full_name')
@@ -96,6 +109,11 @@ export default function PMScheduleManager() {
   const factoryTechnicians = accounts.filter(
     a => a.role === 'technician' && (!factoryId || !a.factory_id || a.factory_id === factoryId)
   )
+  // Accounts selectable for this schedule's factory. Cross-factory accounts and
+  // anyone already assigned stay visible so they can still be de-selected.
+  const factoryAccounts = accounts.filter(
+    a => assignees.includes(a.id) || !factoryId || !a.factory_id || a.factory_id === factoryId
+  )
 
   useEffect(() => {
     if (!factoryId) { setAreas([]); setAreaId(''); return }
@@ -106,22 +124,47 @@ export default function PMScheduleManager() {
 
   useEffect(() => {
     if (!areaId) { setMachines([]); setMachineId(''); return }
-    supabase.from('machines').select('id, machine_name, machine_code, maintenance_cycle')
+    supabase.from('machines').select('id, factory_id, machine_name, machine_code, maintenance_cycle')
       .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
       .then(({ data }) => setMachines(data ?? []))
     setMachineId('')
   }, [areaId])
 
+  const checklistToText = (raw: string | null): string => {
+    if (!raw) return ''
+    try {
+      const v = JSON.parse(raw)
+      return Array.isArray(v) ? v.join('\n') : ''
+    } catch { return '' }
+  }
+  const textToChecklist = (text: string): string[] =>
+    text.split('\n').map(l => l.trim()).filter(Boolean)
+
   async function loadSchedules() {
-    const { data } = await supabase
-      .from('pm_schedules')
-      .select(`
-        id, machine_id, pm_type, interval_days, description, is_active,
+    // assigned_user_ids / assigned_to only exist after migration_pm_assignee.sql.
+    // Retry without them if the column is missing, so the list still loads.
+    const withAssignee = `
+        id, machine_id, pm_type, interval_days, description, checklist, is_active,
         assigned_user_ids, assigned_to,
         machines:machines(machine_name, machine_code)
-      `)
+      `
+    const baseCols = `
+        id, machine_id, pm_type, interval_days, description, checklist, is_active,
+        machines:machines(machine_name, machine_code)
+      `
+    let res: any = await supabase
+      .from('pm_schedules')
+      .select(withAssignee)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
+    if (res.error) {
+      res = await supabase
+        .from('pm_schedules')
+        .select(baseCols)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+    }
+    const data = res.data as any[] | null
 
     if (data) {
       const mapped = (data as any[]).map(s => ({
@@ -130,6 +173,7 @@ export default function PMScheduleManager() {
         pm_type: s.pm_type,
         interval_days: s.interval_days ?? null,
         description: s.description,
+        checklist: s.checklist ?? null,
         is_active: s.is_active,
         assigned_user_ids: s.assigned_user_ids ?? [],
         assigned_to: s.assigned_to ?? null,
@@ -163,34 +207,53 @@ export default function PMScheduleManager() {
     setSubmitting(true)
     try {
       if (editingId) {
-        const { error } = await supabase
+        // Assignee columns are optional (migration_pm_assignee.sql). Try with
+        // them; if the column is missing, retry without so the edit still saves.
+        const items = textToChecklist(checklistText)
+        const base = {
+          pm_type: pmType,
+          interval_days: intervalValue,
+          description: description || null,
+          checklist: items.length ? JSON.stringify(items) : null,
+        }
+        let { error } = await supabase
           .from('pm_schedules')
-          .update({
-            pm_type: pmType, interval_days: intervalValue, description: description || null,
-            assigned_user_ids: assignees, assigned_to: assignedTo,
-          })
+          .update({ ...base, assigned_user_ids: assignees, assigned_to: assignedTo })
           .eq('id', editingId)
+        if (error) {
+          ({ error } = await supabase.from('pm_schedules').update(base).eq('id', editingId))
+        }
         if (error) throw error
         toast.success(t('pm.scheduleUpdated'))
       } else {
-        const { error } = await supabase
-          .from('pm_schedules')
-          .insert({
+        // Create through the API so the first pending pm_record is generated
+        // too — a schedule without records only ever shows projected calendar
+        // tasks. One code path for every creation source (the API derives
+        // factory_id from the machine, so the NOT NULL insert can't fail).
+        const res = await fetch('/api/pm/schedules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             machine_id: machineId,
             pm_type: pmType,
             interval_days: intervalValue,
-            description: description || null,
+            description: description || undefined,
+            checklist: textToChecklist(checklistText),
             assigned_user_ids: assignees,
             assigned_to: assignedTo,
-            is_active: true,
-          })
-        if (error) throw error
+          }),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => null)
+          throw new Error(j?.error || t('pm.operationFailed'))
+        }
         toast.success(t('pm.scheduleCreated'))
       }
       setMachineId('')
       setPmType('monthly')
       setIntervalDays('')
       setDescription('')
+      setChecklistText('')
       setAssignees([])
       setShowForm(false)
       setEditingId(null)
@@ -233,7 +296,7 @@ export default function PMScheduleManager() {
         <Button
           onClick={() => {
             setEditingId(null); setMachineId(''); setPmType('monthly')
-            setIntervalDays(''); setDescription(''); setAssignees([])
+            setIntervalDays(''); setDescription(''); setChecklistText(''); setAssignees([])
             setShowForm(true)
           }}
           className="gap-2 w-full"
@@ -315,6 +378,18 @@ export default function PMScheduleManager() {
             />
           </div>
 
+          {/* Checklist — one item per line; ticked off when completing the task */}
+          <div>
+            <Label>{t('pm.checklistLabel', '檢查清單 Checklist（選填，一行一項）')}</Label>
+            <textarea
+              value={checklistText}
+              onChange={e => setChecklistText(e.target.value)}
+              placeholder={t('pm.checklistPlaceholder', '例如：\n檢查 bearing 潤滑\n清潔散熱片\n測量運轉溫度')}
+              rows={3}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+
           {/* Responsible person(s) — who this maintenance is assigned to */}
           <div>
             <div className="flex items-center justify-between gap-2">
@@ -340,11 +415,11 @@ export default function PMScheduleManager() {
                 )}
               </div>
             </div>
-            {accounts.length === 0 ? (
+            {factoryAccounts.length === 0 ? (
               <p className="text-xs text-gray-400 mt-1">{t('assign.noAccounts', '尚無可指派的帳號')}</p>
             ) : (
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {accounts.map(a => {
+                {factoryAccounts.map(a => {
                   const on = assignees.includes(a.id)
                   return (
                     <button
@@ -404,6 +479,7 @@ export default function PMScheduleManager() {
                     setPmType(s.pm_type)
                     setIntervalDays(s.interval_days ? String(s.interval_days) : '')
                     setDescription(s.description || '')
+                    setChecklistText(checklistToText(s.checklist))
                     setAssignees(s.assigned_user_ids ?? [])
                     setShowForm(true)
                   }}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import imageCompression from 'browser-image-compression'
@@ -47,7 +47,11 @@ function allowedStatuses(currentStatus: IncidentStatus, allowRollback: boolean =
     return SELECTABLE.filter(s => s !== 'reported')
   }
 
-  const currentIndex = MAIN_ORDER.indexOf(currentStatus)
+  // A "waiting" side-state isn't on the main line, so resume it at 處理中
+  // (analyzing) — otherwise a case parked in e.g. waiting_parts could never
+  // move forward without ticking rollback, contradicting the next-step hint.
+  const effectiveStatus = WAITING_STATES.includes(currentStatus) ? 'analyzing' : currentStatus
+  const currentIndex = MAIN_ORDER.indexOf(effectiveStatus)
   return SELECTABLE.filter(s => {
     if (WAITING_STATES.includes(s)) return currentStatus !== 'closed'
     const index = MAIN_ORDER.indexOf(s)
@@ -75,12 +79,29 @@ export default function ProgressUpdate({
   const [photos, setPhotos] = useState<File[]>([])
   const [allowRollback, setAllowRollback] = useState(false)
   const [completionType, setCompletionType] = useState<'temporary_fix' | 'permanent_fix' | ''>('')
+  // Optional close-time costs — the cheapest possible cost tracking: two
+  // numbers at the moment the work is freshest in memory.
+  const [laborCost, setLaborCost] = useState('')
+  const [partsCost, setPartsCost] = useState('')
+  // Save the fix into the knowledge base so the next technician can find it.
+  const [saveToKb, setSaveToKb] = useState(true)
+  const [repairMethod, setRepairMethod] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [compressing, setCompressing] = useState(false)
 
+  // Stable preview URLs — created once per photo list and revoked when the
+  // list changes/unmounts, instead of leaking a new blob URL every render.
+  const photoPreviews = useMemo(() => photos.map(p => URL.createObjectURL(p)), [photos])
+  useEffect(() => () => { photoPreviews.forEach(u => URL.revokeObjectURL(u)) }, [photoPreviews])
+
   // Status options based on rollback setting. Only supervisors+ may move a case to "closed".
   const availableStatuses = allowedStatuses(currentStatus, allowRollback)
-  const selectableStatuses = canClose ? availableStatuses : availableStatuses.filter(s => s !== 'closed')
+  const base = canClose ? availableStatuses : availableStatuses.filter(s => s !== 'closed')
+  // Always include the current status as a (selected, no-op) option. Some
+  // statuses aren't forward targets in SELECTABLE (e.g. 'reported', or the
+  // waiting_vendor/approval/shutdown side-states), so without this the Select's
+  // default value would not match any item and render blank.
+  const selectableStatuses = base.includes(currentStatus) ? base : [currentStatus, ...base]
 
   async function addPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -151,7 +172,14 @@ export default function ProgressUpdate({
         const res = await fetch(`/api/incidents/${incidentId}/close`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ root_cause: note || undefined, completion_type: completionType || undefined }),
+          body: JSON.stringify({
+            root_cause: note || undefined,
+            completion_type: completionType || undefined,
+            labor_cost: laborCost ? parseFloat(laborCost) : undefined,
+            parts_cost: partsCost ? parseFloat(partsCost) : undefined,
+            save_to_kb: saveToKb,
+            repair_method: repairMethod || undefined,
+          }),
         })
         const json = await res.json().catch(() => ({}))
         if (!res.ok) {
@@ -228,18 +256,22 @@ export default function ProgressUpdate({
         />
       </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="allowRollback"
-          checked={allowRollback}
-          onChange={e => setAllowRollback(e.target.checked)}
-          className="w-4 h-4 rounded border-gray-300"
-        />
-        <Label htmlFor="allowRollback" className="mb-0 text-sm cursor-pointer">
-          {t('progressUpdate.allowRollback')}
-        </Label>
-      </div>
+      {/* Moving a case backwards is an exceptional action — supervisors+ only
+          (same gate as closing), so technicians can't undo workflow progress. */}
+      {canClose && (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="allowRollback"
+            checked={allowRollback}
+            onChange={e => setAllowRollback(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300"
+          />
+          <Label htmlFor="allowRollback" className="mb-0 text-sm cursor-pointer">
+            {t('progressUpdate.allowRollback')}
+          </Label>
+        </div>
+      )}
 
       <div>
         <Label>{t('progressUpdate.newStatus')}</Label>
@@ -284,6 +316,60 @@ export default function ProgressUpdate({
               <span className="text-xs text-gray-500 block mt-0.5">{t('progressUpdate.temporaryFixDesc', '需觀察 30 天，根本原因未解決')}</span>
             </button>
           </div>
+
+          {/* Optional costs — feed the monthly report; skippable so closing
+              never gets blocked on missing numbers. */}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div>
+              <Label className="text-xs">{t('progressUpdate.laborCost', '工時費用（選填）')}</Label>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={laborCost}
+                onChange={e => setLaborCost(e.target.value)}
+                placeholder="0"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">{t('progressUpdate.partsCost', '零件/材料費用（選填）')}</Label>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={partsCost}
+                onChange={e => setPartsCost(e.target.value)}
+                placeholder="0"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Knowledge base capture */}
+          <label className="mt-3 flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={saveToKb}
+              onChange={e => setSaveToKb(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-blue-600 shrink-0"
+            />
+            <span className="text-sm text-gray-700">
+              {t('progressUpdate.saveToKb', '存入知識庫（下次同樣問題可查到怎麼修）')}
+            </span>
+          </label>
+          {saveToKb && (
+            <div className="mt-2">
+              <Label className="text-xs">{t('progressUpdate.repairMethod', '修理方法（選填，未填則使用下方備註）')}</Label>
+              <Textarea
+                value={repairMethod}
+                onChange={e => setRepairMethod(e.target.value)}
+                placeholder={t('progressUpdate.repairMethodPh', '例如：更換 bearing 6205、重新校正 sensor 位置…')}
+                rows={2}
+                className="mt-1"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -306,8 +392,8 @@ export default function ProgressUpdate({
               {photos.map((p, i) => (
                 <div key={i} className="relative group">
                   <img
-                    src={URL.createObjectURL(p)}
-                    alt=""
+                    src={photoPreviews[i]}
+                    alt={`${t('progressUpdate.photos')} ${i + 1}`}
                     className="w-20 h-20 object-cover rounded-lg border border-gray-200 group-hover:opacity-80 transition-opacity"
                   />
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/0 group-hover:bg-black/40 rounded-lg transition-all">
@@ -318,6 +404,7 @@ export default function ProgressUpdate({
                   </div>
                   <button
                     type="button"
+                    aria-label={`${t('common.delete')} ${i + 1}`}
                     onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
                     className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-lg hover:bg-red-600"
                   >

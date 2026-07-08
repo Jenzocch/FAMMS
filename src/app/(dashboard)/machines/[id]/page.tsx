@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthClaims } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -8,12 +9,12 @@ import HealthScoreBadge from '@/components/shared/HealthScoreBadge'
 import { formatDistance } from 'date-fns'
 import { id } from 'date-fns/locale'
 
-export const metadata = { title: 'Detail Mesin | FAMMS' }
+export const metadata = { title: 'Machine | FAMMS' }
 
 export default async function MachineDetailPage({ params }: { params: { id: string } }) {
+  const claims = await getAuthClaims()
+  if (!claims) redirect('/login')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const { data: machine } = await supabase
     .from('machines')

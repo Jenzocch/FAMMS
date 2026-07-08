@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthClaims } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import TopBar from '@/components/shared/TopBar'
 import BottomNav from '@/components/shared/BottomNav'
@@ -6,19 +7,23 @@ import Sidebar from '@/components/shared/Sidebar'
 import AccountDisabled from '@/components/shared/AccountDisabled'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  // Local JWT check — no auth server round-trip on every navigation. The
+  // profile query below runs under the same JWT and is verified server-side
+  // by PostgREST, so a forged token still yields nothing.
+  const claims = await getAuthClaims()
+  if (!claims?.sub) redirect('/login')
+  const userId = claims.sub
 
+  const supabase = await createClient()
   // Fetch profile and my-open-case count in parallel — they're independent,
   // so this saves one round-trip of latency on every page navigation.
   const [{ data: profile }, { count: myOpenCount }] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('profiles').select('*').eq('id', userId).single(),
     supabase
       .from('incidents')
       .select('id', { count: 'exact', head: true })
       .neq('status', 'closed')
-      .contains('assigned_user_ids', [user.id]),
+      .contains('assigned_user_ids', [userId]),
   ])
 
   // Admin-disabled accounts are blocked from the app entirely

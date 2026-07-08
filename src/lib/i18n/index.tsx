@@ -33,13 +33,19 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('id')
 
   // Hydrate the saved choice on mount (client-only to avoid SSR mismatch).
-  // Default to 'id' (Bahasa Indonesia) if not saved.
+  // First visit (nothing saved): follow the browser/phone language so
+  // Indonesian staff see Bahasa and Chinese managers see 中文 without hunting
+  // for the language switcher. A manual choice always wins afterwards.
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null
     if (saved === 'zh' || saved === 'en' || saved === 'id') {
       setLocaleState(saved)
+      return
     }
-    // If saved is null or invalid, keep the default 'id'
+    const nav = (navigator.language || '').toLowerCase()
+    if (nav.startsWith('zh')) setLocaleState('zh')
+    else if (nav.startsWith('en')) setLocaleState('en')
+    // anything else (incl. 'id') keeps the Bahasa Indonesia default
   }, [])
 
   const setLocale = useCallback((l: Locale) => {

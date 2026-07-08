@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User } from 'lucide-react'
+import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Profile, UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
+  { href: '/knowledge-base', labelKey: 'navigation.knowledgeBase', icon: BookOpen },
   { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r) => PERMISSIONS.viewSettings(r) },
 ]
 
@@ -51,7 +52,7 @@ export default function Sidebar({ profile, incidentBadge = 0 }: SidebarProps) {
   }
 
   return (
-    <aside className="hidden lg:flex lg:flex-col w-60 shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0">
+    <aside className="print:hidden hidden lg:flex lg:flex-col w-60 shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0">
       {/* Brand */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2 text-blue-600 min-w-0">

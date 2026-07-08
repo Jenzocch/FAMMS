@@ -5,6 +5,7 @@ import FactoryManager from '@/components/settings/FactoryManager'
 import AreaManager from '@/components/settings/AreaManager'
 import AssetManager from '@/components/settings/AssetManager'
 import IncidentTypeManager from '@/components/settings/IncidentTypeManager'
+import VendorManager from '@/components/settings/VendorManager'
 import PMScheduleManager from '@/components/settings/PMScheduleManager'
 import UserManager from '@/components/settings/UserManager'
 import { isTelegramConfigured } from '@/lib/telegram'
@@ -14,7 +15,7 @@ import {
   NoFactoryMessage,
 } from '@/components/settings/SettingsSectionHeader'
 
-export const metadata = { title: '設定 | FAMMS' }
+export const metadata = { title: 'Settings | FAMMS' }
 
 export default async function SettingsPage() {
   const user = await getCurrentUser()
@@ -29,6 +30,7 @@ export default async function SettingsPage() {
   const canManageAreas = PERMISSIONS.manageAreas(user.role)
   const canManageFactories = PERMISSIONS.manageFactories(user.role)
   const canManageIncidentTypes = PERMISSIONS.manageIncidentTypes(user.role)
+  const canManageVendors = PERMISSIONS.manageVendors(user.role)
   const canManagePMSchedules = PERMISSIONS.managePMSchedules(user.role)
   const canManageTelegram = PERMISSIONS.manageTelegram(user.role)
 
@@ -73,6 +75,14 @@ export default async function SettingsPage() {
         <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <SettingsSectionHeader titleKey="settings.incidentTypeSectionTitle" descKey="settings.incidentTypeSectionDesc" />
           <IncidentTypeManager />
+        </section>
+      )}
+
+      {/* Vendor Roster — manager + admin */}
+      {canManageVendors && (
+        <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          <SettingsSectionHeader titleKey="settings.vendorSectionTitle" descKey="settings.vendorSectionDesc" />
+          <VendorManager />
         </section>
       )}
 

@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, ChevronRight, UserCheck, Lock, CalendarClock, BellRing, Loader2 } from 'lucide-react'
+import { AlertCircle, ChevronRight, UserCheck, Lock, CalendarClock } from 'lucide-react'
+import NudgeCardButton from '@/components/incidents/NudgeCardButton'
 import { formatDistanceToNow, format } from 'date-fns'
 import { zhTW, enUS, id as idLocale } from 'date-fns/locale'
 import type { IncidentStatus, UserRole } from '@/types'
@@ -13,6 +14,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { useProgressNudge } from '@/lib/useProgressNudge'
+import NextStepHint from '@/components/incidents/NextStepHint'
 
 export interface BoardRow {
   id: string
@@ -25,6 +27,7 @@ export interface BoardRow {
   reported_at: string
   assigned_to: string | null
   due_date: string | null
+  observation_end_date: string | null
   machine: { machine_code: string | null; machine_name: string } | null
   factory: { name: string } | null
 }
@@ -32,41 +35,41 @@ export interface BoardRow {
 interface IncidentBoardProps {
   rows: BoardRow[]
   userRole?: UserRole
+  initialFilter?: string
 }
 
-export default function IncidentBoard({ rows, userRole = 'technician' }: IncidentBoardProps) {
+export default function IncidentBoard({ rows, userRole = 'technician', initialFilter }: IncidentBoardProps) {
   const { t, locale } = useI18n()
   const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
   const typeLabel = useIncidentTypeLabel()
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(
+    initialFilter && BOARD_FILTERS.some(f => f.key === initialFilter) ? initialFilter : 'all'
+  )
   const canAssign = PERMISSIONS.assignIncident(userRole)
   const canRemind = PERMISSIONS.remindProgress(userRole)
   const { remindingId, nudge } = useProgressNudge()
-
-  // Nudge assignees via Telegram straight from the card — no need to open the
-  // case. preventDefault/stopPropagation so the click doesn't follow the card's
-  // <Link> to the detail page.
-  function remind(e: React.MouseEvent, id: string) {
-    e.preventDefault()
-    e.stopPropagation()
-    nudge(id)
-  }
 
   const activeFilter = BOARD_FILTERS.find(f => f.key === filter)!
   const filtered = activeFilter.statuses
     ? rows.filter(r => activeFilter.statuses!.includes(r.status))
     : rows
 
-  // Surface the most pressing work first: overdue cases, then by urgency
+  // Surface the most pressing work first: overdue cases, then observation
+  // periods that have ended (ready for close review), then by urgency
   // (A > B > C > D), then most recently reported. Helps technicians see what
   // to tackle next at a glance.
   const today = new Date(new Date().toDateString())
+  const todayStr = format(today, 'yyyy-MM-dd')
   const URGENCY_RANK: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 }
   const isOverdue = (r: BoardRow) =>
     !!r.due_date && r.status !== 'closed' && new Date(r.due_date) < today
+  const isObsDue = (r: BoardRow) =>
+    r.status === 'observation' && !!r.observation_end_date &&
+    r.observation_end_date.slice(0, 10) <= todayStr
+  const attentionRank = (r: BoardRow) => (isOverdue(r) ? 0 : isObsDue(r) ? 1 : 2)
   const sorted = [...filtered].sort((a, b) => {
-    const ov = (isOverdue(a) ? 0 : 1) - (isOverdue(b) ? 0 : 1)
-    if (ov !== 0) return ov
+    const at = attentionRank(a) - attentionRank(b)
+    if (at !== 0) return at
     const ur = (URGENCY_RANK[a.downtime_impact] ?? 9) - (URGENCY_RANK[b.downtime_impact] ?? 9)
     if (ur !== 0) return ur
     return new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()
@@ -90,7 +93,8 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              aria-pressed={active}
+              className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-medium transition-colors ${
                 active ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600'
               }`}
             >
@@ -105,7 +109,24 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">{t('board.noIncidents')}</p>
+          {filter !== 'all' ? (
+            // A specific tab is empty — the other tabs may still have cases.
+            <p className="text-sm">{t('board.noInFilter', '此分類目前沒有案件')}</p>
+          ) : (
+            <>
+              <p className="text-sm">
+                {PERMISSIONS.boardFull(userRole)
+                  ? t('board.noIncidents')
+                  : t('board.emptyMine', '目前沒有指派給你或你回報的案件')}
+              </p>
+              <Link
+                href="/incidents/new"
+                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium active:bg-blue-700"
+              >
+                {t('board.reportCta', '回報問題')}
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -113,10 +134,16 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
             const urgency = URGENCY_FROM_IMPACT[inc.downtime_impact]
             const overdue = isOverdue(inc)
             return (
-              <Link
+              // Card chrome lives on the wrapper div; the Link only covers the
+              // readable content so the nudge button below is NOT nested inside
+              // the anchor (invalid HTML + screen-reader confusion).
+              <div
                 key={inc.id}
+                className="bg-white rounded-xl border border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400 transition-all"
+              >
+              <Link
                 href={`/incidents/${inc.id}`}
-                className="block bg-white rounded-xl border border-gray-300 shadow-sm p-3.5 hover:shadow-md hover:border-gray-400 active:bg-gray-50 transition-shadow"
+                className="block p-3.5 rounded-xl active:bg-gray-50"
               >
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_ZH_COLOR[inc.status]}`}>
@@ -125,6 +152,11 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${urgency.color}`}>
                     {t(`urgency.${inc.downtime_impact}`, urgency.label)}
                   </span>
+                  {isObsDue(inc) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-teal-600 text-white">
+                      {t('board.obsDue', '觀察期已滿')}
+                    </span>
+                  )}
                   {inc.due_date && (
                     <span className={`inline-flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full font-medium ${
                       overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
@@ -170,24 +202,37 @@ export default function IncidentBoard({ rows, userRole = 'technician' }: Inciden
                   )}
                 </div>
 
-                {/* Nudge for progress — supervisors+ only, open cases only */}
-                {canRemind && inc.status !== 'closed' && (
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      onClick={(e) => remind(e, inc.id)}
-                      disabled={remindingId === inc.id}
-                      className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition disabled:opacity-50"
-                    >
-                      {remindingId === inc.id
-                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                        : <BellRing className="w-3 h-3" />}
-                      {t('remind.cardButton', '催進度')}
-                    </button>
+                {/* Next-step nudge: what this case needs next, at a glance */}
+                {inc.status !== 'closed' && (
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <NextStepHint status={inc.status} variant="inline" userRole={userRole} />
                   </div>
                 )}
               </Link>
+
+              {/* Nudge for progress — supervisors+ only, open cases only.
+                  Outside the Link (sibling, not nested) with a 2-tap confirm. */}
+              {canRemind && inc.status !== 'closed' && (
+                <div className="px-3.5 pb-3 -mt-1 flex justify-end">
+                  <NudgeCardButton
+                    incidentId={inc.id}
+                    sending={remindingId === inc.id}
+                    onNudge={nudge}
+                  />
+                </div>
+              )}
+              </div>
             )
           })}
+
+          {/* The server query caps at 200 rows — tell the user older cases
+              exist but are only reachable via search, instead of silently
+              truncating. */}
+          {rows.length >= 200 && (
+            <p className="text-center text-xs text-gray-400 py-2">
+              {t('board.limitNote', '僅顯示最近 200 筆案件，較舊案件請使用搜尋')}
+            </p>
+          )}
         </div>
       )}
     </div>

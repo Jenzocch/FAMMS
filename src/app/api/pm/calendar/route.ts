@@ -16,10 +16,21 @@ import type { PMType } from '@/types'
  *
  * Optional machine_id filters to a single machine.
  */
+// pm_schedules.checklist is a JSON string (array of item labels).
+function parseChecklist(raw: unknown): string[] {
+  if (!raw || typeof raw !== 'string') return []
+  try {
+    const v = JSON.parse(raw)
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  } catch { return [] }
+}
+
 export async function GET(req: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  // Local JWT check — this endpoint is hit on every PM calendar month change,
+  // so it must not add an auth round-trip. RLS enforces real data access.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  if (!claimsData?.claims) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
   const factoryId = url.searchParams.get('factory_id')
@@ -46,15 +57,22 @@ export async function GET(req: Request) {
       return Response.json({ month, events: [], machines: [] })
     }
 
-    // Active schedules for this factory (optionally filtered by machine)
-    let scheduleQuery = supabase
-      .from('pm_schedules')
-      .select('id, machine_id, pm_type, interval_days, description, created_at, assigned_user_ids, assigned_to')
-      .eq('factory_id', factoryId)
-      .eq('is_active', true)
-    if (machineId) scheduleQuery = scheduleQuery.eq('machine_id', machineId)
-    const { data: schedules } = await scheduleQuery
-    const scheduleList = schedules || []
+    // Active schedules for this factory (optionally filtered by machine).
+    // assigned_user_ids / assigned_to only exist once migration_pm_assignee.sql
+    // has run — if it hasn't, select+retry without them so the calendar still
+    // works (assignee display/filter just stays empty until the migration runs).
+    const BASE_COLS = 'id, machine_id, pm_type, interval_days, description, checklist, created_at'
+    const scheduleSelect = async (cols: string) => {
+      let q = supabase.from('pm_schedules').select(cols)
+        .eq('factory_id', factoryId).eq('is_active', true)
+      if (machineId) q = q.eq('machine_id', machineId)
+      return q
+    }
+    let scheduleRes = await scheduleSelect(`${BASE_COLS}, assigned_user_ids, assigned_to`)
+    if (scheduleRes.error) {
+      scheduleRes = await scheduleSelect(BASE_COLS)
+    }
+    const scheduleList = (scheduleRes.data as any[]) || []
     const scheduleIds = scheduleList.map(s => s.id)
     const scheduleMap = Object.fromEntries(scheduleList.map(s => [s.id, s]))
 
@@ -116,6 +134,8 @@ export async function GET(req: Request) {
 
         pushTask(date, {
           record_id: r.id,
+          schedule_id: r.pm_schedule_id,
+          checklist: parseChecklist(schedule.checklist),
           projected: false,
           ad_hoc: false,
           machine_id: schedule.machine_id,
@@ -148,6 +168,8 @@ export async function GET(req: Request) {
 
           pushTask(date, {
             record_id: `proj-${s.id}-${date}`,
+            schedule_id: s.id,
+            checklist: parseChecklist((s as any).checklist),
             projected: true,
             ad_hoc: false,
             machine_id: s.machine_id,

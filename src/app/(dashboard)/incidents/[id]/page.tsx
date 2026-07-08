@@ -7,8 +7,9 @@ import WorkflowProgress from '@/components/incidents/WorkflowProgress'
 import RemindButton from '@/components/incidents/RemindButton'
 import GudangRequest from '@/components/incidents/GudangRequest'
 import StatusChip from '@/components/incidents/StatusChip'
-import { BackLink, UrgencyChip, DueDateChip, ClosedBanner } from '@/components/incidents/IncidentDetailChrome'
+import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection } from '@/components/incidents/IncidentDetailChrome'
 import AssignForm from '@/components/incidents/AssignForm'
+import NextStepHint from '@/components/incidents/NextStepHint'
 import IncidentActions from '@/components/incidents/IncidentActions'
 import AuditTrail from '@/components/incidents/AuditTrail'
 import IncidentTypeText from '@/components/incidents/IncidentTypeText'
@@ -50,7 +51,7 @@ export default async function IncidentDetailPage({
     .select(`
       *,
       machine:machines(machine_code, machine_name),
-      factory:factories(name)
+      factory:factories(name, code)
     `)
     .eq('id', id)
     .single()
@@ -72,7 +73,7 @@ export default async function IncidentDetailPage({
     .order('created_at', { ascending: false })
 
   const machine = incident.machine as { machine_code: string | null; machine_name: string } | null
-  const factory = incident.factory as { name: string } | null
+  const factory = incident.factory as { name: string; code: string | null } | null
   const status = incident.status as IncidentStatus
   const urgency = URGENCY_FROM_IMPACT[incident.downtime_impact as 'A' | 'B' | 'C' | 'D']
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -131,13 +132,31 @@ export default async function IncidentDetailPage({
         )}
       </div>
 
-      {/* Workflow progress bar — visual status pipeline */}
+{/* Workflow progress bar — visual status pipeline */}
       <WorkflowProgress status={status} />
+
+      {/* "What to do next" guidance — forward steps only; closed cases are
+          covered by the ClosedBanner below (avoids a duplicate green banner). */}
+      {!isClosed && <NextStepHint status={status} userRole={user?.role} />}
 
       {/* Progress timeline (client component → labels follow app language) */}
       <ProgressTimeline
         rows={updateRows.map(u => ({ ...u, photos: parsePhotos(u.photos) }))}
         supabaseUrl={supabaseUrl}
+      />
+
+      {/* Assignment (派工) first — a fresh case needs an owner before progress
+          updates make sense. Also available after close so a case can be
+          re-routed to whoever follow-up work belongs to. */}
+      <AssignForm
+        incidentId={id}
+        assignedTo={incident.assigned_to}
+        assignedDept={incident.assigned_dept}
+        assignedUserIds={incident.assigned_user_ids}
+        dueDate={incident.due_date}
+        factoryId={incident.factory_id}
+        userRole={user?.role}
+        userName={user?.full_name}
       />
 
       {/* Update form */}
@@ -160,36 +179,24 @@ export default async function IncidentDetailPage({
       {/* Request spare parts / materials from Gudang One (open cases only) */}
       {!isClosed && user && <GudangRequest incidentId={id} />}
 
-      {/* Assignment (派工) — available even after close so a case can be
-          re-routed to whoever follow-up work belongs to. */}
-      <AssignForm
-        incidentId={id}
-        assignedTo={incident.assigned_to}
-        assignedDept={incident.assigned_dept}
-        assignedUserIds={incident.assigned_user_ids}
-        dueDate={incident.due_date}
-        factoryId={incident.factory_id}
-        userRole={user?.role}
-        userName={user?.full_name}
-      />
+      {/* Low-frequency sections collapsed by default to keep the page short */}
+      <CollapsibleSection titleKey="incidentDetail.manageSection" fallback="編輯 / 刪除案件">
+        <IncidentActions
+          incidentId={id}
+          title={incident.title}
+          description={incident.description}
+          incidentType={incident.incident_type}
+          impact={incident.downtime_impact}
+          dueDate={incident.due_date}
+          userRole={user?.role}
+          userName={user?.full_name}
+          factoryId={incident.factory_id}
+        />
+      </CollapsibleSection>
 
-      {/* Edit / Delete */}
-      <IncidentActions
-        incidentId={id}
-        title={incident.title}
-        description={incident.description}
-        incidentType={incident.incident_type}
-        impact={incident.downtime_impact}
-        dueDate={incident.due_date}
-        userRole={user?.role}
-        userName={user?.full_name}
-        factoryId={incident.factory_id}
-      />
-
-      {/* Audit Trail - Operation History */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <AuditTrail resourceId={id} resourceType="incident" />
-      </div>
+      <CollapsibleSection titleKey="audit.heading" fallback="操作歷史">
+        <AuditTrail resourceId={id} resourceType="incident" showHeading={false} />
+      </CollapsibleSection>
     </div>
   )
 }

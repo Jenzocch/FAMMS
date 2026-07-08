@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthClaims } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import QRDisplay from '@/components/machines/QRDisplay'
 import { Button } from '@/components/ui/button'
@@ -8,9 +9,9 @@ import { ArrowLeft } from 'lucide-react'
 export const metadata = { title: 'QR Code | FAMMS' }
 
 export default async function MachineQRPage({ params }: { params: { id: string } }) {
+  const claims = await getAuthClaims()
+  if (!claims) redirect('/login')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const { data: machine } = await supabase
     .from('machines')

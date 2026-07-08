@@ -49,9 +49,31 @@ export function DueDateChip({ dueDate, isClosed }: { dueDate: string; isClosed: 
 export function ClosedBanner({ closedAt }: { closedAt: string | null }) {
   const { t } = useI18n()
   return (
-    <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center text-sm text-green-700">
-      ✅ {t('incidentDetail.closed')}
-      {closedAt && ` · ${format(new Date(closedAt), 'yyyy-MM-dd HH:mm')}`}
+    <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center text-sm text-green-700 space-y-1">
+      <p>
+        ✅ {t('incidentDetail.closed')}
+        {closedAt && ` · ${format(new Date(closedAt), 'yyyy-MM-dd HH:mm')}`}
+      </p>
+      <p className="text-xs text-green-600">{t('nextStep.doneNote')}</p>
     </div>
+  )
+}
+
+// Collapsible wrapper for low-frequency sections (edit/delete, audit trail) so
+// the detail page stays short on mobile. Native <details> keeps it zero-JS.
+export function CollapsibleSection({ titleKey, fallback, children }: {
+  titleKey: string
+  fallback: string
+  children: React.ReactNode
+}) {
+  const { t } = useI18n()
+  return (
+    <details className="bg-white rounded-xl border border-gray-200 group">
+      <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-700 flex items-center justify-between">
+        {t(titleKey, fallback)}
+        <span className="text-gray-400 transition-transform group-open:rotate-90">›</span>
+      </summary>
+      <div className="px-4 pb-4">{children}</div>
+    </details>
   )
 }
