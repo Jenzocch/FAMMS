@@ -215,7 +215,7 @@ export default async function IncidentDetailPage({
       <PartsRequestTracker requests={partsRequests ?? []} />
 
       {/* Low-frequency sections collapsed by default to keep the page short */}
-      <CollapsibleSection titleKey="incidentDetail.manageSection" fallback="編輯 / 刪除案件">
+      <CollapsibleSection titleKey="incidentDetail.manageSection" fallback="編輯 / 刪除工單">
         <IncidentActions
           incidentId={id}
           title={incident.title}

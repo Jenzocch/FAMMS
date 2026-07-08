@@ -169,7 +169,7 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
       setResults(mapped)
       setHasSearched(true)
       if (onResults) onResults(mapped)
-      toast.success(t('board.foundCount', `找到 ${mapped.length} 件案件`).replace('{count}', String(mapped.length)))
+      toast.success(t('board.foundCount', `找到 ${mapped.length} 件工單`).replace('{count}', String(mapped.length)))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('board.searchFailed'))
     } finally {
@@ -211,7 +211,7 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
 
       // Auto-size columns
       const columnWidths = [
-        { wch: 12 }, // 案件號
+        { wch: 12 }, // 工單號
         { wch: 20 }, // 標題
         { wch: 15 }, // 類型
         { wch: 12 }, // 狀態
@@ -389,7 +389,7 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
       {results.length > 0 && (
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-gray-600">
-            {t('board.foundCount', `找到 ${results.length} 件案件`)
+            {t('board.foundCount', `找到 ${results.length} 件工單`)
               .split('{count}')
               .flatMap((part, i) =>
                 i === 0

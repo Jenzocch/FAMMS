@@ -103,9 +103,9 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
         userId: user?.id ?? null,
       })
 
-      if (photoUploadFailed) toast.warning('案件已建立，但照片上傳失敗')
+      if (photoUploadFailed) toast.warning('工單已建立，但照片上傳失敗')
       location.rememberLocation()
-      toast.success(`案件 ${incident_no} 已建立`)
+      toast.success(`工單 ${incident_no} 已建立`)
       router.push(`/incidents/${id}`)
     } catch (err) {
       // Supabase errors (PostgrestError / StorageError) are plain objects with

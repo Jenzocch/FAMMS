@@ -71,7 +71,7 @@ export async function submitIncidentReport(
     if (error.code === '23505') { seq++; lastErr = error; continue }
     throw error
   }
-  if (!incident) throw lastErr ?? new Error('無法產生不重複的案件編號，請重試')
+  if (!incident) throw lastErr ?? new Error('無法產生不重複的工單編號，請重試')
   const incident_no = incident.incident_no
 
   // Upload photos if any. Best-effort: the incident is already saved, so a
@@ -98,7 +98,7 @@ export async function submitIncidentReport(
     resourceType: 'incident',
     resourceId: incident.id,
     newValue: { incident_no, title: input.title, incident_type: input.incidentType },
-    changeSummary: `案件已建立：${incident_no}`,
+    changeSummary: `工單已建立：${incident_no}`,
     factoryId: input.factoryId || undefined,
   })
 

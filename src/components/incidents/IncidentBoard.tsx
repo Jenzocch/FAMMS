@@ -111,13 +111,13 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
           <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
           {filter !== 'all' ? (
             // A specific tab is empty — the other tabs may still have cases.
-            <p className="text-sm">{t('board.noInFilter', '此分類目前沒有案件')}</p>
+            <p className="text-sm">{t('board.noInFilter', '此分類目前沒有工單')}</p>
           ) : (
             <>
               <p className="text-sm">
                 {PERMISSIONS.boardFull(userRole)
                   ? t('board.noIncidents')
-                  : t('board.emptyMine', '目前沒有指派給你或你回報的案件')}
+                  : t('board.emptyMine', '目前沒有指派給你或你回報的工單')}
               </p>
               <Link
                 href="/incidents/new"
@@ -234,7 +234,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
               truncating. */}
           {rows.length >= 200 && (
             <p className="col-span-full text-center text-xs text-gray-400 py-2">
-              {t('board.limitNote', '僅顯示最近 200 筆案件，較舊案件請使用搜尋')}
+              {t('board.limitNote', '僅顯示最近 200 筆工單，較舊工單請使用搜尋')}
             </p>
           )}
         </div>
