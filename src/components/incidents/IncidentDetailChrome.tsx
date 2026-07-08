@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { ChevronLeft, CalendarClock } from 'lucide-react'
+import { ChevronLeft, CalendarClock, Printer } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 
 // Small localized bits of the (server-rendered) incident detail page. Kept as
@@ -29,6 +29,19 @@ export function UrgencyChip({ impact, color, fallbackLabel }: {
     <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${color}`}>
       {t(`urgency.${impact}`, fallbackLabel)}
     </span>
+  )
+}
+
+// Entry point to the printable work-order review report (/incidents/[id]/print).
+export function PrintReportLink({ incidentId }: { incidentId: string }) {
+  const { t } = useI18n()
+  return (
+    <Link
+      href={`/incidents/${incidentId}/print`}
+      className="text-xs text-gray-500 inline-flex items-center gap-1 hover:text-gray-800"
+    >
+      <Printer className="w-3.5 h-3.5" /> {t('printReport.openBtn', '列印報告')}
+    </Link>
   )
 }
 

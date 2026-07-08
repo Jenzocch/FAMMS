@@ -111,13 +111,13 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
           <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
           {filter !== 'all' ? (
             // A specific tab is empty — the other tabs may still have cases.
-            <p className="text-sm">{t('board.noInFilter', '此分類目前沒有案件')}</p>
+            <p className="text-sm">{t('board.noInFilter', '此分類目前沒有工單')}</p>
           ) : (
             <>
               <p className="text-sm">
                 {PERMISSIONS.boardFull(userRole)
                   ? t('board.noIncidents')
-                  : t('board.emptyMine', '目前沒有指派給你或你回報的案件')}
+                  : t('board.emptyMine', '目前沒有指派給你或你回報的工單')}
               </p>
               <Link
                 href="/incidents/new"
@@ -133,7 +133,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
         // wider screens so the desktop's horizontal space is used instead of
         // one long vertical scroll. Gaps widen with the viewport — cramped
         // columns read worse than fewer columns.
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5 xl:gap-6 items-start">
           {sorted.map(inc => {
             const urgency = URGENCY_FROM_IMPACT[inc.downtime_impact]
             const overdue = isOverdue(inc)
@@ -147,7 +147,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
               >
               <Link
                 href={`/incidents/${inc.id}`}
-                className="block p-4 md:p-5 rounded-2xl active:bg-gray-50"
+                className="block p-4 md:p-5 xl:p-6 rounded-2xl active:bg-gray-50"
               >
                 {/* Top row — the two things a technician triages on: how urgent,
                     and what state it's in. Everything else (case no., reporter)
@@ -174,7 +174,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                 </div>
 
                 {/* Title — the biggest thing on the card */}
-                <p className="font-bold text-lg text-gray-900 mt-2.5 leading-snug line-clamp-2">
+                <p className="font-bold text-lg xl:text-xl text-gray-900 mt-2.5 leading-snug line-clamp-2">
                   {inc.title || typeLabel(inc.incident_type, t('board.problem')) }
                 </p>
 
@@ -234,7 +234,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
               truncating. */}
           {rows.length >= 200 && (
             <p className="col-span-full text-center text-xs text-gray-400 py-2">
-              {t('board.limitNote', '僅顯示最近 200 筆案件，較舊案件請使用搜尋')}
+              {t('board.limitNote', '僅顯示最近 200 筆工單，較舊工單請使用搜尋')}
             </p>
           )}
         </div>

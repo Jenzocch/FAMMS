@@ -302,7 +302,7 @@ export default function TelegramSettings({
             <UserCheck className="w-4 h-4" /> {t('telegram.personalTitle', '個人通知帳號')}
           </h3>
           <p className="text-xs text-gray-500 mt-1">
-            {t('telegram.personalDesc', '登錄員工的個人 Chat ID。當案件指派給他並被催進度時，會直接私訊本人。')}
+            {t('telegram.personalDesc', '登錄員工的個人 Chat ID。當工單指派給他並被催進度時，會直接私訊本人。')}
           </p>
         </div>
 

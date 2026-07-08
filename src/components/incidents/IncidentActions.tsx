@@ -109,7 +109,7 @@ export default function IncidentActions({
         resourceId: incidentId,
         oldValue: { title, description, incident_type: incidentType, downtime_impact: impact, due_date: dueDate },
         newValue: { title: t, description: d || null, incident_type: type, downtime_impact: urg, due_date: due || null },
-        changeSummary: '案件內容已更新',
+        changeSummary: '工單內容已更新',
         factoryId: factoryId ?? undefined,
       })
 
@@ -135,7 +135,7 @@ export default function IncidentActions({
         resourceType: 'incident',
         resourceId: incidentId,
         oldValue: { title },
-        changeSummary: `案件已刪除${title ? `：${title}` : ''}`,
+        changeSummary: `工單已刪除${title ? `：${title}` : ''}`,
         factoryId: factoryId ?? undefined,
       })
       const { error } = await supabase.from('incidents').delete().eq('id', incidentId)

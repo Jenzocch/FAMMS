@@ -131,3 +131,12 @@
     @apply font-sans;
   }
 }
+
+/* A4-friendly page box for printable reports (monthly report, work-order
+   review). Keeps margins sane across browsers' print/PDF dialogs. */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+}

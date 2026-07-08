@@ -87,11 +87,11 @@ export function generateChangeSummary(
   }
 
   if (actionType === 'create') {
-    return '案件已建立'
+    return '工單已建立'
   }
 
   if (actionType === 'delete') {
-    return '案件已刪除'
+    return '工單已刪除'
   }
 
   if (actionType === 'assign') {
