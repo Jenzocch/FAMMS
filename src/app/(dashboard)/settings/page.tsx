@@ -6,7 +6,7 @@ import AreaManager from '@/components/settings/AreaManager'
 import AssetManager from '@/components/settings/AssetManager'
 import IncidentTypeManager from '@/components/settings/IncidentTypeManager'
 import VendorManager from '@/components/settings/VendorManager'
-import PMScheduleManager from '@/components/settings/PMScheduleManager'
+import PMScheduleManager from '@/components/pm/PMScheduleManager'
 import UserManager from '@/components/settings/UserManager'
 import { isTelegramConfigured } from '@/lib/telegram'
 import {

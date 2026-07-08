@@ -1,4 +1,4 @@
-import PMScheduleForm from '@/components/pm/PMScheduleForm'
+import PMScheduleManager from '@/components/pm/PMScheduleManager'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -17,7 +17,7 @@ export default function NewPMSchedulePage() {
         </Link>
         <h1 className="text-xl font-bold text-gray-900">Jadwal PM Baru</h1>
       </div>
-      <PMScheduleForm />
+      <PMScheduleManager />
     </div>
   )
 }
