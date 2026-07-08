@@ -387,12 +387,16 @@ Before first run:
 2. ✅ Run `supabase/schema.sql` in Supabase SQL editor (creates tables + 3 factories + 5 level-1 failure categories)
 3. ✅ Run `supabase/SYNC_SCHEMA_LATEST.sql` — **idempotent; run after every `git pull`**. Adds all columns/tables later features need (PM assignee, incident `assigned_user_ids`/`location_note`, vendors, audit/maintenance logs…). This is the single source of "the DB has everything the app expects"; skip it and features silently fail to save/show.
 4. ✅ Run `supabase/seed_fault_tree.sql` (subcategories + 100+ failure codes, Bahasa Indonesia + English)
-5. ✅ Create Supabase storage buckets:
+5. 🔒 **Mandatory, not optional** — lock the database down before it holds real data:
+   - `supabase/migration_security_phase1_revoke_anon.sql` — revokes the public `anon` key's access to every table. Without this, anyone who opens devtools and reads `NEXT_PUBLIC_SUPABASE_ANON_KEY` can read/write/delete the entire database directly via the Supabase REST API, with no login and no app involved.
+   - `supabase/migration_rls_1_helpers.sql` → `migration_rls_2_policies.sql` → `migration_rls_3_enable_STAGED.sql` (run its stages A→E one at a time, testing the live app after each — see the file's own instructions) → `migration_rls_4_assignee_access.sql`. This is what actually confines a logged-in user to their own factory's data and enforces role (e.g. a technician can't self-approve an RCA or edit vendors) at the database layer, not just in the UI.
+   - Re-running `SYNC_SCHEMA_LATEST.sql` after this is safe: it no longer touches `anon` grants or RLS state, so it won't undo this step.
+6. ✅ Create Supabase storage buckets:
    - `incident-photos` (public, for before/during/after)
    - `attachments` (private, for PDFs/docs)
-6. ✅ Set up Telegram bot (get token from @BotFather)
-7. ✅ `npm install` (if node_modules missing)
-8. ✅ `npm run dev`
+7. ✅ Set up Telegram bot (get token from @BotFather)
+8. ✅ `npm install` (if node_modules missing)
+9. ✅ `npm run dev`
 
 ---
 

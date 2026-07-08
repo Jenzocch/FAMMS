@@ -27,7 +27,7 @@ supabase functions deploy famms-request
 ### 3. FAMMS 端（本專案，Vercel 環境變數）
 | 變數 | 值 |
 |---|---|
-| `GUDANG_WEBHOOK_URL` | `https://klswfuzuhlowzrbncreu.supabase.co/functions/v1/famms-request` |
+| `GUDANG_WEBHOOK_URL` | `https://<gudang-project>.supabase.co/functions/v1/famms-request` |
 | `GUDANG_WEBHOOK_SECRET` | 同一串密鑰 |
 
 設定後 redeploy FAMMS。

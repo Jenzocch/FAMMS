@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { nextScheduledDate, toDateStr } from '@/lib/pm'
 import type { PMType } from '@/types'
@@ -6,6 +7,12 @@ import type { PMType } from '@/types'
 // POST /api/pm/schedules — create a PM schedule for a machine,
 // and generate its first pending pm_record.
 export async function POST(req: Request) {
+  const currentUser = await getCurrentUser()
+  if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!PERMISSIONS.managePMSchedules(currentUser.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

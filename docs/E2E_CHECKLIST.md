@@ -11,7 +11,7 @@
 
 2. **`.env.local`** — 填入你的 Supabase 值:
    ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://smthbomkbaywovzddnhj.supabase.co
+   NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=<your anon key>
    SUPABASE_SERVICE_ROLE_KEY=<your service-role key>
    NEXT_PUBLIC_APP_URL=http://localhost:3000
