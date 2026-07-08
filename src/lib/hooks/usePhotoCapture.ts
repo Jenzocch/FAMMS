@@ -32,7 +32,7 @@ export function usePhotoCapture(maxPhotos = 5) {
       }
       if (compressed.length > 0) {
         setPhotos(prev => [...prev, ...compressed].slice(0, maxPhotos))
-        toast.success(t('report.compressedToast', `壓縮 ${compressed.length} 張完成`))
+        toast.success(t('report.compressedToast', `壓縮 ${compressed.length} 張完成`).replace('{count}', String(compressed.length)))
       }
       if (compressed.length < files.length) {
         toast.warning(`${files.length - compressed.length} ${t('report.compressSkipped', 'file(s) could not be compressed (too large for device)')}`)
@@ -48,5 +48,9 @@ export function usePhotoCapture(maxPhotos = 5) {
     setPhotos(prev => prev.filter((_, j) => j !== index))
   }
 
-  return { photos, photoPreviews, compressing, addPhotos, removePhoto }
+  function resetPhotos() {
+    setPhotos([])
+  }
+
+  return { photos, photoPreviews, compressing, addPhotos, removePhoto, resetPhotos }
 }

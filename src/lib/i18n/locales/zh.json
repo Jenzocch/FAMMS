@@ -99,9 +99,7 @@
     "submit": "提交",
     "reset": "重置",
     "noData": "暫無數據",
-    "update": "更新",
-    "deleted": "已刪除",
-    "deleteFailed": "刪除失敗"
+    "update": "更新"
   },
   "navigation": {
     "dashboard": "儀表板",
@@ -878,31 +876,8 @@
     "add": "新增機器"
   },
   "pmForm": {
-    "title": "建立保養計畫",
-    "machine": "機器",
-    "selectMachine": "選擇機器",
-    "noMachines": "尚無機器，請先新增機器",
     "firstDueDate": "首次預定日期",
-    "firstDueDateHint": "留空則自動設為今天起一個週期後",
-    "description": "說明",
-    "descriptionPlaceholder": "保養工作摘要...",
-    "checklistItem": "檢查清單項目",
-    "checklistPlaceholder": "例如：檢查 bearing 潤滑",
-    "selectMachineType": "請選擇機器和保養類型",
-    "created": "保養計畫已建立",
-    "createFailed": "建立保養計畫失敗",
-    "create": "建立計畫",
-    "addTitle": "新增保養計畫",
-    "factory": "工廠",
-    "pmTypeLabel": "保養類型",
-    "intervalDays": "間隔天數",
-    "intervalPlaceholder": "如：30",
-    "descChecklist": "描述/檢查清單",
-    "descChecklistPlaceholder": "如：檢查軸承潤滑、清潔散熱片、測量溫度…",
-    "selectFactoryPlaceholder": "選擇工廠",
-    "errSelectAll": "請選擇工廠、機器和保養類型",
-    "errInterval": "自訂間隔請輸入天數",
-    "createFailedShort": "建立失敗"
+    "firstDueDateHint": "留空則自動設為今天起一個週期後"
   },
   "machineStatus": {
     "running": "運轉中",

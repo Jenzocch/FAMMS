@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import imageCompression from 'browser-image-compression'
+import { usePhotoCapture } from '@/lib/hooks/usePhotoCapture'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -76,7 +76,7 @@ export default function ProgressUpdate({
   const [newStatus, setNewStatus] = useState<string>(currentStatus)
   const [note, setNote] = useState('')
   const [updaterName, setUpdaterName] = useState(userName ?? '')
-  const [photos, setPhotos] = useState<File[]>([])
+  const { photos, photoPreviews, compressing, addPhotos, removePhoto, resetPhotos } = usePhotoCapture(5)
   const [allowRollback, setAllowRollback] = useState(false)
   const [completionType, setCompletionType] = useState<'temporary_fix' | 'permanent_fix' | ''>('')
   // Optional close-time costs — the cheapest possible cost tracking: two
@@ -87,12 +87,6 @@ export default function ProgressUpdate({
   const [saveToKb, setSaveToKb] = useState(true)
   const [repairMethod, setRepairMethod] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [compressing, setCompressing] = useState(false)
-
-  // Stable preview URLs — created once per photo list and revoked when the
-  // list changes/unmounts, instead of leaking a new blob URL every render.
-  const photoPreviews = useMemo(() => photos.map(p => URL.createObjectURL(p)), [photos])
-  useEffect(() => () => { photoPreviews.forEach(u => URL.revokeObjectURL(u)) }, [photoPreviews])
 
   // Status options based on rollback setting. Only supervisors+ may move a case to "closed".
   const availableStatuses = allowedStatuses(currentStatus, allowRollback)
@@ -102,42 +96,6 @@ export default function ProgressUpdate({
   // waiting_vendor/approval/shutdown side-states), so without this the Select's
   // default value would not match any item and render blank.
   const selectableStatuses = base.includes(currentStatus) ? base : [currentStatus, ...base]
-
-  async function addPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    if (files.length === 0) return
-
-    setCompressing(true)
-    try {
-      const compressed: File[] = []
-      for (const file of files) {
-        if (!file.type.startsWith('image/')) continue
-        try {
-          const options = {
-            maxSizeMB: 0.8,
-            maxWidthOrHeight: 1280,
-            useWebWorker: true,
-          }
-          const compressedFile = await imageCompression(file, options)
-          compressed.push(compressedFile)
-        } catch (fileErr) {
-          // Skip individual files that fail compression (e.g., very large images on low-end devices)
-          console.warn('Failed to compress individual file:', file.name, fileErr)
-        }
-      }
-      if (compressed.length > 0) {
-        setPhotos(prev => [...prev, ...compressed].slice(0, 5))
-        toast.success(t('progressUpdate.compressedToast').replace('{count}', String(compressed.length)))
-      }
-      if (compressed.length < files.length) {
-        toast.warning(`${files.length - compressed.length} ${t('progressUpdate.compressSkipped')}`)
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('progressUpdate.compressFailed'))
-    } finally {
-      setCompressing(false)
-    }
-  }
 
   async function submit() {
     const statusChanged = newStatus !== currentStatus
@@ -229,7 +187,7 @@ export default function ProgressUpdate({
 
       toast.success(t('progressUpdate.updated'))
       setNote('')
-      setPhotos([])
+      resetPhotos()
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('progressUpdate.updateFailed'))
@@ -405,7 +363,7 @@ export default function ProgressUpdate({
                   <button
                     type="button"
                     aria-label={`${t('common.delete')} ${i + 1}`}
-                    onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                    onClick={() => removePhoto(i)}
                     className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-lg hover:bg-red-600"
                   >
                     <X className="w-3 h-3" />
@@ -427,7 +385,7 @@ export default function ProgressUpdate({
                 accept="image/*"
                 multiple
                 capture="environment"
-                onChange={addPhoto}
+                onChange={e => addPhotos(Array.from(e.target.files ?? []))}
                 disabled={compressing}
                 className="hidden"
               />

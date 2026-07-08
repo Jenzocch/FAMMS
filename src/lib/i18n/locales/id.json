@@ -99,9 +99,7 @@
     "submit": "Kirim",
     "reset": "Atur Ulang",
     "noData": "Tidak ada data",
-    "update": "Perbarui",
-    "deleted": "Dihapus",
-    "deleteFailed": "Gagal menghapus"
+    "update": "Perbarui"
   },
   "navigation": {
     "dashboard": "Dasbor",
@@ -878,31 +876,8 @@
     "add": "Tambah Mesin"
   },
   "pmForm": {
-    "title": "Buat Jadwal PM",
-    "machine": "Mesin",
-    "selectMachine": "Pilih mesin",
-    "noMachines": "Belum ada mesin. Tambah mesin dulu.",
     "firstDueDate": "Tanggal Jadwal Pertama",
-    "firstDueDateHint": "Kosongkan untuk otomatis (1 interval dari hari ini).",
-    "description": "Deskripsi",
-    "descriptionPlaceholder": "Ringkasan pekerjaan PM...",
-    "checklistItem": "Checklist Item",
-    "checklistPlaceholder": "e.g., Cek pelumasan bearing",
-    "selectMachineType": "Pilih mesin dan tipe PM",
-    "created": "Jadwal PM dibuat",
-    "createFailed": "Gagal membuat jadwal PM",
-    "create": "Buat Jadwal PM",
-    "addTitle": "Tambah Jadwal PM",
-    "factory": "Pabrik",
-    "pmTypeLabel": "Jenis PM",
-    "intervalDays": "Interval (hari)",
-    "intervalPlaceholder": "mis. 30",
-    "descChecklist": "Deskripsi / Checklist",
-    "descChecklistPlaceholder": "mis. Cek pelumasan bearing, bersihkan heat sink, ukur suhu…",
-    "selectFactoryPlaceholder": "Pilih pabrik",
-    "errSelectAll": "Pilih pabrik, mesin dan jenis PM",
-    "errInterval": "Masukkan jumlah hari untuk interval khusus",
-    "createFailedShort": "Gagal membuat"
+    "firstDueDateHint": "Kosongkan untuk otomatis (1 interval dari hari ini)."
   },
   "machineStatus": {
     "running": "Beroperasi",

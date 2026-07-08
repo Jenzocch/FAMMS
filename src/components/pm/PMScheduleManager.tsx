@@ -77,6 +77,9 @@ export default function PMScheduleManager() {
   const [pmType, setPmType] = useState('monthly')
   const [intervalDays, setIntervalDays] = useState('')
   const [description, setDescription] = useState('')
+  // First due date — only meaningful when creating (the API generates the
+  // first pm_record off it); left blank it defaults to one interval from today.
+  const [firstDueDate, setFirstDueDate] = useState('')
   // One checklist item per line; stored as a JSON array string on the schedule.
   const [checklistText, setChecklistText] = useState('')
   const [assignees, setAssignees] = useState<string[]>([])
@@ -239,6 +242,7 @@ export default function PMScheduleManager() {
             interval_days: intervalValue,
             description: description || undefined,
             checklist: textToChecklist(checklistText),
+            first_due_date: firstDueDate || undefined,
             assigned_user_ids: assignees,
             assigned_to: assignedTo,
           }),
@@ -253,6 +257,7 @@ export default function PMScheduleManager() {
       setPmType('monthly')
       setIntervalDays('')
       setDescription('')
+      setFirstDueDate('')
       setChecklistText('')
       setAssignees([])
       setShowForm(false)
@@ -296,7 +301,7 @@ export default function PMScheduleManager() {
         <Button
           onClick={() => {
             setEditingId(null); setMachineId(''); setPmType('monthly')
-            setIntervalDays(''); setDescription(''); setChecklistText(''); setAssignees([])
+            setIntervalDays(''); setDescription(''); setFirstDueDate(''); setChecklistText(''); setAssignees([])
             setShowForm(true)
           }}
           className="gap-2 w-full"
@@ -377,6 +382,23 @@ export default function PMScheduleManager() {
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
+
+          {/* First due date — only meaningful on create; the API derives it
+              from today + interval when left blank, so editing doesn't need it. */}
+          {!editingId && (
+            <div>
+              <Label>{t('pmForm.firstDueDate', '首次預定日期')}</Label>
+              <input
+                type="date"
+                value={firstDueDate}
+                onChange={e => setFirstDueDate(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                {t('pmForm.firstDueDateHint', '留空則自動設為今天起一個週期後')}
+              </p>
+            </div>
+          )}
 
           {/* Checklist — one item per line; ticked off when completing the task */}
           <div>
@@ -479,6 +501,7 @@ export default function PMScheduleManager() {
                     setPmType(s.pm_type)
                     setIntervalDays(s.interval_days ? String(s.interval_days) : '')
                     setDescription(s.description || '')
+                    setFirstDueDate('')
                     setChecklistText(checklistToText(s.checklist))
                     setAssignees(s.assigned_user_ids ?? [])
                     setShowForm(true)
