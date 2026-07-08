@@ -10,7 +10,7 @@ import RemindButton from '@/components/incidents/RemindButton'
 import GudangRequest from '@/components/incidents/GudangRequest'
 import PartsRequestTracker from '@/components/incidents/PartsRequestTracker'
 import StatusChip from '@/components/incidents/StatusChip'
-import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection } from '@/components/incidents/IncidentDetailChrome'
+import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection, PrintReportLink } from '@/components/incidents/IncidentDetailChrome'
 import AssignForm from '@/components/incidents/AssignForm'
 import NextStepHint from '@/components/incidents/NextStepHint'
 import IncidentActions from '@/components/incidents/IncidentActions'
@@ -107,7 +107,10 @@ export default async function IncidentDetailPage({
 
   return (
     <div className="space-y-4">
-      <BackLink />
+      <div className="flex items-center justify-between gap-2">
+        <BackLink />
+        <PrintReportLink incidentId={id} />
+      </div>
 
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
