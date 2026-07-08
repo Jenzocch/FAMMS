@@ -487,18 +487,25 @@ export type Project = {
 // UI Helper Types
 // ============================================================================
 
+// Single source of truth for incident-status pill colors. The technician-facing
+// display layer (lib/incident-display.ts) re-exports this as STATUS_ZH_COLOR so
+// the same status is never two different colors on two different screens.
+// Grouped so the color tells a technician what it means to THEM:
+//   blue  = fresh / just in    ·  purple = being worked on
+//   amber = blocked, waiting    ·  indigo/teal = nearly done, verifying
+//   green = closed
 export const INCIDENT_STATUS_COLORS: Record<IncidentStatus, string> = {
-  reported: 'bg-blue-100 text-blue-800',
-  accepted: 'bg-blue-200 text-blue-900',
-  analyzing: 'bg-purple-100 text-purple-800',
-  waiting_parts: 'bg-yellow-100 text-yellow-800',
-  waiting_approval: 'bg-orange-100 text-orange-800',
-  waiting_vendor: 'bg-orange-100 text-orange-800',
-  waiting_shutdown: 'bg-orange-100 text-orange-800',
-  repairing: 'bg-orange-100 text-orange-800',
-  testing: 'bg-indigo-100 text-indigo-800',
-  observation: 'bg-teal-100 text-teal-800',
-  closed: 'bg-green-100 text-green-800',
+  reported: 'bg-blue-100 text-blue-700',
+  accepted: 'bg-sky-100 text-sky-700',
+  analyzing: 'bg-purple-100 text-purple-700',
+  waiting_parts: 'bg-amber-100 text-amber-700',
+  waiting_approval: 'bg-amber-100 text-amber-700',
+  waiting_vendor: 'bg-amber-100 text-amber-700',
+  waiting_shutdown: 'bg-amber-100 text-amber-700',
+  repairing: 'bg-purple-100 text-purple-700',
+  testing: 'bg-indigo-100 text-indigo-700',
+  observation: 'bg-teal-100 text-teal-700',
+  closed: 'bg-green-100 text-green-700',
 };
 
 // UI Language: Bahasa Indonesia + technical English terms

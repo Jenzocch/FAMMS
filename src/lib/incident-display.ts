@@ -58,19 +58,9 @@ export const STATUS_ZH: Record<IncidentStatus, string> = {
   closed: '已結案',
 }
 
-export const STATUS_ZH_COLOR: Record<IncidentStatus, string> = {
-  reported: 'bg-blue-100 text-blue-700',
-  accepted: 'bg-sky-100 text-sky-700',
-  analyzing: 'bg-purple-100 text-purple-700',
-  waiting_parts: 'bg-amber-100 text-amber-700',
-  waiting_approval: 'bg-amber-100 text-amber-700',
-  waiting_vendor: 'bg-amber-100 text-amber-700',
-  waiting_shutdown: 'bg-amber-100 text-amber-700',
-  repairing: 'bg-purple-100 text-purple-700',
-  testing: 'bg-indigo-100 text-indigo-700',
-  observation: 'bg-teal-100 text-teal-700',
-  closed: 'bg-green-100 text-green-700',
-}
+// Re-exported from the canonical map in @/types so the incident status never
+// shows one color on the board and a different one on the machine pages.
+export { INCIDENT_STATUS_COLORS as STATUS_ZH_COLOR } from '@/types'
 
 // Filter tabs for the board (groups several underlying statuses)
 export const BOARD_FILTERS: { key: string; label: string; statuses: IncidentStatus[] | null }[] = [
