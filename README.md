@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FAMMS — Factory Asset & Maintenance Management System
 
-## Getting Started
+Equipment maintenance management for multi-factory operations (SJA, DIN, Olentia): incident/工單 tracking with a multi-action repair workflow, preventive maintenance scheduling, equipment health scoring, a standardized fault tree for repeat-failure detection, a knowledge base, and Telegram notifications. UI is in Bahasa Indonesia + English technical terms; the app itself is fully localized in Chinese, English, and Indonesian.
 
-First, run the development server:
+## Tech stack
+
+Next.js 16 (App Router) + TypeScript · Tailwind CSS v4 + shadcn/ui (`@base-ui/react`) · Supabase (Postgres + Auth + Storage) · Telegram Bot API · Recharts-free custom KPI views.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # fill in the values, see below
+npm run dev                  # http://localhost:3000
+npx tsc --noEmit             # type check, should exit 0
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database setup (Supabase)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run these in the Supabase SQL editor, in order:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. `supabase/schema.sql` — base tables, 3 factories, level-1 failure categories
+2. `supabase/SYNC_SCHEMA_LATEST.sql` — **idempotent, run after every `git pull`**. Adds every column/table a newer feature expects; skipping it makes features silently fail to save or show.
+3. `supabase/seed_fault_tree.sql` — subcategories + 100+ failure codes (zh/en/id)
+4. (optional) `supabase/seed_demo.sql` — demo areas/machines for local testing
 
-## Learn More
+Then create two Supabase Storage buckets: `incident-photos` (public) and `attachments` (private).
 
-To learn more about Next.js, take a look at the following resources:
+## Environment variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See `.env.example` for the full list with descriptions. At minimum you need Supabase URL + anon key + service role key to run the app; Telegram, OpenAI, and the external-integration secrets are optional depending on which features you use.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project docs
 
-## Deploy on Vercel
+- `CLAUDE.md` — full architecture, data model, incident workflow, and file map (the canonical reference for AI assistants and contributors)
+- `FAMMS_FAULT_TREE.md` — complete failure-code taxonomy
+- `docs/` — feature-specific setup notes (Gudang One integration, E2E checklist)
+- `CHANGELOG.md` — release history
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploys to Vercel from `main`. Set the environment variables from `.env.example` in the Vercel project settings, then run the Supabase setup steps above against your production project before the first deploy.
