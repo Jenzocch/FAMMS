@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import imageCompression from 'browser-image-compression'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -12,20 +11,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Camera, X, ZoomIn } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import { logAuditEvent } from '@/lib/audit'
 import { deadlineFromUrgency } from '@/lib/incident-display'
 import { useIncidentTypes } from '@/lib/useIncidentTypes'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
-import { loadMyFactoryId } from '@/lib/useMyFactory'
-import { loadFactories } from '@/lib/useFactories'
+import { useReportLocation } from '@/lib/hooks/useReportLocation'
+import { useReporterAccounts } from '@/lib/hooks/useReporterAccounts'
+import { usePhotoCapture } from '@/lib/hooks/usePhotoCapture'
+import { submitIncidentReport } from '@/lib/incidents/submitIncidentReport'
+import ReportLocationFields from './report/ReportLocationFields'
+import ReportPhotoPicker from './report/ReportPhotoPicker'
 
-interface Factory { id: string; name: string; code: string }
-interface Area { id: string; factory_id: string; name: string }
-interface Asset { id: string; area_id: string; machine_name: string; machine_code: string | null }
 interface IssueType { value: string; label: string }
-interface Account { id: string; full_name: string | null }
 
 // Fallback list used if the incident_types table is empty/unavailable.
 const DEFAULT_ISSUE_TYPES: IssueType[] = [
@@ -37,11 +35,6 @@ const DEFAULT_ISSUE_TYPES: IssueType[] = [
   { value: 'cleanliness', label: '🧹 衛生/清潔' },
   { value: 'other', label: '📋 其他' },
 ]
-
-// Remembers where the last report was filed. Field staff report from the same
-// factory/area every day — restoring it turns the 3-step location cascade into
-// "just pick the machine" for repeat reports.
-const LAST_LOCATION_KEY = 'famms.lastReportLocation'
 
 // Three urgency levels (mapped to impact codes A / C / D). "High" (B) is
 // retired from the picker but still renders for any legacy incident that has it.
@@ -56,21 +49,18 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   const supabase = createClient()
   const { t } = useI18n()
 
-  const [factories, setFactories] = useState<Factory[]>([])
-  const [areas, setAreas] = useState<Area[]>([])
-  const [assets, setAssets] = useState<Asset[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
+  const location = useReportLocation(presetMachineId)
+  const reporter = useReporterAccounts()
+  const photoCapture = usePhotoCapture(5)
 
   const { types: cachedTypes } = useIncidentTypes()
   const typeLabel = useIncidentTypeLabel()
   // Use shared cache when populated; otherwise the built-in defaults. Labels
   // follow the active app language.
   const issueTypes: IssueType[] = cachedTypes.length > 0
-    ? cachedTypes.map(t => ({ value: t.code, label: typeLabel(t.code) }))
+    ? cachedTypes.map(ct => ({ value: ct.code, label: typeLabel(ct.code) }))
     : DEFAULT_ISSUE_TYPES
-  const [factoryId, setFactoryId] = useState('')
-  const [areaId, setAreaId] = useState('')
-  const [assetId, setAssetId] = useState('')
+
   const [locationNote, setLocationNote] = useState('')
   const [issueType, setIssueType] = useState('machine')
   const [customType, setCustomType] = useState('')
@@ -78,150 +68,10 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   const [dueDate, setDueDate] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [reporterName, setReporterName] = useState('')
-  const [reporterAccountId, setReporterAccountId] = useState('')
-  const [photos, setPhotos] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const [compressing, setCompressing] = useState(false)
-  // Area waiting to be re-applied once its factory's areas finish loading.
-  const restoredAreaRef = useRef<string | null>(null)
-  // Machine waiting to be applied once its area's machines finish loading
-  // (set by the QR scan-to-report flow).
-  const restoredAssetRef = useRef<string | null>(null)
-
-  // Stable preview URLs — created once per photo list and revoked when the
-  // list changes/unmounts, instead of leaking a new blob URL every render.
-  const photoPreviews = useMemo(() => photos.map(p => URL.createObjectURL(p)), [photos])
-  useEffect(() => () => { photoPreviews.forEach(u => URL.revokeObjectURL(u)) }, [photoPreviews])
-
-  useEffect(() => {
-    // Preselect the reporter's own factory so the report form is one step
-    // shorter for technicians (they can still switch factory manually).
-    // Skipped when a QR preset is present — otherwise the two async setters
-    // can race and swallow the preset's area/machine restore.
-    Promise.all([
-      loadFactories(),
-      loadMyFactoryId(),
-    ]).then(([data, myFactoryId]) => {
-      setFactories((data ?? []) as Factory[])
-      if (!presetMachineId && myFactoryId && (data ?? []).some(f => f.id === myFactoryId)) {
-        setFactoryId(prev => prev || myFactoryId)
-      }
-    })
-    // Active accounts for the reporter picker (still allows manual entry).
-    supabase.from('profiles').select('id, full_name').eq('is_active', true).order('full_name')
-      .then(({ data }) => setAccounts((data ?? []) as Account[]))
-    // Issue types come from the shared cache (useIncidentTypes) above.
-
-    // Default the reporter to the logged-in account — most reports are
-    // self-reports. Picking someone else / typing a name stays possible for
-    // on-behalf reporting, and anything the user already entered is kept.
-    // (getSession = local read, keeps the form opening instantly.)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const uid = session?.user.id
-      if (!uid) return
-      supabase.from('profiles').select('id, full_name').eq('id', uid).single()
-        .then(({ data }) => {
-          if (!data) return
-          setReporterAccountId(prev => prev || data.id)
-          setReporterName(prev => prev || data.full_name || '')
-        })
-    })
-
-    // QR scan-to-report: ?machine=<id> preselects the whole location cascade
-    // (factory → area → machine), overriding the last-used restore below.
-    if (presetMachineId) {
-      supabase
-        .from('machines')
-        .select('id, area_id, area:areas(factory_id)')
-        .eq('id', presetMachineId)
-        .single()
-        .then(({ data }) => {
-          const factoryId = (data?.area as { factory_id?: string } | null)?.factory_id
-          if (!data || !factoryId) return
-          restoredAreaRef.current = data.area_id
-          restoredAssetRef.current = data.id
-          setFactoryId(factoryId)
-        })
-      return
-    }
-
-    // Restore the last-used factory/area for repeat reports.
-    try {
-      const saved = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY) ?? 'null')
-      if (saved?.factoryId) {
-        restoredAreaRef.current = typeof saved.areaId === 'string' ? saved.areaId : null
-        setFactoryId(saved.factoryId)
-      }
-    } catch { /* corrupt storage — start blank */ }
-  }, [])
-
-  useEffect(() => {
-    if (!factoryId) { setAreas([]); setAreaId(''); return }
-    supabase.from('areas').select('*').eq('factory_id', factoryId).order('name')
-      .then(({ data }) => {
-        setAreas(data ?? [])
-        // Apply the remembered area once, only while its options actually exist.
-        const pending = restoredAreaRef.current
-        restoredAreaRef.current = null
-        if (pending && (data ?? []).some(a => a.id === pending)) setAreaId(pending)
-      })
-    setAreaId('')
-    setAssetId('')
-  }, [factoryId])
-
-  useEffect(() => {
-    if (!areaId) { setAssets([]); setAssetId(''); return }
-    supabase.from('machines').select('id, area_id, machine_name, machine_code')
-      .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
-      .then(({ data }) => {
-        setAssets(data ?? [])
-        // Apply the QR-preset machine once, only while it actually exists here.
-        const pending = restoredAssetRef.current
-        restoredAssetRef.current = null
-        if (pending && (data ?? []).some(m => m.id === pending)) setAssetId(pending)
-      })
-    setAssetId('')
-  }, [areaId])
-
-  async function addPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    if (files.length === 0) return
-
-    setCompressing(true)
-    try {
-      const compressed: File[] = []
-      for (const file of files) {
-        if (!file.type.startsWith('image/')) continue
-        try {
-          const options = {
-            maxSizeMB: 0.8,
-            maxWidthOrHeight: 1280,
-            useWebWorker: true,
-          }
-          const compressedFile = await imageCompression(file, options)
-          compressed.push(compressedFile)
-        } catch (fileErr) {
-          // Skip individual files that fail compression (e.g., very large images on low-end devices)
-          console.warn('Failed to compress individual file:', file.name, fileErr)
-        }
-      }
-      if (compressed.length > 0) {
-        setPhotos(prev => [...prev, ...compressed].slice(0, 5))
-        toast.success(t('report.compressedToast', `壓縮 ${compressed.length} 張完成`))
-      }
-      if (compressed.length < files.length) {
-        toast.warning(`${files.length - compressed.length} ${t('report.compressSkipped', 'file(s) could not be compressed (too large for device)')}`)
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('report.compressFailed'))
-    } finally {
-      setCompressing(false)
-    }
-  }
 
   async function submit() {
-    if (!factoryId || !title.trim() || !description.trim()) {
+    if (!location.factoryId || !title.trim() || !description.trim()) {
       toast.error(t('report.fillRequired'))
       return
     }
@@ -239,102 +89,30 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
     setSubmitting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-
-      const now = new Date()
-      const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-      const { count } = await supabase
-        .from('incidents')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
-
-      const insertPayload: Record<string, unknown> = {
-        factory_id: factoryId,
-        incident_type: incidentType,
-        machine_id: assetId || null,
+      const { incident_no, id, photoUploadFailed } = await submitIncidentReport(supabase, {
+        factoryId: location.factoryId,
+        incidentType,
+        machineId: location.assetId || null,
         title,
         description,
-        reporter_name: reporterName || null,
-        downtime_impact: impactCode,
-        due_date: computedDueDate,
-        status: 'reported',
-        reported_by_id: user?.id ?? null,
-      }
-      // Only send location_note when actually filled, so reporting still works
-      // on databases where migration_incident_location_note.sql hasn't run yet
-      // (an unknown column would otherwise fail the whole insert).
-      const trimmedLocation = locationNote.trim()
-      if (trimmedLocation) insertPayload.location_note = trimmedLocation
-
-      // The number is "today's count + 1". Two people reporting at once would
-      // compute the same value, so on a unique-violation (23505 — once the
-      // incidents_incident_no_key constraint is in place) bump the sequence and
-      // retry. Without the DB constraint this still works; it just can't catch a
-      // true simultaneous collision.
-      let incident: any = null
-      let lastErr: any = null
-      let seq = (count ?? 0) + 1
-      for (let attempt = 0; attempt < 6; attempt++) {
-        const incident_no = `FIT-${ym}-${String(seq).padStart(3, '0')}`
-        const { data, error } = await supabase
-          .from('incidents')
-          .insert({ ...insertPayload, incident_no })
-          .select('*')
-          .single()
-        if (!error) { incident = data; break }
-        if (error.code === '23505') { seq++; lastErr = error; continue }
-        throw error
-      }
-      if (!incident) throw lastErr ?? new Error('無法產生不重複的案件編號，請重試')
-      const incident_no = incident.incident_no as string
-
-      // Upload photos if any. Best-effort: the incident is already saved, so a
-      // storage problem (missing bucket / permissions) must not fail the report.
-      if (photos.length > 0) {
-        try {
-          for (const photo of photos) {
-            const ext = photo.name.split('.').pop()
-            const path = `${incident.id}/${Date.now()}.${ext}`
-            const { error: upErr } = await supabase.storage.from('incident-photos').upload(path, photo)
-            if (upErr) throw upErr
-          }
-        } catch (photoErr) {
-          console.error('Photo upload failed:', photoErr)
-          toast.warning('案件已建立，但照片上傳失敗')
-        }
-      }
-
-      // Audit trail: case created
-      await logAuditEvent(supabase, {
+        reporterName: reporter.reporterName,
+        impactCode,
+        dueDate: computedDueDate,
+        locationNote,
+        photos: photoCapture.photos,
         userId: user?.id ?? null,
-        userName: reporterName || null,
-        actionType: 'create',
-        resourceType: 'incident',
-        resourceId: incident.id,
-        newValue: { incident_no, title, incident_type: incidentType },
-        changeSummary: `案件已建立：${incident_no}`,
-        factoryId: factoryId || undefined,
       })
 
-      // Telegram notify
-      await fetch('/api/incidents/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incidentId: incident.id }),
-      }).catch(() => {})
-
-      // Remember this location for the next report.
-      try {
-        localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({ factoryId, areaId }))
-      } catch { /* storage full/blocked — skip */ }
-
+      if (photoUploadFailed) toast.warning('案件已建立，但照片上傳失敗')
+      location.rememberLocation()
       toast.success(`案件 ${incident_no} 已建立`)
-      router.push(`/incidents/${incident.id}`)
+      router.push(`/incidents/${id}`)
     } catch (err) {
       // Supabase errors (PostgrestError / StorageError) are plain objects with
       // a `message`, NOT Error instances — extract it so the real cause shows.
       const msg =
         err instanceof Error ? err.message
-        : (err && typeof err === 'object' && 'message' in err) ? String((err as any).message)
+        : (err && typeof err === 'object' && 'message' in err) ? String((err as { message: unknown }).message)
         : t('report.submitFailed')
       toast.error(msg)
     } finally {
@@ -357,33 +135,33 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       {/* Reporter — pick a registered account or type a name manually */}
       <div>
         <Label className="text-base">{t('report.reporterName')}</Label>
-        {accounts.length > 0 && (
+        {reporter.accounts.length > 0 && (
           <Select
-            value={reporterAccountId}
+            value={reporter.reporterAccountId}
             onValueChange={(v) => {
               const id = v ?? ''
-              setReporterAccountId(id)
-              const a = accounts.find(x => x.id === id)
-              if (a) setReporterName(a.full_name || '')
+              reporter.setReporterAccountId(id)
+              const a = reporter.accounts.find(x => x.id === id)
+              if (a) reporter.setReporterName(a.full_name || '')
             }}
-            items={Object.fromEntries(accounts.map(a => [a.id, a.full_name || t('report.unnamedAccount', '(未命名帳號)')]))}
+            items={Object.fromEntries(reporter.accounts.map(a => [a.id, a.full_name || t('report.unnamedAccount', '(未命名帳號)')]))}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder={t('report.selectReporter', '選擇帳號（或手動填寫）')} />
             </SelectTrigger>
             <SelectContent>
-              {accounts.map(a => (
+              {reporter.accounts.map(a => (
                 <SelectItem key={a.id} value={a.id}>{a.full_name || t('report.unnamedAccount', '(未命名帳號)')}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
         <Input
-          value={reporterName}
+          value={reporter.reporterName}
           onChange={e => {
-            setReporterName(e.target.value)
+            reporter.setReporterName(e.target.value)
             // Typing manually clears the linked account selection.
-            if (reporterAccountId) setReporterAccountId('')
+            if (reporter.reporterAccountId) reporter.setReporterAccountId('')
           }}
           placeholder={t('report.reporterPlaceholder')}
           className="mt-2"
@@ -394,18 +172,18 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       <div>
         <Label className="text-base">{t('report.issueType')} <span className="text-red-500">*</span></Label>
         <div className="grid grid-cols-2 gap-2 mt-1">
-          {issueTypes.map(t => (
+          {issueTypes.map(it => (
             <button
-              key={t.value}
+              key={it.value}
               type="button"
-              onClick={() => setIssueType(t.value)}
+              onClick={() => setIssueType(it.value)}
               className={`text-left rounded-lg border px-3 py-2.5 text-base font-medium transition-colors ${
-                issueType === t.value
+                issueType === it.value
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
                   : 'border-gray-200 bg-white text-gray-700'
               }`}
             >
-              {t.label}
+              {it.label}
             </button>
           ))}
         </div>
@@ -464,50 +242,19 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       {/* ---- Right column ---- */}
       <div className="space-y-5">
 
-      {/* Location (required) */}
-      <div className="space-y-3">
-        <Label className="text-base">{t('report.location')} <span className="text-red-500">*</span></Label>
-        <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
-          <SelectTrigger><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
-          <SelectContent>
-            {factories.map(f => (
-              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {areas.length > 0 && (
-          <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
-            <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
-            <SelectContent>
-              {areas.map(a => (
-                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        {assets.length > 0 && (
-          <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')} items={Object.fromEntries(assets.map(a => [a.id, `${a.machine_code ? `[${a.machine_code}] ` : ''}${a.machine_name}`]))}>
-            <SelectTrigger><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>
-            <SelectContent>
-              {assets.map(a => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.machine_code ? `[${a.machine_code}] ` : ''}{a.machine_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        {/* Free-text "other" location — for spots not in the lists above */}
-        <Input
-          value={locationNote}
-          onChange={e => setLocationNote(e.target.value)}
-          placeholder={t('report.locationOther', '其他位置（自行填寫，選填）')}
-          className="mt-1"
-        />
-      </div>
+      <ReportLocationFields
+        factories={location.factories}
+        areas={location.areas}
+        assets={location.assets}
+        factoryId={location.factoryId}
+        setFactoryId={location.setFactoryId}
+        areaId={location.areaId}
+        setAreaId={location.setAreaId}
+        assetId={location.assetId}
+        setAssetId={location.setAssetId}
+        locationNote={locationNote}
+        setLocationNote={setLocationNote}
+      />
 
       {/* Title */}
       <div>
@@ -536,68 +283,18 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       </div>
 
       {/* Photos (full width) */}
-      <div>
-        <Label className="text-base">{t('report.photos')}</Label>
-        <div className="mt-1 space-y-2">
-          {photos.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {photos.map((p, i) => (
-                <div key={i} className="relative group">
-                  <img
-                    src={photoPreviews[i]}
-                    alt={`${t('report.photos')} ${i + 1}`}
-                    className="w-24 h-24 object-cover rounded-lg border border-gray-200 group-hover:opacity-80 transition-opacity"
-                  />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/0 group-hover:bg-black/40 rounded-lg transition-all">
-                    <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <span className="text-xs text-white opacity-0 group-hover:opacity-100 mt-1 transition-opacity">
-                      {(p.size / 1024).toFixed(0)} KB
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label={`${t('common.delete')} ${i + 1}`}
-                    onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {photos.length < 5 && (
-            <label className={`flex items-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer transition-colors ${
-              compressing ? 'border-blue-300 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
-            }`}>
-              <Camera className="w-5 h-5 text-gray-400" />
-              <div className="flex-1 text-sm">
-                <span className="text-gray-500">
-                  {compressing ? t('report.compressing') : t('report.takePhoto')}
-                </span>
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                capture="environment"
-                onChange={addPhoto}
-                disabled={compressing}
-                className="hidden"
-              />
-            </label>
-          )}
-          {photos.length > 0 && (
-            <p className="text-xs text-gray-400 mt-2">
-              共 {photos.length} 張（{(photos.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(1)} MB）
-            </p>
-          )}
-        </div>
-      </div>
+      <ReportPhotoPicker
+        photos={photoCapture.photos}
+        photoPreviews={photoCapture.photoPreviews}
+        compressing={photoCapture.compressing}
+        maxPhotos={5}
+        onAddPhotos={photoCapture.addPhotos}
+        onRemovePhoto={photoCapture.removePhoto}
+      />
 
       <Button
         onClick={submit}
-        disabled={submitting || !factoryId || !title.trim() || !description.trim() || (issueType === 'other' && !customType.trim())}
+        disabled={submitting || !location.factoryId || !title.trim() || !description.trim() || (issueType === 'other' && !customType.trim())}
         className="w-full h-12 text-base"
       >
         {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
