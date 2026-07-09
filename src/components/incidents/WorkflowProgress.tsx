@@ -44,6 +44,23 @@ export default function WorkflowProgress({ status, userRole }: { status: Inciden
   const hintLabel = awaitingClose ? t('nextStep.awaitClose') : t('nextStepLabel', '下一步')
   const hintText = awaitingClose ? t('nextStep.awaitCloseNote') : t(`nextStep.${status}`)
 
+  // Clickable hint → scroll to + briefly highlight the section this hint is
+  // actually about. 'reported' needs an owner assigned first (section-assign);
+  // every other open status (including awaitingClose — observation+supervisor
+  // — since closing happens via ProgressUpdate's own close flow, there's no
+  // separate close section on this page) is about logging progress
+  // (section-update). Closed has nothing left to jump to.
+  const targetId = isClosed ? null : status === 'reported' ? 'section-assign' : 'section-update'
+
+  function handleHintClick() {
+    if (!targetId) return
+    const el = document.getElementById(targetId)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    el.classList.add('ring-2', 'ring-blue-400')
+    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 1500)
+  }
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <p className="text-xs font-medium text-gray-500 mb-3">{t('workflowStep.heading', '流程進度')}</p>
@@ -92,8 +109,16 @@ export default function WorkflowProgress({ status, userRole }: { status: Inciden
 
       {/* Single "what to do next" hint line — role-aware (supervisor sees the
           awaiting-close cue on an observation case), suppressed to nothing
-          extra beyond this line since the bar above already shows position. */}
-      <div className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${hintBoxClass}`}>
+          extra beyond this line since the bar above already shows position.
+          Clickable (scrolls to + briefly highlights the relevant section)
+          whenever there's an actual target; plain/non-interactive otherwise. */}
+      <div
+        onClick={targetId ? handleHintClick : undefined}
+        role={targetId ? 'button' : undefined}
+        tabIndex={targetId ? 0 : undefined}
+        onKeyDown={targetId ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleHintClick() } : undefined}
+        className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${hintBoxClass} ${targetId ? 'cursor-pointer hover:brightness-95' : ''}`}
+      >
         <span className="shrink-0">{hintIcon}</span>
         <span>
           <span className="font-semibold">{hintLabel}：</span>

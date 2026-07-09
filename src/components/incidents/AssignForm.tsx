@@ -211,10 +211,12 @@ export default function AssignForm({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-      <h3 className="font-semibold text-gray-900 flex items-center gap-1.5">
-        <UserCheck className="w-4 h-4" /> {t('assign.title', '派工指派')}
-      </h3>
-
+      <div>
+        <h3 className="font-semibold text-gray-900 flex items-center gap-1.5">
+          <UserCheck className="w-4 h-4" /> {t('assign.title', '派工指派')}
+        </h3>
+        <p className="text-xs text-gray-500 mt-0.5">{t('assign.sectionHint', '選誰來處理這張工單，可以多選')}</p>
+      </div>
 
       {/* Account multi-select */}
       <div>

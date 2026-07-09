@@ -41,7 +41,8 @@
     "vendors": "Vendors",
     "dueDateSupervisorOnly": "Due date is set by a supervisor",
     "confirmClearAll": "Clear all assignees? People currently assigned will no longer be able to see this work order.",
-    "savedNoInternal": "Saved, but no internal account is assigned — technicians won’t see this work order, only supervisors will"
+    "savedNoInternal": "Saved, but no internal account is assigned — technicians won’t see this work order, only supervisors will",
+    "sectionHint": "Choose who's handling this — pick as many as needed"
   },
   "report": {
     "title": "Report Issue",
@@ -82,7 +83,10 @@
     "compressedToast": "Compressed {count} photo(s)",
     "compressSkipped": "file(s) could not be compressed (too large for device)",
     "locationOther": "Other location (type it yourself, optional)",
-    "advancedOptions": "Advanced (due date, optional)"
+    "advancedOptions": "Advanced (due date, optional)",
+    "sectionLocation": "Where",
+    "sectionIssue": "What's Wrong",
+    "sectionUrgency": "How Urgent"
   },
   "common": {
     "save": "Save",
@@ -102,7 +106,8 @@
     "submit": "Submit",
     "reset": "Reset",
     "noData": "No data available",
-    "update": "Update"
+    "update": "Update",
+    "yourTurn": "👉 Your turn"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -191,13 +196,6 @@
     "testing": "Testing",
     "maintenance": "Maintenance"
   },
-  "assignForm": {
-    "title": "Assign Work Order",
-    "assignTo": "Assign To",
-    "dueDate": "Due Date",
-    "priority": "Priority",
-    "notes": "Notes"
-  },
   "progressUpdate": {
     "title": "Update Progress",
     "status": "New Status",
@@ -207,10 +205,10 @@
     "heading": "Update progress",
     "updater": "Updated by",
     "updaterPlaceholder": "Maintenance staff name",
-    "newStatus": "New status",
-    "note": "Work notes",
+    "newStatus": "Where are things at now?",
+    "note": "What did you do?",
     "notePlaceholder": "Describe the work done, findings, parts replaced...",
-    "photos": "Photos (max 5, auto-compressed)",
+    "photos": "Photos of the work (optional)",
     "compressing": "Compressing...",
     "addPhoto": "Add photo",
     "submit": "Submit update",
@@ -235,7 +233,8 @@
     "partsCost": "Parts cost (optional)",
     "saveToKb": "Save to knowledge base (searchable next time)",
     "repairMethod": "Repair method (optional; falls back to the note below)",
-    "repairMethodPh": "e.g. replaced bearing 6205, recalibrated sensor position…"
+    "repairMethodPh": "e.g. replaced bearing 6205, recalibrated sensor position…",
+    "sectionHint": "Log what you've done so far and any findings — photos welcome"
   },
   "pm": {
     "manageTitle": "PM Management",
@@ -810,7 +809,8 @@
     "unregistered": "{count} assignee(s) have no personal Telegram set up — only got the group notice",
     "noRecipients": "Sent, but no subscribed Telegram recipients yet",
     "failed": "Failed to send reminder",
-    "confirmTap": "Tap again to confirm"
+    "confirmTap": "Tap again to confirm",
+    "sectionHint": "Send a Telegram reminder to the assignee"
   },
   "profile": {
     "title": "Profile",
@@ -896,6 +896,9 @@
     "closed": "Closed",
     "heading": "Workflow Progress"
   },
+  "progressTimeline": {
+    "sectionHint": "Full history of every update on this case"
+  },
   "audit": {
     "heading": "Activity History",
     "loading": "Loading history...",
@@ -906,7 +909,8 @@
     "status_change": "Status changed",
     "assign": "Assigned",
     "comment": "Comment",
-    "system": "System"
+    "system": "System",
+    "sectionHint": "Who changed what, and when"
   },
   "accountDisabled": {
     "title": "Account disabled",

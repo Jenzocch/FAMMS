@@ -10,7 +10,7 @@ import RemindButton from '@/components/incidents/RemindButton'
 import GudangRequest from '@/components/incidents/GudangRequest'
 import PartsRequestTracker from '@/components/incidents/PartsRequestTracker'
 import StatusChip from '@/components/incidents/StatusChip'
-import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection, PrintReportLink } from '@/components/incidents/IncidentDetailChrome'
+import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection, PrintReportLink, YourTurnBadge } from '@/components/incidents/IncidentDetailChrome'
 import AssignForm from '@/components/incidents/AssignForm'
 import IncidentActions from '@/components/incidents/IncidentActions'
 import AuditTrail from '@/components/incidents/AuditTrail'
@@ -104,6 +104,17 @@ export default async function IncidentDetailPage({
   const updateRows = (updates ?? []) as UpdateRow[]
   const isClosed = status === 'closed'
 
+  // "Your turn" emphasis (Part 6): highlight whichever section is THIS user's
+  // actual next action right now, vs. the other still-relevant-but-not-urgent
+  // section. A fresh/unowned case needs an owner before progress updates make
+  // sense (assign's turn); every other open status is the assignee's turn to
+  // log progress — including observation+supervisor, since closing happens
+  // via ProgressUpdate's own close flow (there's no separate close section on
+  // this page). Closed cases get no emphasis anywhere.
+  const canAssign = user ? PERMISSIONS.assignIncident(user.role) : false
+  const assignIsYourTurn = status === 'reported' && canAssign
+  const updateIsYourTurn = !isClosed && status !== 'reported'
+
   // ---- Build each section once, then arrange them below. ----------------
   // At `xl:` the page splits into a work column (the case story + the action)
   // and a sticky management rail (AssignForm/RemindButton/GudangRequest/
@@ -182,7 +193,12 @@ export default async function IncidentDetailPage({
   )
 
   const progressOrClosedEl = (
-    <div key="progressOrClosed" className="xl:col-start-1">
+    <div
+      key="progressOrClosed"
+      id="section-update"
+      className={`relative xl:col-start-1 ${updateIsYourTurn ? 'rounded-xl ring-2 ring-blue-100' : ''}`}
+    >
+      {updateIsYourTurn && <YourTurnBadge />}
       {!isClosed ? (
         <ProgressUpdate
           incidentId={id}
@@ -225,7 +241,12 @@ export default async function IncidentDetailPage({
 
   const auditEl = (
     <div key="audit" className="xl:col-start-1">
-      <CollapsibleSection titleKey="audit.heading" fallback="操作歷史">
+      <CollapsibleSection
+        titleKey="audit.heading"
+        fallback="操作歷史"
+        hintKey="audit.sectionHint"
+        hintFallback="誰在何時改了什麼"
+      >
         <AuditTrail resourceId={id} resourceType="incident" showHeading={false} />
       </CollapsibleSection>
     </div>
@@ -237,7 +258,12 @@ export default async function IncidentDetailPage({
   // the `order` arrays below); every other status keeps it with the rest of
   // the rail, right after the timeline.
   const assignFormEl = (
-    <div key="assign" className="xl:col-start-2 xl:[grid-row:1] xl:sticky xl:top-4">
+    <div
+      key="assign"
+      id="section-assign"
+      className={`relative xl:col-start-2 xl:[grid-row:1] xl:sticky xl:top-4 ${assignIsYourTurn ? 'rounded-xl ring-2 ring-blue-100' : ''}`}
+    >
+      {assignIsYourTurn && <YourTurnBadge />}
       <AssignForm
         incidentId={id}
         assignedTo={incident.assigned_to}

@@ -25,17 +25,6 @@ import ReportPhotoPicker from './report/ReportPhotoPicker'
 
 interface IssueType { value: string; label: string }
 
-// Fallback list used if the incident_types table is empty/unavailable.
-const DEFAULT_ISSUE_TYPES: IssueType[] = [
-  { value: 'machine', label: '🔧 機器故障' },
-  { value: 'pipe', label: '🚿 水管/管線' },
-  { value: 'electrical', label: '💡 電力/照明' },
-  { value: 'facility', label: '🏭 設施/基礎建設' },
-  { value: 'safety', label: '⚠️ 安全問題' },
-  { value: 'cleanliness', label: '🧹 衛生/清潔' },
-  { value: 'other', label: '📋 其他' },
-]
-
 // Three urgency levels (mapped to impact codes A / C / D). "High" (B) is
 // retired from the picker but still renders for any legacy incident that has it.
 const URGENCY = [
@@ -55,6 +44,19 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
 
   const { types: cachedTypes } = useIncidentTypes()
   const typeLabel = useIncidentTypeLabel()
+  // Fallback list used if the incident_types table is empty/unavailable.
+  // Built from i18n (issueTypes.*) so an Indonesian-locale user never sees a
+  // hardcoded Chinese label — fallback strings below are only used if a
+  // locale is somehow missing the key.
+  const DEFAULT_ISSUE_TYPES: IssueType[] = [
+    { value: 'machine', label: t('issueTypes.machine', '🔧 機器故障') },
+    { value: 'pipe', label: t('issueTypes.pipe', '🚿 水管/管線') },
+    { value: 'electrical', label: t('issueTypes.electrical', '💡 電力/照明') },
+    { value: 'facility', label: t('issueTypes.facility', '🏭 設施/基礎建設') },
+    { value: 'safety', label: t('issueTypes.safety', '⚠️ 安全問題') },
+    { value: 'cleanliness', label: t('issueTypes.cleanliness', '🧹 衛生/清潔') },
+    { value: 'other', label: t('issueTypes.other', '📋 其他') },
+  ]
   // Use shared cache when populated; otherwise the built-in defaults. Labels
   // follow the active app language.
   const issueTypes: IssueType[] = cachedTypes.length > 0

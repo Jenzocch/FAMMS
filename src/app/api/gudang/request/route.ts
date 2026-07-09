@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Minimal satu item (nama + qty)' }, { status: 400 })
   }
   if (!incidentId) {
-    return NextResponse.json({ error: 'incident_id wajib' }, { status: 400 })
+    return NextResponse.json({ error: 'Laporan terkait wajib diisi' }, { status: 400 })
   }
 
   // Incident context: work-order number, machine, factory → target warehouse.
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     .eq('id', incidentId)
     .single()
   if (error || !incident) {
-    return NextResponse.json({ error: 'Incident tidak ditemukan' }, { status: 404 })
+    return NextResponse.json({ error: 'Laporan tidak ditemukan' }, { status: 404 })
   }
 
   // Supabase types to-one joins as arrays; at runtime .single() returns objects

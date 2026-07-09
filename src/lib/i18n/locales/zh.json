@@ -41,7 +41,8 @@
     "vendors": "常用廠商",
     "dueDateSupervisorOnly": "完成日由主管設定",
     "confirmClearAll": "確定要清空所有指派嗎？被指派中的人員將無法再看到此工單。",
-    "savedNoInternal": "已儲存，但未指派任何內部帳號 — 技師將看不到此工單，只有主管看得到"
+    "savedNoInternal": "已儲存，但未指派任何內部帳號 — 技師將看不到此工單，只有主管看得到",
+    "sectionHint": "選誰來處理這張工單，可以多選"
   },
   "report": {
     "title": "回報問題",
@@ -82,7 +83,10 @@
     "compressedToast": "壓縮 {count} 張圖片完成",
     "compressSkipped": "個檔案無法壓縮（裝置容量不足）",
     "locationOther": "其他位置（自行填寫，選填）",
-    "advancedOptions": "進階選項（截止日，可不填）"
+    "advancedOptions": "進階選項（截止日，可不填）",
+    "sectionLocation": "在哪裡",
+    "sectionIssue": "什麼問題",
+    "sectionUrgency": "有多急"
   },
   "common": {
     "save": "保存",
@@ -102,7 +106,8 @@
     "submit": "提交",
     "reset": "重置",
     "noData": "暫無數據",
-    "update": "更新"
+    "update": "更新",
+    "yourTurn": "👉 該你了"
   },
   "navigation": {
     "dashboard": "儀表板",
@@ -191,13 +196,6 @@
     "testing": "测试",
     "maintenance": "保养"
   },
-  "assignForm": {
-    "title": "分配工單",
-    "assignTo": "分配给",
-    "dueDate": "截止日期",
-    "priority": "優先級",
-    "notes": "備註"
-  },
   "progressUpdate": {
     "title": "更新進度",
     "status": "新狀態",
@@ -207,10 +205,10 @@
     "heading": "更新處理進度",
     "updater": "處理人員",
     "updaterPlaceholder": "維修人員姓名",
-    "newStatus": "新狀態",
-    "note": "處理說明",
+    "newStatus": "現在到哪個階段了？",
+    "note": "你做了什麼？",
     "notePlaceholder": "說明處理內容、發現的問題、更換的零件...",
-    "photos": "照片（最多 5 張，自動壓縮）",
+    "photos": "工作照片（選填）",
     "compressing": "壓縮中...",
     "addPhoto": "新增照片",
     "submit": "送出更新",
@@ -235,7 +233,8 @@
     "partsCost": "零件/材料費用（選填）",
     "saveToKb": "存入知識庫（下次同樣問題可查到怎麼修）",
     "repairMethod": "修理方法（選填，未填則使用下方備註）",
-    "repairMethodPh": "例如：更換 bearing 6205、重新校正 sensor 位置…"
+    "repairMethodPh": "例如：更換 bearing 6205、重新校正 sensor 位置…",
+    "sectionHint": "記錄目前做了什麼、發現什麼問題，可附照片"
   },
   "pm": {
     "manageTitle": "保養管理",
@@ -810,7 +809,8 @@
     "unregistered": "{count} 位負責人尚未設定個人 Telegram，只收到群組通知",
     "noRecipients": "已送出，但目前沒有訂閱的 Telegram 接收者",
     "failed": "催進度發送失敗",
-    "confirmTap": "再按一次確認"
+    "confirmTap": "再按一次確認",
+    "sectionHint": "發 Telegram 提醒給負責人"
   },
   "profile": {
     "title": "個人資料",
@@ -896,6 +896,9 @@
     "closed": "已結案",
     "heading": "流程進度"
   },
+  "progressTimeline": {
+    "sectionHint": "所有處理更新的完整紀錄"
+  },
   "audit": {
     "heading": "操作歷史",
     "loading": "載入歷史記錄中...",
@@ -906,7 +909,8 @@
     "status_change": "狀態變更",
     "assign": "指派",
     "comment": "評論",
-    "system": "系統"
+    "system": "系統",
+    "sectionHint": "誰在何時改了什麼"
   },
   "accountDisabled": {
     "title": "帳號已停用",

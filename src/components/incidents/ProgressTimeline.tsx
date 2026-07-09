@@ -30,18 +30,22 @@ export default function ProgressTimeline({
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-gray-400 flex items-baseline gap-1.5">
-        <span className="font-semibold text-gray-900">{t('incidentDetail.progressLog')} (0)</span>
-        {t('incidentDetail.noRecords')}
-      </p>
+      <div>
+        <p className="text-sm text-gray-400 flex items-baseline gap-1.5">
+          <span className="font-semibold text-gray-900">{t('incidentDetail.progressLog')} (0)</span>
+          {t('incidentDetail.noRecords')}
+        </p>
+        <p className="text-xs text-gray-500 mt-0.5">{t('progressTimeline.sectionHint', '所有處理更新的完整紀錄')}</p>
+      </div>
     )
   }
 
   return (
     <div>
-      <h2 className="font-semibold text-gray-900 mb-2 text-sm">
+      <h2 className="font-semibold text-gray-900 mb-0.5 text-sm">
         {t('incidentDetail.progressLog')} ({rows.length})
       </h2>
+      <p className="text-xs text-gray-500 mb-2">{t('progressTimeline.sectionHint', '所有處理更新的完整紀錄')}</p>
       <ol className="relative border-l-2 border-gray-100 ml-2 space-y-3">
         {rows.map(u => (
           <li key={u.id} className="ml-4">
