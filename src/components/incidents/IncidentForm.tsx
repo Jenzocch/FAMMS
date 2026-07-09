@@ -69,6 +69,11 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Generated ONCE per form instance (not per submit attempt) so that a retry
+  // after a flaky-signal timeout — user hits submit again because it looked
+  // like it failed — is recognized as the same report instead of creating a
+  // duplicate incident. See submitIncidentReport's idempotency check.
+  const [clientRequestId] = useState(() => crypto.randomUUID())
 
   async function submit() {
     if (!location.factoryId || !title.trim() || !description.trim()) {
@@ -101,6 +106,7 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
         locationNote,
         photos: photoCapture.photos,
         userId: user?.id ?? null,
+        clientRequestId,
       })
 
       if (photoUploadFailed) toast.warning('工單已建立，但照片上傳失敗')
