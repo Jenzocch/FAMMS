@@ -246,9 +246,9 @@
     "calendarHeading": "📅 Maintenance Calendar",
     "plannedTag": "Planned",
     "adhocTag": "Ad-hoc",
-    "maintainerName": "Performed by",
+    "maintainerName": "Who did it?",
     "namePlaceholder": "Name",
-    "maintenanceNote": "Maintenance notes",
+    "maintenanceNote": "What was done?",
     "notePlaceholder": "Parts replaced, adjustments, findings...",
     "saveBtn": "Save",
     "recordAdded": "Maintenance record added",
@@ -398,7 +398,8 @@
     "done": "Done",
     "checklistHeading": "Checklist",
     "checklistLabel": "Checklist (optional, one item per line)",
-    "checklistPlaceholder": "e.g.\nCheck bearing lubrication\nClean heat sink\nMeasure running temperature"
+    "checklistPlaceholder": "e.g.\nCheck bearing lubrication\nClean heat sink\nMeasure running temperature",
+    "dueListHint": "Your upcoming and overdue maintenance tasks"
   },
   "weekdays": {
     "0": "Sun",

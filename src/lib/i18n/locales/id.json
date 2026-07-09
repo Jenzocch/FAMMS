@@ -246,9 +246,9 @@
     "calendarHeading": "📅 Kalender Perawatan",
     "plannedTag": "Terjadwal",
     "adhocTag": "Tak terjadwal",
-    "maintainerName": "Dikerjakan oleh",
+    "maintainerName": "Siapa yang mengerjakan?",
     "namePlaceholder": "Nama",
-    "maintenanceNote": "Catatan perawatan",
+    "maintenanceNote": "Apa yang dikerjakan?",
     "notePlaceholder": "Penggantian part, penyetelan, temuan...",
     "saveBtn": "Simpan",
     "recordAdded": "Catatan perawatan ditambahkan",
@@ -398,7 +398,8 @@
     "done": "Selesai",
     "checklistHeading": "Checklist",
     "checklistLabel": "Checklist (opsional, satu item per baris)",
-    "checklistPlaceholder": "mis.\nCek pelumasan bearing\nBersihkan heatsink\nUkur suhu operasi"
+    "checklistPlaceholder": "mis.\nCek pelumasan bearing\nBersihkan heatsink\nUkur suhu operasi",
+    "dueListHint": "Tugas perawatan yang akan datang dan yang terlambat"
   },
   "weekdays": {
     "0": "Min",
