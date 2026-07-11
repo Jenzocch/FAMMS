@@ -79,5 +79,11 @@ export default async function proxy(request: NextRequest) {
 
 export const config = {
   // Skip static assets entirely — running the guard there is pure overhead.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)'],
+  // manifest.webmanifest MUST be excluded too: Android/Chrome (and Google's
+  // WebAPK minting server) fetch it WITHOUT the user's session cookie when
+  // installing the PWA, so guarding it redirects the fetch to /login, the
+  // installer can't read the icons, and the home-screen icon falls back to a
+  // generated monogram. /offline is the service worker's offline fallback page
+  // and must render without auth for the same reason.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)'],
 }
