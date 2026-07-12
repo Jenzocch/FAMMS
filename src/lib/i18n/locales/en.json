@@ -1031,5 +1031,11 @@
     "signReviewer": "Reviewed By",
     "signApprover": "Approved By",
     "signDate": "Date"
+  },
+  "pastRecords": {
+    "heading": "Past records found",
+    "machineHistory": "Recent cases on this machine",
+    "kbMatches": "Related knowledge base entries",
+    "fixWas": "Fix used"
   }
 }

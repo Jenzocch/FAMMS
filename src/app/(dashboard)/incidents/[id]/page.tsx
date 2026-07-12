@@ -9,6 +9,8 @@ import WorkflowProgress from '@/components/incidents/WorkflowProgress'
 import RemindButton from '@/components/incidents/RemindButton'
 import GudangRequest from '@/components/incidents/GudangRequest'
 import PartsRequestTracker from '@/components/incidents/PartsRequestTracker'
+import PastRecordsPanel from '@/components/incidents/report/PastRecordsPanel'
+import type { PastIncident, KBMatch } from '@/lib/hooks/usePastRecords'
 import StatusChip from '@/components/incidents/StatusChip'
 import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection, PrintReportLink, YourTurnBadge } from '@/components/incidents/IncidentDetailChrome'
 import AssignForm from '@/components/incidents/AssignForm'
@@ -79,6 +81,33 @@ export default async function IncidentDetailPage({
     .select('id, items, urgency, status, requested_at')
     .eq('incident_id', id)
     .order('requested_at', { ascending: false })
+
+  // Past experience on the same machine — so the assignee sees last time's
+  // fix before heading to the machine. Open cases only; a closed case no
+  // longer needs the hint. KB entries from this incident itself are excluded
+  // (they'd be circular).
+  let pastIncidents: PastIncident[] = []
+  let kbEntries: KBMatch[] = []
+  if (incident.machine_id && incident.status !== 'closed') {
+    const [pi, kb] = await Promise.all([
+      supabase
+        .from('incidents')
+        .select('id, incident_no, title, status, reported_at')
+        .eq('machine_id', incident.machine_id)
+        .neq('id', id)
+        .order('reported_at', { ascending: false })
+        .limit(3),
+      supabase
+        .from('knowledge_base')
+        .select('id, problem, repair_method, incident:incidents!inner(machine_id)')
+        .eq('incident.machine_id', incident.machine_id)
+        .neq('incident_id', id)
+        .order('created_at', { ascending: false })
+        .limit(3),
+    ])
+    pastIncidents = (pi.data as PastIncident[]) ?? []
+    kbEntries = ((kb.data ?? []) as unknown as KBMatch[]).map(({ id: kbId, problem, repair_method }) => ({ id: kbId, problem, repair_method }))
+  }
 
   // Photos attached to the ORIGINAL report live directly under
   // incident-photos/{id}/ with no DB record (progress-update photos go to the
@@ -221,6 +250,15 @@ export default async function IncidentDetailPage({
     </div>
   )
 
+  // Same-machine history + KB hits (fetched above; empty on closed cases).
+  // null when there's nothing — an empty wrapper would still eat a space-y
+  // gap on mobile.
+  const pastRecordsEl = (pastIncidents.length > 0 || kbEntries.length > 0) ? (
+    <div key="pastRecords" className="xl:col-start-1">
+      <PastRecordsPanel pastIncidents={pastIncidents} kbEntries={kbEntries} />
+    </div>
+  ) : null
+
   const manageEl = (
     <div key="manage" className="xl:col-start-1">
       <CollapsibleSection titleKey="incidentDetail.manageSection" fallback="編輯 / 刪除工單">
@@ -293,8 +331,8 @@ export default async function IncidentDetailPage({
   // Single flat order — this is the real mobile reading/DOM order; the grid
   // above just repositions the two rail pieces into column 2 at `xl:`.
   const order = status === 'reported'
-    ? [headerCard, progressCard, assignFormEl, progressOrClosedEl, timelineEl, railRestEl, manageEl, auditEl]
-    : [headerCard, progressCard, progressOrClosedEl, timelineEl, assignFormEl, railRestEl, manageEl, auditEl]
+    ? [headerCard, progressCard, assignFormEl, pastRecordsEl, progressOrClosedEl, timelineEl, railRestEl, manageEl, auditEl]
+    : [headerCard, progressCard, pastRecordsEl, progressOrClosedEl, timelineEl, assignFormEl, railRestEl, manageEl, auditEl]
 
   return (
     <div className="space-y-4">

@@ -1031,5 +1031,11 @@
     "signReviewer": "Peninjau",
     "signApprover": "Disetujui Oleh",
     "signDate": "Tanggal"
+  },
+  "pastRecords": {
+    "heading": "Ada catatan sebelumnya",
+    "machineHistory": "Kasus terbaru di mesin ini",
+    "kbMatches": "Pengalaman terkait di knowledge base",
+    "fixWas": "Cara perbaikan saat itu"
   }
 }

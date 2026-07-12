@@ -19,9 +19,11 @@ import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { useReportLocation } from '@/lib/hooks/useReportLocation'
 import { useReporterAccounts } from '@/lib/hooks/useReporterAccounts'
 import { usePhotoCapture } from '@/lib/hooks/usePhotoCapture'
+import { usePastRecords } from '@/lib/hooks/usePastRecords'
 import { submitIncidentReport } from '@/lib/incidents/submitIncidentReport'
 import ReportLocationFields from './report/ReportLocationFields'
 import ReportPhotoPicker from './report/ReportPhotoPicker'
+import PastRecordsPanel from './report/PastRecordsPanel'
 
 interface IssueType { value: string; label: string }
 
@@ -76,6 +78,10 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   // like it failed — is recognized as the same report instead of creating a
   // duplicate incident. See submitIncidentReport's idempotency check.
   const [clientRequestId] = useState(() => crypto.randomUUID())
+
+  // Past incidents on the picked machine + KB entries matching the typed
+  // problem — surfaced live in the form so last time's fix is one tap away.
+  const { pastIncidents, kbEntries } = usePastRecords(location.assetId, title)
 
   async function submit() {
     if (!location.factoryId || !title.trim() || !description.trim()) {
@@ -258,6 +264,11 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
             rows={4}
           />
         </div>
+
+        {/* Past experience for the picked machine / typed problem — shows the
+            fix from last time at the exact moment it's most useful. Hidden
+            entirely when there's nothing to show. */}
+        <PastRecordsPanel pastIncidents={pastIncidents} kbEntries={kbEntries} />
       </div>
       </div>
       {/* ---- Right column (desktop) / continues down the page (phone) ---- */}

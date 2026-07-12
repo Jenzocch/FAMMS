@@ -1031,5 +1031,11 @@
     "signReviewer": "檢討人",
     "signApprover": "主管核准",
     "signDate": "日期"
+  },
+  "pastRecords": {
+    "heading": "這裡有以前的紀錄",
+    "machineHistory": "這台機器最近的工單",
+    "kbMatches": "知識庫相關經驗",
+    "fixWas": "當時修法"
   }
 }
