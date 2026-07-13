@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import TelegramSettings from '@/components/settings/TelegramSettings'
 import FactoryManager from '@/components/settings/FactoryManager'
-import AreaManager from '@/components/settings/AreaManager'
 import AssetManager from '@/components/settings/AssetManager'
 import IncidentTypeManager from '@/components/settings/IncidentTypeManager'
 import VendorManager from '@/components/settings/VendorManager'
@@ -28,7 +27,6 @@ export default async function SettingsPage() {
 
   const canManageUsers = PERMISSIONS.manageUsers(user.role)
   const canManageMachines = PERMISSIONS.manageMachines(user.role)
-  const canManageAreas = PERMISSIONS.manageAreas(user.role)
   const canManageFactories = PERMISSIONS.manageFactories(user.role)
   const canManageIncidentTypes = PERMISSIONS.manageIncidentTypes(user.role)
   const canManageVendors = PERMISSIONS.manageVendors(user.role)
@@ -64,15 +62,9 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      {/* Area Management — manager + admin */}
-      {canManageAreas && (
-        <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-          <SettingsSectionHeader titleKey="settings.areaSectionTitle" descKey="settings.areaSectionDesc" />
-          <AreaManager />
-        </section>
-      )}
-
-      {/* Factory Management — manager + admin */}
+      {/* Factory & Area Management — manager + admin. One hierarchical
+          section: expand a factory to manage its areas right underneath,
+          instead of two disconnected sections with a factory dropdown. */}
       {canManageFactories && (
         <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <SettingsSectionHeader titleKey="settings.factorySectionTitle" descKey="settings.factorySectionDesc" />

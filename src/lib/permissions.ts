@@ -55,7 +55,8 @@ export const PERMISSIONS = {
   // --- Equipment master ---
   viewMachines: (_role: UserRole) => true,
   manageMachines: (role: UserRole) => ['manager', 'admin'].includes(role),
-  manageAreas: (role: UserRole) => ['manager', 'admin'].includes(role),
+  // Areas are managed inside the factory section (FactoryManager), so
+  // factories and areas share one permission.
   manageFactories: (role: UserRole) => ['manager', 'admin'].includes(role),
   manageIncidentTypes: (role: UserRole) => role === 'admin',
   manageVendors: (role: UserRole) => ['manager', 'admin'].includes(role),
