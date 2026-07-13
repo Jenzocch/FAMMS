@@ -41,15 +41,32 @@ export default function ReportLocationFields({
         </SelectContent>
       </Select>
 
-      {areas.length > 0 && (
-        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
-          <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
-          <SelectContent>
-            {areas.map(a => (
-              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <Select
+        value={areaId}
+        onValueChange={(v) => setAreaId(v ?? '')}
+        items={Object.fromEntries([
+          ...areas.map(a => [a.id, a.name]),
+          ...(areas.length === 0 ? [['__other__', t('report.selectAreaOther', '其他')]] : []),
+        ])}
+      >
+        <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
+        <SelectContent>
+          {areas.map(a => (
+            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+          ))}
+          {areas.length === 0 && (
+            <SelectItem value="__other__">{t('report.selectAreaOther', '其他')}</SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+
+      {areaId === '__other__' && (
+        <Input
+          value={locationNote}
+          onChange={e => setLocationNote(e.target.value)}
+          placeholder={t('report.areaCustom', '請填寫區域名稱')}
+          className="mt-1"
+        />
       )}
 
       {assets.length > 0 && (

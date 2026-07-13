@@ -99,7 +99,7 @@ export function useReportLocation(presetMachineId?: string) {
   }, [factoryId])
 
   useEffect(() => {
-    if (!areaId) { setAssets([]); setAssetId(''); return }
+    if (!areaId || areaId === '__other__') { setAssets([]); setAssetId(''); return }
     supabase.from('machines').select('id, area_id, machine_name, machine_code')
       .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
       .then(({ data }) => {

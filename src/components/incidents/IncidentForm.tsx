@@ -67,7 +67,6 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
 
   const [locationNote, setLocationNote] = useState('')
   const [issueType, setIssueType] = useState('machine')
-  const [customType, setCustomType] = useState('')
   const [urgency, setUrgency] = useState('medium')
   const [dueDate, setDueDate] = useState('')
   const [title, setTitle] = useState('')
@@ -88,12 +87,8 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       toast.error(t('report.fillRequired'))
       return
     }
-    if (issueType === 'other' && !customType.trim()) {
-      toast.error(t('report.specifyType'))
-      return
-    }
-    // For "other", store the free-text the user typed so it shows on the board.
-    const incidentType = issueType === 'other' ? customType.trim() : issueType
+    // For "other", use the problem title as the incident type label on the board.
+    const incidentType = issueType === 'other' ? title.trim() : issueType
 
     // Deadline = manual pick if given, else auto-derived from urgency (SLA).
     const impactCode = urgency === 'critical' ? 'A' : urgency === 'medium' ? 'C' : 'D'
@@ -135,8 +130,7 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   }
 
   const submitDisabled =
-    submitting || !location.factoryId || !title.trim() || !description.trim() ||
-    (issueType === 'other' && !customType.trim())
+    submitting || !location.factoryId || !title.trim() || !description.trim()
 
   return (
     // Extra bottom padding on phone clears the fixed submit bar (which itself
@@ -234,14 +228,6 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
               </button>
             ))}
           </div>
-          {issueType === 'other' && (
-            <Input
-              value={customType}
-              onChange={e => setCustomType(e.target.value)}
-              placeholder={t('report.otherPlaceholder')}
-              className="mt-2"
-            />
-          )}
         </div>
 
         <div>
