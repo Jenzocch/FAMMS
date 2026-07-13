@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import IncidentBoard, { BoardRow } from '@/components/incidents/IncidentBoard'
 import IncidentsBoardWithSearch from '@/components/incidents/IncidentsBoardWithSearch'
 
@@ -21,7 +21,9 @@ export default async function IncidentsPage({
     factory:factories(name)
   `
 
-  const isFullBoard = !user || PERMISSIONS.boardFull(user.role)
+  // user.capabilities.boardFull already IS PERMISSIONS.boardFull(user.role)
+  // unless a custom role overrides it (see resolveRoleOverlay in lib/auth.ts).
+  const isFullBoard = !user || user.capabilities.boardFull
 
   let rows: BoardRow[]
 

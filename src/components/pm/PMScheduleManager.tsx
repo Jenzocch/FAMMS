@@ -17,7 +17,7 @@ import { loadFactories } from '@/lib/useFactories'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; factory_id: string; name: string }
-interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null }
+interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null; custom_role_key: string | null }
 interface Machine {
   id: string
   factory_id?: string
@@ -100,7 +100,7 @@ export default function PMScheduleManager() {
       }
       setLoading(false)
     })
-    supabase.from('profiles').select('id, full_name, role, factory_id').eq('is_active', true).order('full_name')
+    supabase.from('profiles').select('id, full_name, role, factory_id, custom_role_key').eq('is_active', true).order('full_name')
       .then(({ data }) => setAccounts((data ?? []) as Account[]))
     loadSchedules()
   }, [])
@@ -108,9 +108,11 @@ export default function PMScheduleManager() {
   const accountName = (a: Account) => a.full_name || `(${ROLE_ZH[a.role] ?? a.role})`
   const toggleAssignee = (id: string) =>
     setAssignees(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  // Technicians in the selected schedule's factory (cross-factory accounts also qualify).
+  // Technicians in the selected schedule's factory (cross-factory accounts also
+  // qualify). Excludes accounts on a custom role (e.g. QC) even though they
+  // share the technician DB tier — see AssignForm.tsx for the same rule.
   const factoryTechnicians = accounts.filter(
-    a => a.role === 'technician' && (!factoryId || !a.factory_id || a.factory_id === factoryId)
+    a => a.role === 'technician' && !a.custom_role_key && (!factoryId || !a.factory_id || a.factory_id === factoryId)
   )
   // Accounts selectable for this schedule's factory. Cross-factory accounts and
   // anyone already assigned stay visible so they can still be de-selected.

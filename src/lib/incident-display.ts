@@ -37,11 +37,16 @@ export const URGENCY_FROM_IMPACT: Record<string, { label: string; color: string 
 export const URGENCY_SLA_DAYS: Record<string, number> = { A: 0, B: 1, C: 3, D: 7 }
 
 // Returns a YYYY-MM-DD due date computed from urgency, counting from `base`.
+// Formatted from LOCAL date parts, never toISOString(): that converts to UTC
+// first, so between local midnight and 07:00 (WIB is UTC+7) the UTC date is
+// still "yesterday" — night-shift urgent reports were getting a due date one
+// day early and showing as overdue the moment they were created.
 export function deadlineFromUrgency(impact: string, base: Date = new Date()): string {
   const days = URGENCY_SLA_DAYS[impact] ?? 7
   const d = new Date(base)
   d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 export const STATUS_ZH: Record<IncidentStatus, string> = {

@@ -27,14 +27,21 @@ export default async function KnowledgeBasePage({
     .limit(100)
 
   if (q) {
-    // Full-text style search across the key fields
-    const term = `%${q}%`
-    query = query.or(
-      `problem.ilike.${term},root_cause.ilike.${term},repair_method.ilike.${term},keywords.ilike.${term},lessons_learned.ilike.${term}`
-    )
+    // Full-text style search across the key fields. The user's text is
+    // embedded in a PostgREST .or() filter string, so two escapes are needed:
+    //  - `,`/`(`/`)` are .or() syntax — searching "bearing, overheat" used to
+    //    break the whole filter, error out, and render as a fake "no results"
+    //  - `%`/`_`/`\` are LIKE wildcards — "BEARING_001" matched "BEARINGX001"
+    const safe = q.replace(/[\\%_]/g, ch => `\\${ch}`).replace(/[,()]/g, ' ').trim()
+    if (safe) {
+      const term = `%${safe}%`
+      query = query.or(
+        `problem.ilike.${term},root_cause.ilike.${term},repair_method.ilike.${term},keywords.ilike.${term},lessons_learned.ilike.${term}`
+      )
+    }
   }
 
-  const { data: entries } = await query
+  const { data: entries, error: searchError } = await query
 
   return (
     <div className="space-y-6">
@@ -60,7 +67,9 @@ export default async function KnowledgeBasePage({
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
           <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
           <p className="text-gray-500">
-            {q ? 'Tidak ada hasil. Coba kata kunci lain.' : 'Belum ada knowledge base. Tambah entry pertama.'}
+            {searchError
+              ? 'Pencarian gagal — coba kata kunci lain.' // real error ≠ "no results"
+              : q ? 'Tidak ada hasil. Coba kata kunci lain.' : 'Belum ada knowledge base. Tambah entry pertama.'}
           </p>
         </div>
       ) : (

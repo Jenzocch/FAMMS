@@ -14,6 +14,15 @@ import type { UserRole } from '@/types'
 //                   PM schedules, edit settings (but NOT user accounts)
 //   - director:   factory-level oversight (dashboard + incident actions)
 //   - admin:      everything, including user & password management
+//
+// This file is the hard floor for every role, base or custom. A "custom
+// role" (custom_roles table) is a named overlay an admin can create in
+// Settings → 角色管理 without touching code: it inherits one of these 5
+// tiers' behavior for everything below, and may ADDITIONALLY be granted a
+// small fixed set of soft, non-DB-enforced capabilities (see lib/roles.ts —
+// currently just dashboard/boardFull visibility) on top of its base tier.
+// See resolveEffectiveCapabilities() in lib/roles.ts for where that overlay
+// is applied; nothing here needs to know about custom roles.
 export const PERMISSIONS = {
   // --- Dashboard / KPI ---
   dashboard: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),

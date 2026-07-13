@@ -1,9 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signOutAndClearCaches } from '@/lib/sign-out'
 import { Profile } from '@/types'
 import { ROLE_ZH } from '@/lib/incident-display'
+import type { CustomRole } from '@/lib/roles'
+import { customRoleLabel } from '@/lib/roles'
 import { Wrench, LogOut, User } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -14,16 +16,21 @@ import { useI18n } from '@/lib/i18n'
 
 interface TopBarProps {
   profile: Profile | null
+  customRole?: CustomRole | null
 }
 
-export default function TopBar({ profile }: TopBarProps) {
+export default function TopBar({ profile, customRole = null }: TopBarProps) {
   const router = useRouter()
-  const supabase = createClient()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const roleDisplay = customRole ? customRoleLabel(customRole, locale) : (profile?.role ? ROLE_ZH[profile.role] : null)
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await signOutAndClearCaches()
     router.push('/login')
+    // Purge Next's client Router Cache too — back/forward restores from it
+    // regardless of staleTimes, so without this the next user on a shared
+    // device could Back into the previous user's rendered pages.
+    router.refresh()
   }
 
   const initials = profile?.full_name
@@ -52,8 +59,8 @@ export default function TopBar({ profile }: TopBarProps) {
           <DropdownMenuContent align="end" className="w-48">
             <div className="px-3 py-2">
               <p className="text-sm font-medium">{profile?.full_name || '使用者'}</p>
-              {profile?.role && (
-                <p className="text-xs text-gray-400 mt-0.5">{ROLE_ZH[profile.role]}</p>
+              {roleDisplay && (
+                <p className="text-xs text-gray-400 mt-0.5">{roleDisplay}</p>
               )}
             </div>
             <DropdownMenuSeparator />

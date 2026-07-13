@@ -18,7 +18,7 @@ export async function GET() {
 
   const { data: profiles, error: profErr } = await admin
     .from('profiles')
-    .select('id, factory_id, full_name, role, is_active, created_at')
+    .select('id, factory_id, full_name, role, custom_role_key, is_active, created_at')
   if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 })
 
   // Best-effort email lookup. Never let a failure here break the whole list.
@@ -43,6 +43,7 @@ export async function GET() {
     email: emailById.get(p.id) ?? '',
     full_name: p.full_name ?? '',
     role: (p.role ?? 'technician') as UserRole,
+    custom_role_key: p.custom_role_key ?? null,
     factory_id: p.factory_id ?? null,
     is_active: p.is_active ?? true,
     created_at: p.created_at,
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
     password?: string
     full_name?: string
     role?: string
+    custom_role_key?: string | null
     factory_id?: string
     telegram_chat_id?: string | number
   }
@@ -76,8 +78,25 @@ export async function POST(req: Request) {
 
   const password = body.password ?? ''
   const full_name = body.full_name?.trim() || null
-  const role = (body.role ?? 'technician') as UserRole
   const factory_id = body.factory_id || null
+
+  const admin = createAdminClient()
+
+  // A custom role (Settings → 角色管理) picks its own base tier — the client
+  // sends the custom_role_key, and we look up (not trust) its base_role, so
+  // there's no way to smuggle a higher tier through the `role` field.
+  let role: UserRole = (body.role ?? 'technician') as UserRole
+  let customRoleKey: string | null = null
+  if (body.custom_role_key) {
+    const { data: cr } = await admin
+      .from('custom_roles')
+      .select('key, base_role')
+      .eq('key', body.custom_role_key)
+      .maybeSingle()
+    if (!cr) return NextResponse.json({ error: '角色不存在' }, { status: 400 })
+    role = cr.base_role as UserRole
+    customRoleKey = cr.key
+  }
 
   // Login name (= the assigned full name) is the credential; the email is a
   // synthetic value derived from it. An explicit email is still honored if sent.
@@ -95,8 +114,6 @@ export async function POST(req: Request) {
   if (!VALID_ROLES.includes(role)) {
     return NextResponse.json({ error: '角色不正確' }, { status: 400 })
   }
-
-  const admin = createAdminClient()
 
   // factory_id may be null = "cross-factory" (not bound to one factory).
   const resolvedFactoryId = factory_id
@@ -121,6 +138,7 @@ export async function POST(req: Request) {
       factory_id: resolvedFactoryId,
       full_name,
       role,
+      custom_role_key: customRoleKey,
       is_active: true,
     }, { onConflict: 'id' })
 

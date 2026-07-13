@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { addDays, addWeeks, addMonths } from 'date-fns'
 import { IncidentStatus } from '@/types'
 import DashboardView, { DashboardRow } from '@/components/dashboard/DashboardView'
@@ -30,18 +30,25 @@ function getNextDueDate(lastMaintained: string | null, pmType: string, intervalD
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
-  if (!user || !PERMISSIONS.dashboard(user.role)) {
+  // capabilities.dashboard already IS PERMISSIONS.dashboard(user.role) unless
+  // a custom role overrides it (see resolveRoleOverlay in lib/auth.ts).
+  if (!user || !user.capabilities.dashboard) {
     redirect('/incidents')
   }
 
   const supabase = await createClient()
 
-  // Scope incidents to the user's factory (admins without factory see all)
+  // Scope incidents to the user's factory (admins without factory see all).
+  // Filter to open statuses IN SQL: the dashboard only counts open cases, and
+  // fetching "newest 500 of everything" then filtering in memory silently
+  // undercounted open/urgent/stale once total history passed 500 rows —
+  // old-but-still-open cases fell off the end.
   let incidentQuery = supabase
     .from('incidents')
     .select('id, incident_no, status, downtime_impact, incident_type, title, reported_at, updated_at, factory_id, factory:factories(name)')
+    .in('status', OPEN_STATUSES)
     .order('reported_at', { ascending: false })
-    .limit(500)
+    .limit(1000)
   if (user.factory_id && user.role !== 'admin') incidentQuery = incidentQuery.eq('factory_id', user.factory_id)
 
   // Only maintenance within the last year can affect "overdue" (anything older
@@ -71,8 +78,7 @@ export default async function DashboardPage() {
       .limit(2000),
   ])
 
-  const rows = (data ?? []) as unknown as DashboardRow[]
-  const open = rows.filter(r => OPEN_STATUSES.includes(r.status))
+  const open = (data ?? []) as unknown as DashboardRow[]
 
   // pm_records is keyed by pm_schedule_id, so map through the schedules.
   const scheduleToMachine: Record<string, string> = {}

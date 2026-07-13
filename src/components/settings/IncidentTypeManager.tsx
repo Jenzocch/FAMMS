@@ -177,11 +177,11 @@ export default function IncidentTypeManager() {
           <div key={t.id} className="flex items-center justify-between p-3 border rounded-lg">
             <p className="font-medium text-sm">{pickIncidentTypeLabel(t, locale)}</p>
             <div className="flex gap-1">
-              <Button size="sm" variant="outline" onClick={() => startEdit(t)}>
+              <Button size="icon" className="h-10 w-10" variant="outline" onClick={() => startEdit(t)}>
                 <Pencil className="w-4 h-4" />
               </Button>
               <Button
-                size="sm"
+                size="icon" className="h-10 w-10"
                 variant="outline"
                 onClick={() => remove(t.id, t.code)}
                 disabled={t.code === 'other'}

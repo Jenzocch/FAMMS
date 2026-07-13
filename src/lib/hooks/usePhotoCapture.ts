@@ -31,8 +31,18 @@ export function usePhotoCapture(maxPhotos = 5) {
         }
       }
       if (compressed.length > 0) {
+        // slice() silently drops anything past the cap — say so; users who
+        // picked 6 assumed all 6 uploaded.
+        const dropped = Math.max(0, photos.length + compressed.length - maxPhotos)
         setPhotos(prev => [...prev, ...compressed].slice(0, maxPhotos))
         toast.success(t('report.compressedToast', `壓縮 ${compressed.length} 張完成`).replace('{count}', String(compressed.length)))
+        if (dropped > 0) {
+          toast.warning(
+            t('report.photoLimitDropped', '最多 {max} 張，已略過多出的 {n} 張')
+              .replace('{max}', String(maxPhotos))
+              .replace('{n}', String(dropped))
+          )
+        }
       }
       if (compressed.length < files.length) {
         toast.warning(`${files.length - compressed.length} ${t('report.compressSkipped', 'file(s) could not be compressed (too large for device)')}`)

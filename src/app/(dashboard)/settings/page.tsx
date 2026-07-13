@@ -8,6 +8,7 @@ import IncidentTypeManager from '@/components/settings/IncidentTypeManager'
 import VendorManager from '@/components/settings/VendorManager'
 import PMScheduleManager from '@/components/pm/PMScheduleManager'
 import UserManager from '@/components/settings/UserManager'
+import RoleManager from '@/components/settings/RoleManager'
 import { isTelegramConfigured } from '@/lib/telegram'
 import {
   SettingsHeading,
@@ -43,6 +44,15 @@ export default async function SettingsPage() {
         <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <SettingsSectionHeader titleKey="settings.userSectionTitle" descKey="settings.userSectionDesc" />
           <UserManager currentUserId={user.id} />
+        </section>
+      )}
+
+      {/* Role Management — admin only. Lets new job functions (QC, warehouse,
+          etc.) get created without a code change; see migration_custom_roles.sql. */}
+      {canManageUsers && (
+        <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          <SettingsSectionHeader titleKey="settings.roleSectionTitle" descKey="settings.roleSectionDesc" />
+          <RoleManager />
         </section>
       )}
 

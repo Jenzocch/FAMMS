@@ -86,7 +86,8 @@
     "advancedOptions": "Advanced (due date, optional)",
     "sectionLocation": "Where",
     "sectionIssue": "What's Wrong",
-    "sectionUrgency": "How Urgent"
+    "sectionUrgency": "How Urgent",
+    "photoLimitDropped": "Up to {max} photos — {n} extra were skipped"
   },
   "common": {
     "save": "Save",
@@ -125,7 +126,8 @@
     "supervisor": "Supervisor",
     "manager": "Manager",
     "director": "Plant Director",
-    "admin": "System Admin"
+    "admin": "System Admin",
+    "qc": "QC"
   },
   "incidents": {
     "title": "Work Orders",
@@ -437,7 +439,8 @@
     "issueType": "Issue Type",
     "addBtn": "Add Machine",
     "empty": "No machines registered yet",
-    "confirmDelete": "Delete this machine?"
+    "confirmDelete": "Delete this machine?",
+    "hasHistoryCannotDelete": "This machine has {n} repair records and cannot be deleted. Set its status to \"Scrapped\" instead to keep the history."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -590,7 +593,32 @@
     "vendorEmpty": "No vendors yet — add one above",
     "telegramChatId": "Telegram Chat ID (optional)",
     "telegramChatIdHint": "The employee gets this by DMing the bot /start on Telegram. Leave blank to skip.",
-    "telegramChatIdNeedsFactory": "Can't set this for a cross-factory account here — add it under Settings → Telegram personal notifications instead"
+    "telegramChatIdNeedsFactory": "Can't set this for a cross-factory account here — add it under Settings → Telegram personal notifications instead",
+    "machineHasHistory": "This machine has repair history and cannot be deleted. Set its status to \"Scrapped\" instead to keep the history.",
+    "areaHasMachines": "This area still has {n} machines. Move or remove them before deleting the area.",
+    "factoryHasAreas": "This factory still has {n} areas. Empty its areas and machines before deleting it.",
+    "roleSectionTitle": "Role Management",
+    "roleSectionDesc": "Create custom roles (e.g. QC, warehouse) without a code change",
+    "addRole": "Add Role",
+    "editRole": "Edit Role",
+    "roleKey": "Role key (English, permanent)",
+    "roleLabelZh": "Name (Chinese)",
+    "roleLabelEn": "Name (English)",
+    "roleLabelId": "Name (Indonesian)",
+    "roleBaseTier": "Base permission tier",
+    "roleBaseTierShort": "Base",
+    "roleBaseTierHint": "This decides the actual DB-enforced security (close/RCA/manage equipment, etc) — which base role's rules it follows. Changing it applies to every account using this role.",
+    "roleCapabilities": "Extra visibility",
+    "roleKeyRequired": "Enter a role key",
+    "roleLabelsRequired": "All three language names are required",
+    "roleCreated": "Role created",
+    "noCustomRoles": "No custom roles yet",
+    "noExtraCapabilities": "No extra visibility",
+    "systemRole": "Built-in",
+    "systemRoleCannotDelete": "Built-in roles can't be deleted",
+    "accountsUsingRole": "account(s) using this",
+    "confirmDeleteRole": "Delete this role?",
+    "roleDeleteWithUsers": "{n} account(s) are using \"{name}\". Deleting it reverts them to their base permissions (they stay active). Delete anyway?"
   },
   "telegram": {
     "configured": "Telegram bot configured (TELEGRAM_BOT_TOKEN active).",
@@ -865,7 +893,8 @@
     "remarks": "Remarks",
     "remarksPlaceholder": "Additional info about the machine...",
     "update": "Update Machine",
-    "add": "Add Machine"
+    "add": "Add Machine",
+    "dupCode": "This machine code is already used in this factory"
   },
   "pmForm": {
     "firstDueDate": "First Due Date",
@@ -955,7 +984,8 @@
     "colMachine": "Machine",
     "colFactory": "Factory",
     "colReported": "Reported",
-    "colClosed": "Closed"
+    "colClosed": "Closed",
+    "truncated": "⚠️ This month exceeded the row cap — numbers below may undercount. Narrow the scope (pick one factory) and reload."
   },
   "gudang": {
     "open": "Request from Warehouse (Gudang One)",
@@ -1031,5 +1061,14 @@
     "signReviewer": "Reviewed By",
     "signApprover": "Approved By",
     "signDate": "Date"
+  },
+  "pastRecords": {
+    "heading": "Past records found",
+    "machineHistory": "Recent cases on this machine",
+    "kbMatches": "Related knowledge base entries",
+    "fixWas": "Fix used"
+  },
+  "offline": {
+    "banner": "No connection — showing offline view; submits need signal back"
   }
 }

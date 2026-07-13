@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
-  isTelegramConfigured, notifyFactory, formatSLAAlert, formatDailySummary, esc,
+  isTelegramConfigured, notifyFactory, formatDailySummary, esc,
 } from '@/lib/telegram'
 import { SLA_MINUTES } from '@/lib/constants'
 import type { DowntimeImpact } from '@/types'
@@ -38,6 +38,27 @@ export async function GET(req: Request) {
 
   const results = { slaAlerts: 0, overdueAlerts: 0, summaries: 0, failed: 0 }
 
+  // Atomically claim an incident for alerting: the WHERE re-checks the floor
+  // inside the UPDATE, so if two sweeps overlap (manual retry + schedule),
+  // exactly one wins — the old read-check-send-write pattern double-alerted.
+  // Returns true when this run owns the alert for this incident.
+  const claimAlert = async (incidentId: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('incidents')
+      .update({ last_sla_alert_at: new Date().toISOString() })
+      .eq('id', incidentId)
+      .or(`last_sla_alert_at.is.null,last_sla_alert_at.lt.${alertFloor}`)
+      .select('id')
+    return (data ?? []).length > 0
+  }
+  // Total send failure → release the claim so the next run retries instead of
+  // going quiet for 22h.
+  const releaseClaims = async (ids: string[]) => {
+    if (ids.length) {
+      await supabase.from('incidents').update({ last_sla_alert_at: null }).in('id', ids)
+    }
+  }
+
   // ---- 1) Unaccepted incidents past their SLA response window -------------
   const { data: unaccepted } = await supabase
     .from('incidents')
@@ -45,28 +66,40 @@ export async function GET(req: Request) {
     .eq('status', 'reported')
     .limit(200)
 
+  // One combined message per factory: a line-down morning with 20 breaches
+  // used to fire 20 separate messages into the same group within seconds —
+  // guaranteed Telegram 429s, whose failures were then silently swallowed.
+  const slaByFactory = new Map<string, { ids: string[]; lines: string[] }>()
   for (const inc of unaccepted ?? []) {
     if (!inc.factory_id) continue
     const slaMin = SLA_MINUTES[(inc.downtime_impact ?? 'D') as DowntimeImpact] ?? 480
     const minutesLate = Math.floor((now - new Date(inc.reported_at).getTime()) / 60000) - slaMin
     if (minutesLate <= 0) continue
     if (inc.last_sla_alert_at && inc.last_sla_alert_at > alertFloor) continue
+    if (!(await claimAlert(inc.id))) continue
 
     const machine = inc.machine as unknown as { machine_name: string; machine_code: string | null } | null
     const machineLabel = machine
       ? `${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}`
       : (inc.title ?? '-')
-    const html = formatSLAAlert({ incidentNo: inc.incident_no, machineLabel, minutesLate })
-      + (appUrl ? `\n<a href="${appUrl}/incidents/${inc.id}">Lihat detail →</a>` : '')
+    const line = `• ${esc(inc.incident_no)} — ${esc(machineLabel)}, terlambat ${minutesLate} menit`
+      + (appUrl ? ` <a href="${appUrl}/incidents/${inc.id}">→</a>` : '')
+    const bucket = slaByFactory.get(inc.factory_id) ?? { ids: [], lines: [] }
+    bucket.ids.push(inc.id)
+    bucket.lines.push(line)
+    slaByFactory.set(inc.factory_id, bucket)
+  }
 
-    const res = await notifyFactory(supabase, { factoryId: inc.factory_id, type: 'sla_alert', html })
+  for (const [factoryId, bucket] of slaByFactory) {
+    const html = bucket.lines.length === 1
+      ? `⏰ <b>SLA Terlewati</b>\n${bucket.lines[0]}`
+      : `⏰ <b>SLA Terlewati — ${bucket.lines.length} kasus belum direspons</b>\n${bucket.lines.join('\n')}`
+    const res = await notifyFactory(supabase, { factoryId, type: 'sla_alert', html })
     if (res.sent > 0) {
-      results.slaAlerts++
-      await supabase.from('incidents')
-        .update({ last_sla_alert_at: new Date().toISOString() })
-        .eq('id', inc.id)
-    } else if (res.failed > 0) {
+      results.slaAlerts += bucket.ids.length
+    } else {
       results.failed++
+      await releaseClaims(bucket.ids)
     }
   }
 
@@ -79,29 +112,33 @@ export async function GET(req: Request) {
     .lt('due_date', localToday)
     .limit(200)
 
+  const overdueByFactory = new Map<string, { ids: string[]; lines: string[] }>()
   for (const inc of overdue ?? []) {
     if (!inc.factory_id) continue
     if (inc.last_sla_alert_at && inc.last_sla_alert_at > alertFloor) continue
+    if (!(await claimAlert(inc.id))) continue
 
     const daysLate = Math.max(1, Math.floor(
       (new Date(localToday).getTime() - new Date(inc.due_date!).getTime()) / 86400000
     ))
-    const html = [
-      `📅 <b>Melewati Target</b> — ${esc(inc.incident_no)}`,
-      inc.title ? esc(inc.title) : '',
-      `Terlambat ${daysLate} hari dari target ${esc(inc.due_date!)}`,
-      inc.assigned_to ? `PIC: ${esc(inc.assigned_to)}` : 'Belum ditugaskan',
-      appUrl ? `<a href="${appUrl}/incidents/${inc.id}">Lihat detail →</a>` : '',
-    ].filter(Boolean).join('\n')
+    const line = `• ${esc(inc.incident_no)}${inc.title ? ` ${esc(inc.title)}` : ''} — terlambat ${daysLate} hari (${inc.assigned_to ? `PIC: ${esc(inc.assigned_to)}` : 'belum ditugaskan'})`
+      + (appUrl ? ` <a href="${appUrl}/incidents/${inc.id}">→</a>` : '')
+    const bucket = overdueByFactory.get(inc.factory_id) ?? { ids: [], lines: [] }
+    bucket.ids.push(inc.id)
+    bucket.lines.push(line)
+    overdueByFactory.set(inc.factory_id, bucket)
+  }
 
-    const res = await notifyFactory(supabase, { factoryId: inc.factory_id, type: 'sla_alert', html })
+  for (const [factoryId, bucket] of overdueByFactory) {
+    const html = bucket.lines.length === 1
+      ? `📅 <b>Melewati Target</b>\n${bucket.lines[0]}`
+      : `📅 <b>Melewati Target — ${bucket.lines.length} kasus</b>\n${bucket.lines.join('\n')}`
+    const res = await notifyFactory(supabase, { factoryId, type: 'sla_alert', html })
     if (res.sent > 0) {
-      results.overdueAlerts++
-      await supabase.from('incidents')
-        .update({ last_sla_alert_at: new Date().toISOString() })
-        .eq('id', inc.id)
-    } else if (res.failed > 0) {
+      results.overdueAlerts += bucket.ids.length
+    } else {
       results.failed++
+      await releaseClaims(bucket.ids)
     }
   }
 

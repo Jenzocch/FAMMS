@@ -30,7 +30,10 @@ export default async function MachinesPage() {
     const actor = await getCurrentUser()
     if (!actor || !PERMISSIONS.manageMachines(actor.role)) return
     const supabase = await createClient()
-    await supabase.from('machines').delete().eq('id', machineId)
+    const { error } = await supabase.from('machines').delete().eq('id', machineId)
+    // Surface failures (e.g. the RESTRICT FK guarding repair history) instead
+    // of redirecting as if the delete succeeded.
+    if (error) throw new Error(error.message)
     redirect('/machines')
   }
 

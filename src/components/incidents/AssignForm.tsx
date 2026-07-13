@@ -15,7 +15,7 @@ import { logAuditEvent } from '@/lib/audit'
 import { useI18n } from '@/lib/i18n'
 import { useVendors } from '@/lib/useVendors'
 
-interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null }
+interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null; custom_role_key: string | null }
 
 export default function AssignForm({
   incidentId, assignedTo, assignedDept, assignedUserIds, dueDate, factoryId, userRole = 'technician', userName,
@@ -52,7 +52,7 @@ export default function AssignForm({
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, role, factory_id')
+      .select('id, full_name, role, factory_id, custom_role_key')
       .eq('is_active', true)
       .order('full_name')
       .then(({ data }) => setAccounts((data ?? []) as Account[]))
@@ -70,9 +70,12 @@ export default function AssignForm({
   }, [incidentId, (assignedUserIds ?? []).join(','), assignedDept, dueDate])
 
   // Technicians in this incident's factory (cross-factory accounts always
-  // qualify). Used by the "assign all technicians" shortcut.
+  // qualify). Used by the "assign all technicians" shortcut. Excludes
+  // accounts on a custom role (e.g. QC) even though they share the
+  // technician DB tier — a custom role signals a distinct job function, not
+  // literally "on the repair team", so a bulk-assign shouldn't sweep them in.
   const factoryTechnicians = accounts.filter(
-    a => a.role === 'technician' && (!factoryId || !a.factory_id || a.factory_id === factoryId)
+    a => a.role === 'technician' && !a.custom_role_key && (!factoryId || !a.factory_id || a.factory_id === factoryId)
   )
 
   // Vendors scoped to this incident's factory, plus any that apply to every

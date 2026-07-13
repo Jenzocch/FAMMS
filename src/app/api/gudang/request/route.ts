@@ -82,7 +82,19 @@ export async function POST(req: Request) {
   // No schema change needed — check for an identical request (same incident,
   // same user, same items) in the last 30s and treat a match as the same
   // submission, returning success without re-sending.
-  const itemsKey = JSON.stringify(items)
+  //
+  // Comparison must be KEY-ORDER-INSENSITIVE: jsonb does not preserve object
+  // key order, so rows read back from Postgres have their keys reordered and
+  // a naive JSON.stringify() equality never matches — which silently disabled
+  // this whole guard. Canonicalize each item to a fixed field order first.
+  const canonItems = (arr: unknown): string => {
+    if (!Array.isArray(arr)) return ''
+    return JSON.stringify(arr.map((it) => {
+      const o = it as Record<string, unknown>
+      return [String(o?.name ?? ''), String(o?.part_no ?? ''), Number(o?.qty) || 0, String(o?.unit ?? '')]
+    }))
+  }
+  const itemsKey = canonItems(items)
   const since = new Date(Date.now() - 30_000).toISOString()
   const { data: recent } = await supabase
     .from('parts_requests')
@@ -92,7 +104,7 @@ export async function POST(req: Request) {
     .gte('requested_at', since)
     .order('requested_at', { ascending: false })
     .limit(5)
-  const dup = (recent ?? []).find(r => JSON.stringify(r.items) === itemsKey)
+  const dup = (recent ?? []).find(r => canonItems(r.items) === itemsKey)
   if (dup) {
     return NextResponse.json({ ok: true, request_id: dup.external_ref ?? null, deduped: true })
   }
@@ -138,23 +150,37 @@ export async function POST(req: Request) {
       body: JSON.stringify(payload),
     })
   } catch {
-    await supabase.from('parts_requests').delete().eq('id', tracked.id)
-    return NextResponse.json({ error: 'Gudang One tidak bisa dihubungi' }, { status: 502 })
-  }
-
-  const out = await resp.json().catch(() => ({}))
-  if (!resp.ok || !out.ok) {
-    // Never left FAMMS successfully — don't leave a phantom "requested" row.
-    await supabase.from('parts_requests').delete().eq('id', tracked.id)
+    // AMBIGUOUS: the request may have died before reaching Gudang, or the
+    // connection dropped after Gudang processed it. Deleting the local row
+    // here created "ghost orders": Gudang had the order, FAMMS had nothing to
+    // match its later write-back, and the user resent — duplicating the order.
+    // Keep the row (Gudang holds our famms_request_id, so a write-back still
+    // lands) and tell the user to check the tracker before resending.
     return NextResponse.json(
-      { error: out.error || `Gudang menolak permintaan (${resp.status})` },
+      { error: 'Tidak ada respons dari Gudang One. Permintaan MUNGKIN sudah terkirim — cek status permintaan di bawah dulu, jangan langsung kirim ulang.' },
       { status: 502 }
     )
   }
 
-  if (out.request_id) {
+  let out: { ok?: boolean; request_id?: unknown; error?: string } | null = null
+  try { out = await resp.json() } catch { out = null }
+
+  if (!resp.ok) {
+    // Gudang answered with an explicit error status — it rejected the request,
+    // so removing the local row is safe (no phantom "requested" entry).
+    await supabase.from('parts_requests').delete().eq('id', tracked.id)
+    return NextResponse.json(
+      { error: out?.error || `Gudang menolak permintaan (${resp.status})` },
+      { status: 502 }
+    )
+  }
+
+  // 200 with an unparseable/short body: Gudang almost certainly processed it
+  // (its function returns JSON on every code path) — treat as delivered, just
+  // without the external reference. The status write-back will fill in later.
+  if (out?.request_id) {
     await supabase.from('parts_requests').update({ external_ref: String(out.request_id) }).eq('id', tracked.id)
   }
 
-  return NextResponse.json({ ok: true, request_id: out.request_id })
+  return NextResponse.json({ ok: true, request_id: out?.request_id ?? null })
 }

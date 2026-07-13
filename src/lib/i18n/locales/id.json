@@ -86,7 +86,8 @@
     "advancedOptions": "Opsi lanjutan (tenggat, opsional)",
     "sectionLocation": "Di Mana",
     "sectionIssue": "Apa Masalahnya",
-    "sectionUrgency": "Seberapa Mendesak"
+    "sectionUrgency": "Seberapa Mendesak",
+    "photoLimitDropped": "Maksimal {max} foto — {n} foto lebihnya dilewati"
   },
   "common": {
     "save": "Simpan",
@@ -125,7 +126,8 @@
     "supervisor": "Supervisor",
     "manager": "Manajer",
     "director": "Direktur",
-    "admin": "Admin"
+    "admin": "Admin",
+    "qc": "QC"
   },
   "incidents": {
     "title": "Laporan",
@@ -437,7 +439,8 @@
     "issueType": "Jenis Masalah",
     "addBtn": "Tambah Mesin",
     "empty": "Belum ada mesin terdaftar",
-    "confirmDelete": "Hapus mesin ini?"
+    "confirmDelete": "Hapus mesin ini?",
+    "hasHistoryCannotDelete": "Mesin ini punya {n} catatan perbaikan dan tidak bisa dihapus. Ubah statusnya menjadi \"Scrapped\" agar riwayat tetap tersimpan."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -590,7 +593,32 @@
     "vendorEmpty": "Belum ada vendor — tambahkan di atas",
     "telegramChatId": "Telegram Chat ID (opsional)",
     "telegramChatIdHint": "Karyawan dapatkan ini dengan chat /start ke bot Telegram. Kosongkan jika tidak perlu.",
-    "telegramChatIdNeedsFactory": "Tidak bisa diatur di sini untuk akun lintas pabrik — tambahkan lewat Pengaturan → Notifikasi personal Telegram"
+    "telegramChatIdNeedsFactory": "Tidak bisa diatur di sini untuk akun lintas pabrik — tambahkan lewat Pengaturan → Notifikasi personal Telegram",
+    "machineHasHistory": "Mesin ini punya riwayat perbaikan dan tidak bisa dihapus. Ubah statusnya menjadi \"Scrapped\" agar riwayat tetap tersimpan.",
+    "areaHasMachines": "Area ini masih punya {n} mesin. Pindahkan atau hapus mesinnya dulu sebelum menghapus area.",
+    "factoryHasAreas": "Pabrik ini masih punya {n} area. Kosongkan area dan mesinnya dulu sebelum menghapus pabrik.",
+    "roleSectionTitle": "Manajemen Peran",
+    "roleSectionDesc": "Buat peran khusus (mis. QC, gudang) tanpa perlu ubah kode",
+    "addRole": "Tambah Peran",
+    "editRole": "Edit Peran",
+    "roleKey": "Kode peran (Inggris, permanen)",
+    "roleLabelZh": "Nama (Mandarin)",
+    "roleLabelEn": "Nama (Inggris)",
+    "roleLabelId": "Nama (Indonesia)",
+    "roleBaseTier": "Tingkat izin dasar",
+    "roleBaseTierShort": "Dasar",
+    "roleBaseTierHint": "Ini menentukan keamanan yang benar-benar ditegakkan database (tutup/RCA/kelola mesin, dll) — aturan peran dasar mana yang diikuti. Perubahan berlaku untuk semua akun yang memakai peran ini.",
+    "roleCapabilities": "Visibilitas tambahan",
+    "roleKeyRequired": "Masukkan kode peran",
+    "roleLabelsRequired": "Nama dalam ketiga bahasa wajib diisi",
+    "roleCreated": "Peran berhasil dibuat",
+    "noCustomRoles": "Belum ada peran khusus",
+    "noExtraCapabilities": "Tidak ada visibilitas tambahan",
+    "systemRole": "Bawaan",
+    "systemRoleCannotDelete": "Peran bawaan tidak bisa dihapus",
+    "accountsUsingRole": "akun memakai ini",
+    "confirmDeleteRole": "Hapus peran ini?",
+    "roleDeleteWithUsers": "{n} akun sedang memakai \"{name}\". Menghapusnya akan mengembalikan mereka ke izin dasar (tetap aktif). Tetap hapus?"
   },
   "telegram": {
     "configured": "Bot Telegram terkonfigurasi (TELEGRAM_BOT_TOKEN aktif).",
@@ -865,7 +893,8 @@
     "remarks": "Catatan",
     "remarksPlaceholder": "Informasi tambahan tentang mesin...",
     "update": "Perbarui Mesin",
-    "add": "Tambah Mesin"
+    "add": "Tambah Mesin",
+    "dupCode": "Kode mesin ini sudah dipakai di pabrik ini"
   },
   "pmForm": {
     "firstDueDate": "Tanggal Jadwal Pertama",
@@ -955,7 +984,8 @@
     "colMachine": "Mesin",
     "colFactory": "Pabrik",
     "colReported": "Dilaporkan",
-    "colClosed": "Ditutup"
+    "colClosed": "Ditutup",
+    "truncated": "⚠️ Data bulan ini melebihi batas baris — angka di bawah mungkin kurang. Persempit cakupan (pilih satu pabrik) lalu muat ulang."
   },
   "gudang": {
     "open": "Minta ke Gudang (Gudang One)",
@@ -1031,5 +1061,14 @@
     "signReviewer": "Peninjau",
     "signApprover": "Disetujui Oleh",
     "signDate": "Tanggal"
+  },
+  "pastRecords": {
+    "heading": "Ada catatan sebelumnya",
+    "machineHistory": "Kasus terbaru di mesin ini",
+    "kbMatches": "Pengalaman terkait di knowledge base",
+    "fixWas": "Cara perbaikan saat itu"
+  },
+  "offline": {
+    "banner": "Tidak ada koneksi — tampilan offline, kirim data setelah sinyal kembali"
   }
 }

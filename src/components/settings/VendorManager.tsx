@@ -124,7 +124,7 @@ export default function VendorManager() {
               <p className="font-medium text-sm">{v.name}</p>
               <p className="text-xs text-gray-500">{factoryName(v.factory_id)}</p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => remove(v.id)}>
+            <Button size="icon" className="h-10 w-10" variant="outline" onClick={() => remove(v.id)}>
               <Trash2 className="w-4 h-4 text-red-600" />
             </Button>
           </div>

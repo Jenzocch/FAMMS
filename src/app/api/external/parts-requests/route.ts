@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { notifyAssignees, formatPartsStatus } from '@/lib/telegram'
 
 // POST /api/external/parts-requests — write-back endpoint for Gudang One.
 //
@@ -39,16 +40,51 @@ export async function POST(req: Request) {
   if (external_ref !== undefined) update.external_ref = external_ref?.trim() || null
 
   const supabase = createAdminClient()
+
+  // Server-to-server webhooks get retried when the sender misses our response
+  // — make the write-back idempotent. If the status isn't actually changing,
+  // acknowledge without re-updating and (crucially) without re-notifying the
+  // technician "your part arrived" a second time.
+  const { data: before } = await supabase
+    .from('parts_requests')
+    .select('id, status')
+    .eq('id', request_id)
+    .maybeSingle()
+  if (!before) {
+    return NextResponse.json({ error: 'request not found' }, { status: 404 })
+  }
+  if (before.status === status) {
+    return NextResponse.json({ ok: true, request: before, unchanged: true })
+  }
+
   const { data, error } = await supabase
     .from('parts_requests')
     .update(update)
     .eq('id', request_id)
-    .select('id, status, external_ref, resolved_at')
+    .select('id, status, external_ref, resolved_at, requested_by_id, items, incident:incidents(id, incident_no)')
     .single()
 
   if (error?.code === 'PGRST116') {
     return NextResponse.json({ error: 'request not found' }, { status: 404 })
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Tell the technician who placed the request — closes the loop instead of
+  // leaving them to re-open the incident and check manually. Best-effort:
+  // notifyAssignees already logs/swallows send failures internally.
+  const incident = data.incident as unknown as { id: string; incident_no: string } | null
+  const items = data.items as { name: string; qty: number; unit: string }[] | null
+  if (data.requested_by_id && incident) {
+    const itemsSummary = (items ?? []).map(it => `${it.name} ×${it.qty}${it.unit || ''}`).join('、')
+    const html = formatPartsStatus({
+      incidentNo: incident.incident_no,
+      itemsSummary,
+      status: status as 'ordered' | 'received' | 'rejected',
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      incidentId: incident.id,
+    })
+    await notifyAssignees(supabase, { profileIds: [data.requested_by_id], type: 'parts_status', html })
+  }
+
   return NextResponse.json({ ok: true, request: data })
 }

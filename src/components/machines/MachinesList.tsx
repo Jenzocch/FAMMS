@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Edit2, Trash2, QrCode } from 'lucide-react'
+import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/shared/StatusBadge'
 import { useI18n } from '@/lib/i18n'
@@ -64,7 +67,7 @@ export default function MachinesList({ machines, deleteAction, canManage = false
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon" className="h-10 w-10"
                   aria-label="QR"
                   onClick={() => router.push(`/machines/${m.id}/qr`)}
                 >
@@ -74,7 +77,7 @@ export default function MachinesList({ machines, deleteAction, canManage = false
                   <>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon" className="h-10 w-10"
                       aria-label={t('common.edit', '編輯')}
                       onClick={() => router.push(`/machines/${m.id}/edit`)}
                     >
@@ -100,24 +103,39 @@ function DeleteMachineButton({
   deleteAction: (machineId: string) => Promise<void>
 }) {
   const { t } = useI18n()
+  const [checking, setChecking] = useState(false)
+
+  // A machine with repair history must be scrapped, not deleted (the DB
+  // RESTRICTs it regardless — this check turns that into a clear message).
+  async function onDelete() {
+    setChecking(true)
+    try {
+      const supabase = createClient()
+      const { count } = await supabase
+        .from('incidents')
+        .select('id', { count: 'exact', head: true })
+        .eq('machine_id', machineId)
+      if ((count ?? 0) > 0) {
+        toast.error(t('machines.hasHistoryCannotDelete', '此機器有 {n} 筆維修紀錄，無法刪除。請改將狀態設為「報廢」以保留歷史。').replace('{n}', String(count)))
+        return
+      }
+      if (!confirm(t('machines.confirmDelete', '確定要刪除這台機器嗎？'))) return
+      await deleteAction(machineId)
+    } finally {
+      setChecking(false)
+    }
+  }
+
   return (
-    <form
-      action={async () => {
-        await deleteAction(machineId)
-      }}
-      onSubmit={(e) => {
-        if (!confirm(t('machines.confirmDelete', '確定要刪除這台機器嗎？'))) e.preventDefault()
-      }}
+    <Button
+      variant="outline"
+      size="icon" className="h-10 w-10 text-red-600 hover:bg-red-50"
+      onClick={onDelete}
+      disabled={checking}
+      aria-label={t('common.delete', '刪除')}
+      
     >
-      <Button
-        variant="outline"
-        size="sm"
-        type="submit"
-        aria-label={t('common.delete', '刪除')}
-        className="text-red-600 hover:bg-red-50"
-      >
-        <Trash2 className="w-4 h-4" />
-      </Button>
-    </form>
+      <Trash2 className="w-4 h-4" />
+    </Button>
   )
 }

@@ -207,9 +207,16 @@ export default function IncidentActions({
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
       <h3 className="font-semibold text-gray-900">{tr('caseEdit.edit')}</h3>
 
+      {/* Title/description are guarded by the same DB trigger as the fields
+          below (migration_rls_5) — an editable input for a technician just
+          means a raw Postgres error at save time. Read-only unless canEdit. */}
       <div>
         <Label>{tr('caseEdit.title')}</Label>
-        <Input value={t} onChange={e => setT(e.target.value)} className="mt-1" />
+        {canEdit ? (
+          <Input value={t} onChange={e => setT(e.target.value)} className="mt-1" />
+        ) : (
+          <p className="mt-1 text-sm text-gray-700 bg-gray-50 rounded-md px-3 py-2">{t || '-'}</p>
+        )}
       </div>
 
       {canEdit && (
@@ -258,18 +265,24 @@ export default function IncidentActions({
 
       <div>
         <Label>{tr('caseEdit.description')}</Label>
-        <Textarea value={d} onChange={e => setD(e.target.value)} rows={3} className="mt-1" />
+        {canEdit ? (
+          <Textarea value={d} onChange={e => setD(e.target.value)} rows={3} className="mt-1" />
+        ) : (
+          <p className="mt-1 text-sm text-gray-700 bg-gray-50 rounded-md px-3 py-2 whitespace-pre-wrap">{d || '-'}</p>
+        )}
       </div>
 
       <div className="flex gap-2">
-        <Button
-          onClick={saveEdit}
-          disabled={submitting}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          {tr('caseEdit.save')}
-        </Button>
+        {canEdit && (
+          <Button
+            onClick={saveEdit}
+            disabled={submitting}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {tr('caseEdit.save')}
+          </Button>
+        )}
         <Button variant="outline" onClick={() => setEditing(false)}>{tr('caseEdit.cancel')}</Button>
       </div>
     </div>

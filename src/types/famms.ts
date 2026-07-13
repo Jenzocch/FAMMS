@@ -5,6 +5,12 @@
 // Auth & Organization
 // ============================================================================
 
+// The 5 tiers every DB security rule (RLS policies, field-guard triggers)
+// hardcodes. A named "custom role" (see custom_roles table / lib/roles.ts)
+// is an admin-defined overlay that inherits one of these as its base_role —
+// it never introduces a 6th value here, so the DB-enforced security floor
+// (who can close/edit-due-date/RCA/manage-machines/etc.) is never at risk of
+// drifting out of sync with a role someone typed into a settings form.
 export type UserRole = 'technician' | 'supervisor' | 'manager' | 'director' | 'admin';
 
 export type Factory = {
@@ -425,7 +431,8 @@ export type NotificationType =
   | 'sla_alert'
   | 'pm_reminder'
   | 'daily_summary'
-  | 'weekly_summary';
+  | 'weekly_summary'
+  | 'parts_status';
 
 export type NotificationLog = {
   id: string;

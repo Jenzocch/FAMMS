@@ -154,13 +154,29 @@ export default function AssetManager() {
       resetForm()
       loadAssets()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('settings.operationFailed'))
+      const isDupCode = !!err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === '23505'
+      toast.error(
+        isDupCode
+          ? t('machineForm.dupCode', '此機器代碼在此工廠已被使用')
+          : err instanceof Error ? err.message : t('settings.operationFailed')
+      )
     } finally {
       setSubmitting(false)
     }
   }
 
   async function remove(id: string) {
+    // A machine with repair history must be scrapped, not deleted — the DB
+    // (migration_delete_protection) would RESTRICT it anyway; check first so
+    // the user gets a real explanation instead of a raw FK error.
+    const { count } = await supabase
+      .from('incidents')
+      .select('id', { count: 'exact', head: true })
+      .eq('machine_id', id)
+    if ((count ?? 0) > 0) {
+      toast.error(t('settings.machineHasHistory', '此機器有維修紀錄，無法刪除。請改將狀態設為「報廢」以保留歷史。').replace('{n}', String(count)))
+      return
+    }
     if (!confirm(t('settings.confirmDeleteAsset'))) return
     const { error } = await supabase.from('machines').delete().eq('id', id)
     if (error) { toast.error(error.message); return }
@@ -247,10 +263,10 @@ export default function AssetManager() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => startEdit(a)}>
+                <Button size="icon" className="h-10 w-10" variant="outline" onClick={() => startEdit(a)}>
                   <Pencil className="w-4 h-4" />
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => remove(a.id)}>
+                <Button size="icon" className="h-10 w-10" variant="outline" onClick={() => remove(a.id)}>
                   <Trash2 className="w-4 h-4 text-red-600" />
                 </Button>
               </div>

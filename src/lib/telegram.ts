@@ -97,19 +97,39 @@ export function formatAssignment(args: {
   return lines.join('\n')
 }
 
-export function formatSLAAlert(args: { incidentNo: string; machineLabel: string; minutesLate: number }): string {
-  return [
-    `⏰ <b>SLA Terlewati</b> — ${esc(args.incidentNo)}`,
-    `🏭 Mesin: ${esc(args.machineLabel)}`,
-    `⚠️ Belum direspons, terlambat ${args.minutesLate} menit`,
-  ].join('\n')
-}
-
 export function formatBlocking(args: { incidentNo: string; reason: string }): string {
   return [
     `🛑 <b>Kasus Terblokir</b> — ${esc(args.incidentNo)}`,
     `Alasan: ${esc(args.reason)}`,
   ].join('\n')
+}
+
+const PARTS_STATUS_LABEL: Record<'ordered' | 'received' | 'rejected', string> = {
+  ordered: '🛒 Sedang diproses',
+  received: '✅ Sudah tiba',
+  rejected: '❌ Ditolak',
+}
+
+// Told to whoever placed the Gudang One parts request when the warehouse
+// pushes a status write-back (POST /api/external/parts-requests) — closes
+// the loop that previously required the requester to re-open the incident
+// and check manually.
+export function formatPartsStatus(args: {
+  incidentNo: string
+  itemsSummary: string
+  status: 'ordered' | 'received' | 'rejected'
+  appUrl?: string
+  incidentId?: string
+}): string {
+  const lines = [
+    `📦 <b>Update Permintaan Barang</b> — ${esc(args.incidentNo)}`,
+    `${esc(args.itemsSummary)}`,
+    `Status: ${PARTS_STATUS_LABEL[args.status]}`,
+  ]
+  if (args.appUrl && args.incidentId) {
+    lines.push(`🔗 ${args.appUrl}/incidents/${args.incidentId}`)
+  }
+  return lines.join('\n')
 }
 
 export function formatDailySummary(args: {

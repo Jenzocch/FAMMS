@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signOutAndClearCaches } from '@/lib/sign-out'
 import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Profile, UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
 import { ROLE_ZH } from '@/lib/incident-display'
+import type { CustomRole, EffectiveCapabilities } from '@/lib/roles'
+import { customRoleLabel } from '@/lib/roles'
 import { useI18n } from '@/lib/i18n'
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher'
 
@@ -15,11 +17,13 @@ interface NavItem {
   href: string
   labelKey: string
   icon: React.ComponentType<{ className?: string }>
-  requiredRole?: (role: UserRole) => boolean
+  requiredRole?: (role: UserRole, capabilities: EffectiveCapabilities | null) => boolean
 }
 
 const NAV: NavItem[] = [
-  { href: '/dashboard', labelKey: 'navigation.dashboard', icon: LayoutDashboard, requiredRole: (r) => PERMISSIONS.dashboard(r) },
+  // capabilities is the resolved custom-role overlay from the layout — falls
+  // back to the plain role check when null (no custom role on this account).
+  { href: '/dashboard', labelKey: 'navigation.dashboard', icon: LayoutDashboard, requiredRole: (r, c) => c?.dashboard ?? PERMISSIONS.dashboard(r) },
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
@@ -30,25 +34,31 @@ const NAV: NavItem[] = [
 interface SidebarProps {
   profile: Profile | null
   incidentBadge?: number
+  capabilities?: EffectiveCapabilities | null
+  customRole?: CustomRole | null
 }
 
 // Desktop-only left sidebar. Hidden on mobile, where BottomNav + TopBar are used.
-export default function Sidebar({ profile, incidentBadge = 0 }: SidebarProps) {
+export default function Sidebar({ profile, incidentBadge = 0, capabilities = null, customRole = null }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const userRole = (profile?.role ?? 'technician') as UserRole
 
-  const visibleNav = NAV.filter(item => !item.requiredRole || item.requiredRole(userRole))
+  const visibleNav = NAV.filter(item => !item.requiredRole || item.requiredRole(userRole, capabilities))
+  const roleDisplay = customRole ? customRoleLabel(customRole, locale) : (profile?.role ? ROLE_ZH[profile.role] : null)
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'U'
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await signOutAndClearCaches()
     router.push('/login')
+    // Purge Next's client Router Cache too — back/forward restores from it
+    // regardless of staleTimes, so without this the next user on a shared
+    // device could Back into the previous user's rendered pages.
+    router.refresh()
   }
 
   return (
@@ -110,7 +120,7 @@ export default function Sidebar({ profile, incidentBadge = 0 }: SidebarProps) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{profile?.full_name || t('navigation.profile')}</p>
-            {profile?.role && <p className="text-xs text-gray-400">{ROLE_ZH[profile.role]}</p>}
+            {roleDisplay && <p className="text-xs text-gray-400">{roleDisplay}</p>}
           </div>
         </div>
         <div className="mt-1 space-y-0.5">

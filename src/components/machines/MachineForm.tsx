@@ -95,9 +95,17 @@ export default function MachineForm({ machine }: Props) {
       toast.error(t('machineForm.completeAreaName', '請填寫區域和機器名稱'))
       return
     }
+    // machines.factory_id is NOT NULL with no default and no trigger deriving
+    // it from area_id — omitting it made every insert from this form fail.
+    const factoryId = areas.find(a => a.id === areaId)?.factory_id
+    if (!factoryId) {
+      toast.error(t('machineForm.completeAreaName', '請填寫區域和機器名稱'))
+      return
+    }
     setSubmitting(true)
     try {
       const payload = {
+        factory_id: factoryId,
         area_id: areaId,
         machine_code: code || null,
         machine_name: name,
@@ -124,7 +132,14 @@ export default function MachineForm({ machine }: Props) {
       router.push('/machines')
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('machineForm.saveFailed', '儲存機器失敗'))
+      // 23505 on (factory_id, machine_code) — say what's wrong instead of
+      // showing the raw Postgres unique-violation message.
+      const isDupCode = !!err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === '23505'
+      toast.error(
+        isDupCode
+          ? t('machineForm.dupCode', '此機器代碼在此工廠已被使用')
+          : err instanceof Error ? err.message : t('machineForm.saveFailed', '儲存機器失敗')
+      )
     } finally {
       setSubmitting(false)
     }

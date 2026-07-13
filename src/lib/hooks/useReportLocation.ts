@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { loadMyFactoryId } from '@/lib/useMyFactory'
 import { loadFactories } from '@/lib/useFactories'
@@ -41,15 +42,31 @@ export function useReportLocation(presetMachineId?: string) {
 
     // QR scan-to-report: ?machine=<id> preselects the whole location cascade
     // (factory → area → machine), overriding the last-used restore below.
+    // Every failure mode used to be SILENT (blank form, no explanation) —
+    // each one now tells the technician what's wrong with this QR.
     if (presetMachineId) {
       supabase
         .from('machines')
-        .select('id, area_id, area:areas(factory_id)')
+        .select('id, area_id, status, area:areas(factory_id)')
         .eq('id', presetMachineId)
-        .single()
-        .then(({ data }) => {
-          const fid = (data?.area as { factory_id?: string } | null)?.factory_id
-          if (!data || !fid) return
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error || !data) {
+            // Machine deleted (or RLS denies this factory) — stale QR.
+            toast.error('QR ini tidak dikenal — mesinnya sudah tidak ada di sistem. Pilih lokasi secara manual.')
+            return
+          }
+          if (data.status === 'scrapped') {
+            // The machine list below filters scrapped out, so preselecting
+            // could never work — say so instead of showing an empty field.
+            toast.warning('Mesin di QR ini sudah berstatus SCRAPPED. Pilih mesin lain secara manual.')
+            return
+          }
+          const fid = (data.area as { factory_id?: string } | null)?.factory_id
+          if (!fid) {
+            toast.error('Data mesin di QR ini tidak lengkap (tanpa area). Pilih lokasi secara manual.')
+            return
+          }
           restoredAreaRef.current = data.area_id
           restoredAssetRef.current = data.id
           setFactoryId(fid)
