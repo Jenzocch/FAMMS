@@ -69,6 +69,17 @@ export default function ReportLocationFields({
         />
       )}
 
+      {/* Reference photo for the picked area — helps tell apart areas with
+          similar names (e.g. two "Line 2"s in different buildings). */}
+      {(() => {
+        const picked = areas.find(a => a.id === areaId)
+        if (!picked?.photo_url) return null
+        return (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={picked.photo_url} alt={picked.name} className="w-full max-w-[200px] h-28 rounded-lg object-cover" />
+        )
+      })()}
+
       {assets.length > 0 && (
         <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')} items={Object.fromEntries(assets.map(a => [a.id, `${a.machine_code ? `[${a.machine_code}] ` : ''}${a.machine_name}`]))}>
           <SelectTrigger><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>

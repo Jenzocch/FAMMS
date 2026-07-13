@@ -39,6 +39,11 @@ ALTER TABLE incidents ADD COLUMN IF NOT EXISTS last_sla_alert_at TIMESTAMP;
 -- UNIQUE allows any number of NULLs, so that's not a conflict.
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS client_request_id UUID UNIQUE;
 
+-- Reference photo so a reporter can tell areas apart at a glance in the
+-- report form (e.g. two areas both named "Line 2"). One photo per area is
+-- enough for recognition — not a gallery, so no separate table.
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS photo_url TEXT;
+
 -- The report form treats machine + failure code as optional, and some cases
 -- span all/none of the factories — relax the old NOT NULLs.
 ALTER TABLE incidents ALTER COLUMN machine_id      DROP NOT NULL;
@@ -251,4 +256,7 @@ UNION ALL SELECT 'vendors table', to_regclass('public.vendors') IS NOT NULL
 UNION ALL SELECT 'incidents.location_note',
        EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_name='incidents' AND column_name='location_note')
-UNION ALL SELECT 'parts_requests table', to_regclass('public.parts_requests') IS NOT NULL;
+UNION ALL SELECT 'parts_requests table', to_regclass('public.parts_requests') IS NOT NULL
+UNION ALL SELECT 'areas.photo_url',
+       EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='areas' AND column_name='photo_url');
