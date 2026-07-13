@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { accountNameToEmail, isValidLoginName } from '@/lib/login-name'
 import type { UserRole } from '@/types'
 
-const VALID_ROLES: UserRole[] = ['technician', 'supervisor', 'manager', 'director', 'admin', 'qc']
+const VALID_ROLES: UserRole[] = ['technician', 'supervisor', 'manager', 'director', 'admin']
 
 // PATCH — update profile fields and/or reset password (admin only)
 export async function PATCH(
@@ -19,6 +19,7 @@ export async function PATCH(
   let body: {
     full_name?: string
     role?: string
+    custom_role_key?: string | null
     factory_id?: string | null
     is_active?: boolean
     password?: string
@@ -57,7 +58,29 @@ export async function PATCH(
   // factory_id present (incl. null) = set it; null means cross-factory.
   if ('factory_id' in body) update.factory_id = body.factory_id || null
   if (body.is_active !== undefined) update.is_active = body.is_active
-  if (body.role !== undefined) {
+  // custom_role_key present (incl. explicit null = "revert to a base role")
+  // wins over `role`: same look-up-don't-trust pattern as account creation —
+  // the tier comes from the DB row, never straight from the client.
+  if ('custom_role_key' in body) {
+    if (body.custom_role_key) {
+      const { data: cr } = await admin
+        .from('custom_roles')
+        .select('key, base_role')
+        .eq('key', body.custom_role_key)
+        .maybeSingle()
+      if (!cr) return NextResponse.json({ error: '角色不存在' }, { status: 400 })
+      update.custom_role_key = cr.key
+      update.role = cr.base_role
+    } else {
+      update.custom_role_key = null
+      if (body.role !== undefined) {
+        if (!VALID_ROLES.includes(body.role as UserRole)) {
+          return NextResponse.json({ error: '角色不正確' }, { status: 400 })
+        }
+        update.role = body.role
+      }
+    }
+  } else if (body.role !== undefined) {
     if (!VALID_ROLES.includes(body.role as UserRole)) {
       return NextResponse.json({ error: '角色不正確' }, { status: 400 })
     }

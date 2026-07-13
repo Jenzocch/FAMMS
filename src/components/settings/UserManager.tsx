@@ -12,6 +12,8 @@ import { toast } from 'sonner'
 import { Loader2, Trash2, Plus, Pencil, ShieldCheck, KeyRound, Send } from 'lucide-react'
 import { ROLE_ZH } from '@/lib/incident-display'
 import type { UserRole } from '@/types'
+import type { CustomRole } from '@/lib/roles'
+import { customRoleLabel } from '@/lib/roles'
 import { useI18n } from '@/lib/i18n'
 
 interface Factory { id: string; name: string }
@@ -20,17 +22,24 @@ interface ManagedUser {
   email: string
   full_name: string
   role: UserRole
+  custom_role_key: string | null
   factory_id: string | null
   is_active: boolean
   created_at: string
   telegram_chat_id: number | null
 }
 
-// Manager / director were removed from the assignable set — only technician,
-// supervisor (the single elevated operational role), qc, and admin remain.
-// Legacy accounts that still carry manager/director keep working (label maps
-// below still cover them); they just can't be picked for new/edited users.
-const ROLES: UserRole[] = ['technician', 'supervisor', 'qc', 'admin']
+// Manager / director were removed from the assignable set — technician,
+// supervisor (the single elevated operational role), and admin are the base
+// tiers you can assign directly. Legacy accounts that still carry
+// manager/director keep working (label maps below still cover them); they
+// just can't be picked for new/edited users. Anything else — QC and whatever
+// gets added later — is a custom role (Settings → 角色管理), fetched below.
+const BASE_ROLES: UserRole[] = ['technician', 'supervisor', 'admin']
+
+// A select needs one flat value space; prefix custom role keys so they can't
+// collide with a base UserRole string.
+const CUSTOM_PREFIX = 'custom:'
 
 // Sentinel for "not bound to a single factory" (cross-factory). Base UI Select
 // can't use an empty-string value, so we map this <-> null factory_id.
@@ -42,15 +51,16 @@ const ROLE_BADGE: Record<UserRole, string> = {
   manager: 'bg-purple-100 text-purple-700',
   director: 'bg-amber-100 text-amber-700',
   admin: 'bg-red-100 text-red-700',
-  qc: 'bg-teal-100 text-teal-700',
 }
+const CUSTOM_ROLE_BADGE = 'bg-teal-100 text-teal-700'
 
 export default function UserManager({ currentUserId }: { currentUserId: string }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const supabase = createClient()
   const roleLabel = (r: UserRole) => t(`roles.${r}`, ROLE_ZH[r])
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [factories, setFactories] = useState<Factory[]>([])
+  const [customRoles, setCustomRoles] = useState<CustomRole[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -58,7 +68,8 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
   const [editingId, setEditingId] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
-  const [role, setRole] = useState<UserRole>('technician')
+  // Either a plain UserRole ('technician'…) or `custom:<key>`.
+  const [roleSelection, setRoleSelection] = useState<string>('technician')
   const [factoryId, setFactoryId] = useState('')
   const [telegramChatId, setTelegramChatId] = useState('')
 
@@ -66,8 +77,24 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
     supabase.from('factories').select('id, name').order('name').then(({ data }) => {
       setFactories(data ?? [])
     })
+    supabase.from('custom_roles').select('*').order('created_at').then(({ data }) => {
+      setCustomRoles((data ?? []) as CustomRole[])
+    })
     loadUsers()
   }, [])
+
+  const roleOptions: { value: string; label: string }[] = [
+    ...BASE_ROLES.map(r => ({ value: r, label: roleLabel(r) })),
+    ...customRoles.map(cr => ({ value: `${CUSTOM_PREFIX}${cr.key}`, label: customRoleLabel(cr, locale) })),
+  ]
+
+  function displayRole(u: ManagedUser): { label: string; badgeClass: string } {
+    if (u.custom_role_key) {
+      const cr = customRoles.find(c => c.key === u.custom_role_key)
+      if (cr) return { label: customRoleLabel(cr, locale), badgeClass: CUSTOM_ROLE_BADGE }
+    }
+    return { label: roleLabel(u.role), badgeClass: ROLE_BADGE[u.role] }
+  }
 
   async function loadUsers() {
     setLoading(true)
@@ -87,7 +114,7 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
     setEditingId(null)
     setPassword('')
     setFullName('')
-    setRole('technician')
+    setRoleSelection('technician')
     setFactoryId(factories[0]?.id ?? '')
     setTelegramChatId('')
     setShowForm(true)
@@ -97,7 +124,7 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
     setEditingId(u.id)
     setPassword('')
     setFullName(u.full_name)
-    setRole(u.role)
+    setRoleSelection(u.custom_role_key ? `${CUSTOM_PREFIX}${u.custom_role_key}` : u.role)
     setFactoryId(u.factory_id ?? '')
     setTelegramChatId(u.telegram_chat_id != null ? String(u.telegram_chat_id) : '')
     setShowForm(true)
@@ -108,6 +135,14 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
     setEditingId(null)
     setPassword('')
     setTelegramChatId('')
+  }
+
+  // Decode roleSelection into the payload fields the API expects.
+  function roleFields(): { role?: UserRole; custom_role_key: string | null } {
+    if (roleSelection.startsWith(CUSTOM_PREFIX)) {
+      return { custom_role_key: roleSelection.slice(CUSTOM_PREFIX.length) }
+    }
+    return { role: roleSelection as UserRole, custom_role_key: null }
   }
 
   async function submit() {
@@ -123,7 +158,7 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             full_name: fullName,
-            role,
+            ...roleFields(),
             factory_id: factoryId || null,
             telegram_chat_id: telegramChatId.trim() || undefined,
             ...(password ? { password } : {}),
@@ -138,7 +173,7 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            password, full_name: fullName, role, factory_id: factoryId || null,
+            password, full_name: fullName, ...roleFields(), factory_id: factoryId || null,
             telegram_chat_id: telegramChatId.trim() || undefined,
           }),
         })
@@ -238,13 +273,13 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
             <div>
               <Label>{t('settings.role')}</Label>
               <Select
-                value={role}
-                onValueChange={(v) => setRole((v ?? 'technician') as UserRole)}
-                items={Object.fromEntries(ROLES.map(r => [r, roleLabel(r)]))}
+                value={roleSelection}
+                onValueChange={(v) => setRoleSelection(v ?? 'technician')}
+                items={Object.fromEntries(roleOptions.map(o => [o.value, o.label]))}
               >
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ROLES.map(r => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
+                  {roleOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -297,13 +332,15 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
         {users.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">{t('settings.noUsers')}</p>
         ) : (
-          users.map(u => (
+          users.map(u => {
+            const { label: roleText, badgeClass } = displayRole(u)
+            return (
             <div key={u.id} className="flex items-center justify-between p-3 border rounded-lg bg-white gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-sm truncate">{u.full_name || u.email}</p>
-                  <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded-full font-medium ${ROLE_BADGE[u.role]}`}>
-                    {roleLabel(u.role)}
+                  <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded-full font-medium ${badgeClass}`}>
+                    {roleText}
                   </span>
                   {!u.is_active && (
                     <span className="shrink-0 text-xs px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-500">{t('settings.deactivated')}</span>
@@ -337,7 +374,8 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
                 </Button>
               </div>
             </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>

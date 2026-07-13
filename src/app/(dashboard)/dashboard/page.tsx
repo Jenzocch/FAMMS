@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { addDays, addWeeks, addMonths } from 'date-fns'
 import { IncidentStatus } from '@/types'
 import DashboardView, { DashboardRow } from '@/components/dashboard/DashboardView'
@@ -30,7 +30,9 @@ function getNextDueDate(lastMaintained: string | null, pmType: string, intervalD
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
-  if (!user || !PERMISSIONS.dashboard(user.role)) {
+  // capabilities.dashboard already IS PERMISSIONS.dashboard(user.role) unless
+  // a custom role overrides it (see resolveRoleOverlay in lib/auth.ts).
+  if (!user || !user.capabilities.dashboard) {
     redirect('/incidents')
   }
 

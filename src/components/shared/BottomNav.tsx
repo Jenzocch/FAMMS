@@ -6,6 +6,7 @@ import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench } from 'lucide-r
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
+import type { EffectiveCapabilities } from '@/lib/roles'
 import { useI18n } from '@/lib/i18n'
 
 interface NavItem {
@@ -13,11 +14,13 @@ interface NavItem {
   labelKey: string
   icon: React.ComponentType<{ className?: string }>
   primary?: boolean
-  requiredRole?: (role: UserRole) => boolean
+  requiredRole?: (role: UserRole, capabilities: EffectiveCapabilities | null) => boolean
 }
 
 const NAV: NavItem[] = [
-  { href: '/dashboard', labelKey: 'navigation.dashboard', icon: LayoutDashboard, requiredRole: (r) => PERMISSIONS.dashboard(r) },
+  // capabilities is the resolved custom-role overlay from the layout — falls
+  // back to the plain role check when null (no custom role on this account).
+  { href: '/dashboard', labelKey: 'navigation.dashboard', icon: LayoutDashboard, requiredRole: (r, c) => c?.dashboard ?? PERMISSIONS.dashboard(r) },
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus, primary: true },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
@@ -27,12 +30,13 @@ const NAV: NavItem[] = [
 interface BottomNavProps {
   userRole?: UserRole
   incidentBadge?: number
+  capabilities?: EffectiveCapabilities | null
 }
 
-export default function BottomNav({ userRole = 'technician', incidentBadge = 0 }: BottomNavProps) {
+export default function BottomNav({ userRole = 'technician', incidentBadge = 0, capabilities = null }: BottomNavProps) {
   const pathname = usePathname()
   const { t } = useI18n()
-  const visibleNav = NAV.filter(item => !item.requiredRole || item.requiredRole(userRole))
+  const visibleNav = NAV.filter(item => !item.requiredRole || item.requiredRole(userRole, capabilities))
 
   return (
     <nav className="print:hidden lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">

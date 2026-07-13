@@ -5,7 +5,13 @@
 // Auth & Organization
 // ============================================================================
 
-export type UserRole = 'technician' | 'supervisor' | 'manager' | 'director' | 'admin' | 'qc';
+// The 5 tiers every DB security rule (RLS policies, field-guard triggers)
+// hardcodes. A named "custom role" (see custom_roles table / lib/roles.ts)
+// is an admin-defined overlay that inherits one of these as its base_role —
+// it never introduces a 6th value here, so the DB-enforced security floor
+// (who can close/edit-due-date/RCA/manage-machines/etc.) is never at risk of
+// drifting out of sync with a role someone typed into a settings form.
+export type UserRole = 'technician' | 'supervisor' | 'manager' | 'director' | 'admin';
 
 export type Factory = {
   id: string;
@@ -539,7 +545,6 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   manager: 'Manajer',
   director: 'Kepala Pabrik',
   admin: 'Admin Sistem',
-  qc: 'QC',
 };
 
 // Extended descriptions for admin/settings pages where context helps.
@@ -549,7 +554,6 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   manager: 'Pantau KPI & persetujuan',
   director: 'Lihat laporan strategis',
   admin: 'Kelola semua master data & akun',
-  qc: 'Lihat status mesin & dasbor, bisa lapor insiden',
 };
 
 export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
