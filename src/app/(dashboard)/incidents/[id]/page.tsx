@@ -318,8 +318,11 @@ export default async function IncidentDetailPage({
   // Remaining management-rail pieces: nudge (Telegram), Gudang One parts
   // request, and the read-only parts-request tracker — always in this order,
   // always right after AssignForm.
+  // NOT sticky: AssignForm above it is sticky at the same top offset, and two
+  // stacked sticky siblings pin to the same spot — this block slid up OVER the
+  // assign form while scrolling, hiding the assignee picker entirely.
   const railRestEl = (
-    <div key="railRest" className="space-y-4 xl:col-start-2 xl:[grid-row:2/-1] xl:sticky xl:top-4">
+    <div key="railRest" className="space-y-4 xl:col-start-2 xl:[grid-row:2/-1]">
       {!isClosed && user && PERMISSIONS.remindProgress(user.role) && (
         <RemindButton incidentId={id} />
       )}
