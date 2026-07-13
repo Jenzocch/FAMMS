@@ -642,6 +642,7 @@
     "fillNameAndId": "Isi nama dan Group ID",
     "groupAdded": "Group ditambahkan",
     "groupAllFactories": "Dipakai bersama semua pabrik (mis. grup kantor yang menerima notifikasi semua pabrik)",
+    "groupAdminShared": "Anda admin lintas pabrik — grup yang ditambahkan di sini menerima notifikasi semua pabrik.",
     "allFactoriesBadge": "Semua pabrik",
     "addGroupFailed": "Gagal menambah group",
     "updateFailed": "Gagal memperbarui",

@@ -642,6 +642,7 @@
     "fillNameAndId": "Enter a name and Group ID",
     "groupAdded": "Group added",
     "groupAllFactories": "Shared across all factories (e.g. an office group that gets every factory’s alerts)",
+    "groupAdminShared": "You are a cross-factory admin — groups added here receive every factory’s notifications.",
     "allFactoriesBadge": "All factories",
     "addGroupFailed": "Failed to add group",
     "updateFailed": "Update failed",

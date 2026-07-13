@@ -12,7 +12,6 @@ import { isTelegramConfigured } from '@/lib/telegram'
 import {
   SettingsHeading,
   SettingsSectionHeader,
-  NoFactoryMessage,
 } from '@/components/settings/SettingsSectionHeader'
 
 export const metadata = { title: 'Settings | FAMMS' }
@@ -96,15 +95,13 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      {/* Telegram Notifications — manager + admin */}
+      {/* Telegram Notifications — manager + admin. A cross-factory admin
+          (no factory_id) manages the shared, all-factory groups; a
+          factory-scoped user manages their factory's own. */}
       {canManageTelegram && (
         <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <SettingsSectionHeader titleKey="settings.telegramSectionTitle" descKey="settings.telegramSectionDesc" />
-          {user.factory_id ? (
-            <TelegramSettings factoryId={user.factory_id} configured={isTelegramConfigured()} />
-          ) : (
-            <NoFactoryMessage />
-          )}
+          <TelegramSettings factoryId={user.factory_id ?? null} configured={isTelegramConfigured()} />
         </section>
       )}
     </div>

@@ -38,16 +38,21 @@ export default function TelegramSettings({
   factoryId,
   configured,
 }: {
-  factoryId: string
+  // NULL for a cross-factory admin (no single factory). In that mode there's
+  // no "this factory" to scope to, so groups/personal registrations are all
+  // shared (factory_id NULL) — the office-wide notifications an admin manages.
+  factoryId: string | null
   configured: boolean
 }) {
   const { t } = useI18n()
   const supabase = createClient()
+  const crossFactory = !factoryId
   const [groups, setGroups] = useState<Group[]>([])
   const [name, setName] = useState('')
   const [groupId, setGroupId] = useState('')
   // "Shared" = factory_id NULL — one group (e.g. the office) that gets every
-  // factory's alerts instead of being re-added under each factory.
+  // factory's alerts instead of being re-added under each factory. Forced on
+  // (and hidden) for a cross-factory admin, who has no single factory to pick.
   const [allFactories, setAllFactories] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -61,18 +66,19 @@ export default function TelegramSettings({
   const [savingUser, setSavingUser] = useState(false)
 
   async function load() {
-    // Include factory_id IS NULL (shared) groups alongside this factory's own —
-    // a shared group is visible/manageable from every factory's settings page.
-    const { data } = await supabase
-      .from('telegram_groups')
-      .select('*')
-      .or(`factory_id.eq.${factoryId},factory_id.is.null`)
-      .order('created_at')
+    // Cross-factory admin sees only shared (NULL) groups; a factory-scoped
+    // user sees their factory's own groups plus any shared ones.
+    let query = supabase.from('telegram_groups').select('*')
+    query = crossFactory
+      ? query.is('factory_id', null)
+      : query.or(`factory_id.eq.${factoryId},factory_id.is.null`)
+    const { data } = await query.order('created_at')
     setGroups(data ?? [])
   }
 
   async function loadPeople() {
     // Assignable accounts: this factory's users + cross-factory (null factory).
+    // A cross-factory admin can register anyone, so show all active accounts.
     const { data: accts } = await supabase
       .from('profiles')
       .select('id, full_name, role, factory_id')
@@ -80,16 +86,19 @@ export default function TelegramSettings({
       .order('full_name')
     setAccounts(
       ((accts ?? []) as Account[]).filter(
-        a => !a.factory_id || a.factory_id === factoryId
+        a => crossFactory || !a.factory_id || a.factory_id === factoryId
       )
     )
 
     // Include NULL-factory rows: cross-factory accounts (admins) register
     // without a factory, and this list is the only place to manage them.
-    const { data: regs } = await supabase
+    let regQuery = supabase
       .from('telegram_users')
       .select('id, profile_id, telegram_chat_id, notification_enabled')
-      .or(`factory_id.eq.${factoryId},factory_id.is.null`)
+    regQuery = crossFactory
+      ? regQuery.is('factory_id', null)
+      : regQuery.or(`factory_id.eq.${factoryId},factory_id.is.null`)
+    const { data: regs } = await regQuery
     setUsers((regs ?? []) as PersonalUser[])
   }
 
@@ -106,7 +115,7 @@ export default function TelegramSettings({
     setSaving(true)
     try {
       const { error } = await supabase.from('telegram_groups').insert({
-        factory_id: allFactories ? null : factoryId,
+        factory_id: (crossFactory || allFactories) ? null : factoryId,
         name,
         telegram_group_id: Number(groupId),
       })
@@ -166,7 +175,7 @@ export default function TelegramSettings({
     setSavingUser(true)
     try {
       const { error } = await supabase.from('telegram_users').insert({
-        factory_id: factoryId,
+        factory_id: factoryId,  // null for a cross-factory admin — that's fine
         profile_id: selectedProfile,
         telegram_chat_id: Number(chatId),
       })
@@ -263,15 +272,21 @@ export default function TelegramSettings({
             <Input value={groupId} onChange={e => setGroupId(e.target.value)} placeholder="-1001234567890" className="mt-1" />
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={allFactories}
-            onChange={e => setAllFactories(e.target.checked)}
-            className="w-4 h-4"
-          />
-          {t('telegram.groupAllFactories', '所有工廠共用（例如辦公室群組，各廠通知都會收到）')}
-        </label>
+        {/* A cross-factory admin has no single factory to scope to, so every
+            group they add is already shared — the checkbox would be a no-op. */}
+        {crossFactory ? (
+          <p className="text-xs text-gray-500">{t('telegram.groupAdminShared', '你是跨廠管理員，這裡新增的群組會收到所有工廠的通知。')}</p>
+        ) : (
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allFactories}
+              onChange={e => setAllFactories(e.target.checked)}
+              className="w-4 h-4"
+            />
+            {t('telegram.groupAllFactories', '所有工廠共用（例如辦公室群組，各廠通知都會收到）')}
+          </label>
+        )}
         <Button onClick={addGroup} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
           {t('telegram.addGroupBtn')}
