@@ -53,6 +53,13 @@ ALTER TABLE telegram_users ALTER COLUMN factory_id DROP NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS telegram_users_profile_nullfactory_uniq
   ON telegram_users(profile_id) WHERE factory_id IS NULL;
 
+-- Shared groups: factory_id NULL = "all factories" (e.g. one office Telegram
+-- group that should get every factory's alerts, instead of adding the same
+-- group 3 times under 3 factories). telegram_group_id is already globally
+-- UNIQUE, so no extra index is needed for this — a group row still can't be
+-- duplicated regardless of factory_id.
+ALTER TABLE telegram_groups ALTER COLUMN factory_id DROP NOT NULL;
+
 -- The report form treats machine + failure code as optional, and some cases
 -- span all/none of the factories — relax the old NOT NULLs.
 ALTER TABLE incidents ALTER COLUMN machine_id      DROP NOT NULL;
@@ -272,4 +279,8 @@ UNION ALL SELECT 'areas.photo_url',
 UNION ALL SELECT 'telegram_users.factory_id nullable',
        EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_name='telegram_users' AND column_name='factory_id'
+                 AND is_nullable='YES')
+UNION ALL SELECT 'telegram_groups.factory_id nullable (shared groups)',
+       EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='telegram_groups' AND column_name='factory_id'
                  AND is_nullable='YES');

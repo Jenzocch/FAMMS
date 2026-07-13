@@ -171,11 +171,13 @@ export async function notifyFactory(
   let sent = 0
   let failed = 0
 
-  // Groups subscribed to this notification type
+  // Groups subscribed to this notification type — factory_id NULL means "all
+  // factories" (e.g. one shared office group), so include those alongside
+  // this specific factory's own groups.
   let groupQuery = supabase
     .from('telegram_groups')
     .select('id, telegram_group_id')
-    .eq('factory_id', args.factoryId)
+    .or(`factory_id.eq.${args.factoryId},factory_id.is.null`)
   if (flag) groupQuery = groupQuery.eq(flag, true)
   const { data: groups } = await groupQuery
 

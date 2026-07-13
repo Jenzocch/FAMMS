@@ -635,6 +635,8 @@
     "addGroupBtn": "Add Group",
     "fillNameAndId": "Enter a name and Group ID",
     "groupAdded": "Group added",
+    "groupAllFactories": "Shared across all factories (e.g. an office group that gets every factory’s alerts)",
+    "allFactoriesBadge": "All factories",
     "addGroupFailed": "Failed to add group",
     "updateFailed": "Update failed",
     "deleteFailed": "Delete failed",

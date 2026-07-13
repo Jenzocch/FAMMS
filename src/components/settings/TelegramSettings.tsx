@@ -13,6 +13,7 @@ interface Group {
   id: string
   name: string
   telegram_group_id: number
+  factory_id: string | null
   notify_new_incident: boolean
   notify_sla_alert: boolean
   notify_blocking: boolean
@@ -45,6 +46,9 @@ export default function TelegramSettings({
   const [groups, setGroups] = useState<Group[]>([])
   const [name, setName] = useState('')
   const [groupId, setGroupId] = useState('')
+  // "Shared" = factory_id NULL — one group (e.g. the office) that gets every
+  // factory's alerts instead of being re-added under each factory.
+  const [allFactories, setAllFactories] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
 
@@ -57,10 +61,12 @@ export default function TelegramSettings({
   const [savingUser, setSavingUser] = useState(false)
 
   async function load() {
+    // Include factory_id IS NULL (shared) groups alongside this factory's own —
+    // a shared group is visible/manageable from every factory's settings page.
     const { data } = await supabase
       .from('telegram_groups')
       .select('*')
-      .eq('factory_id', factoryId)
+      .or(`factory_id.eq.${factoryId},factory_id.is.null`)
       .order('created_at')
     setGroups(data ?? [])
   }
@@ -100,13 +106,13 @@ export default function TelegramSettings({
     setSaving(true)
     try {
       const { error } = await supabase.from('telegram_groups').insert({
-        factory_id: factoryId,
+        factory_id: allFactories ? null : factoryId,
         name,
         telegram_group_id: Number(groupId),
       })
       if (error) throw error
       toast.success(t('telegram.groupAdded'))
-      setName(''); setGroupId('')
+      setName(''); setGroupId(''); setAllFactories(false)
       load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('telegram.addGroupFailed'))
@@ -257,6 +263,15 @@ export default function TelegramSettings({
             <Input value={groupId} onChange={e => setGroupId(e.target.value)} placeholder="-1001234567890" className="mt-1" />
           </div>
         </div>
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={allFactories}
+            onChange={e => setAllFactories(e.target.checked)}
+            className="w-4 h-4"
+          />
+          {t('telegram.groupAllFactories', '所有工廠共用（例如辦公室群組，各廠通知都會收到）')}
+        </label>
         <Button onClick={addGroup} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
           {t('telegram.addGroupBtn')}
@@ -270,7 +285,14 @@ export default function TelegramSettings({
             <div key={g.id} className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gray-900">{g.name}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-semibold text-gray-900">{g.name}</p>
+                    {g.factory_id === null && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
+                        {t('telegram.allFactoriesBadge', '全部工廠')}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400 font-mono">{g.telegram_group_id}</p>
                 </div>
                 <button onClick={() => removeGroup(g.id)} className="text-gray-400 hover:text-red-500">

@@ -635,6 +635,8 @@
     "addGroupBtn": "新增群組",
     "fillNameAndId": "請填寫名稱和 Group ID",
     "groupAdded": "群組已新增",
+    "groupAllFactories": "所有工廠共用（例如辦公室群組，各廠通知都會收到）",
+    "allFactoriesBadge": "全部工廠",
     "addGroupFailed": "新增群組失敗",
     "updateFailed": "更新失敗",
     "deleteFailed": "刪除失敗",
