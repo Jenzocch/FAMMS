@@ -2,10 +2,10 @@
   "dash": {
     "title": "主管追蹤",
     "overview": "工單與保養總覽",
-    "open": "處理中工單",
+    "open": "未結案工單",
     "urgent": "緊急工單",
     "cases": "{count} 件",
-    "openByFactory": "各廠處理中工單",
+    "openByFactory": "各廠未結案工單",
     "noOpen": "目前沒有處理中工單",
     "urgentCases": "緊急工單（A/B 級）",
     "noUrgent": "沒有緊急工單",
