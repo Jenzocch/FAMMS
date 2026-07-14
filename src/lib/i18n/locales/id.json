@@ -40,6 +40,7 @@
     "showAllAccounts": "Tampilkan akun pabrik lain ({count})",
     "showFactoryOnly": "Hanya pabrik ini",
     "vendors": "Vendor",
+    "dueDateAutoHint": "Jika pelapor tidak memilih tanggal, ini dihitung otomatis dari tingkat urgensi — mohon konfirmasi kembali",
     "dueDateSupervisorOnly": "Tenggat ditetapkan oleh supervisor",
     "confirmClearAll": "Hapus semua petugas? Orang yang saat ini ditugaskan tidak akan bisa melihat laporan ini lagi.",
     "savedNoInternal": "Tersimpan, tapi tidak ada akun internal — karyawan tidak akan melihat laporan ini, hanya pengawas",

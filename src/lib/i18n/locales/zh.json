@@ -40,6 +40,7 @@
     "showAllAccounts": "顯示其他工廠人員（{count}）",
     "showFactoryOnly": "只顯示本廠人員",
     "vendors": "常用廠商",
+    "dueDateAutoHint": "若回報時未手動選日期，這是系統依緊急程度自動算的建議值，請確認是否需要調整",
     "dueDateSupervisorOnly": "完成日由主管設定",
     "confirmClearAll": "確定要清空所有指派嗎？被指派中的人員將無法再看到此工單。",
     "savedNoInternal": "已儲存，但未指派任何內部帳號 — 一般員工將看不到此工單，只有主管看得到",
