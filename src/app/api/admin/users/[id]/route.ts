@@ -18,6 +18,7 @@ export async function PATCH(
 
   let body: {
     full_name?: string
+    login_name?: string
     role?: string
     custom_role_key?: string | null
     factory_id?: string | null
@@ -42,22 +43,24 @@ export async function PATCH(
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  // For a synthetic-login account (created via a plain "login name", not a
-  // real email — see login-name.ts), the login name IS the full name, so keep
-  // the auth email in sync when the name changes. An account created with a
-  // REAL email must never have this happen: overwriting it to
-  // "<name>@famms.local" silently invalidates the person's actual email
-  // credential the next time they try to sign in with it (this bit someone —
-  // editing just the display name broke their working email login).
-  if (body.full_name !== undefined && body.full_name.trim()) {
+  // Login identifier is edited EXPLICITLY via login_name — full_name is now
+  // display-only and never touches the auth email. (History: full_name used
+  // to sync the email, so renaming how the main admin appeared silently
+  // renamed their login and locked them out.) Only synthetic-login accounts
+  // (name@famms.local) can be renamed this way; a real-email account's
+  // credential is never overwritten.
+  if (body.login_name !== undefined && body.login_name.trim()) {
+    if (!isValidLoginName(body.login_name)) {
+      return NextResponse.json({ error: '登入名稱請使用英文或數字' }, { status: 400 })
+    }
     const { data: existing } = await admin.auth.admin.getUserById(id)
     const currentEmail = existing?.user?.email ?? ''
     if (currentEmail.endsWith(`@${SYNTHETIC_EMAIL_DOMAIN}`)) {
-      if (!isValidLoginName(body.full_name)) {
-        return NextResponse.json({ error: '登入名稱請使用英文或數字' }, { status: 400 })
+      const nextEmail = accountNameToEmail(body.login_name)
+      if (nextEmail !== currentEmail) {
+        const { error } = await admin.auth.admin.updateUserById(id, { email: nextEmail })
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 })
       }
-      const { error } = await admin.auth.admin.updateUserById(id, { email: accountNameToEmail(body.full_name) })
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     }
   }
 
