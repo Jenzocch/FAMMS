@@ -211,6 +211,8 @@
     "updater": "Updated by",
     "updaterPlaceholder": "Maintenance staff name",
     "newStatus": "Where are things at now?",
+    "etaLabel": "When do you expect to finish? (optional)",
+    "etaHint": "Reported to your supervisor — does not change the deadline they set",
     "note": "What did you do?",
     "notePlaceholder": "Describe the work done, findings, parts replaced...",
     "photos": "Photos of the work (optional)",

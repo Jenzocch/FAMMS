@@ -211,6 +211,8 @@
     "updater": "Diperbarui oleh",
     "updaterPlaceholder": "Nama petugas",
     "newStatus": "Sekarang sampai mana?",
+    "etaLabel": "Kapan perkiraan selesai? (opsional)",
+    "etaHint": "Dilaporkan ke pengawas — tidak mengubah tenggat yang mereka tetapkan",
     "note": "Apa yang sudah dikerjakan?",
     "notePlaceholder": "Jelaskan penanganan, temuan, spare yang diganti...",
     "photos": "Foto hasil kerja (opsional)",

@@ -60,12 +60,13 @@ function allowedStatuses(currentStatus: IncidentStatus, allowRollback: boolean =
 }
 
 export default function ProgressUpdate({
-  incidentId, currentStatus, userRole = 'technician', userName,
+  incidentId, currentStatus, userRole = 'technician', userName, estimatedCompletionDate,
 }: {
   incidentId: string
   currentStatus: IncidentStatus
   userRole?: UserRole
   userName?: string | null
+  estimatedCompletionDate?: string | null
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -75,6 +76,10 @@ export default function ProgressUpdate({
 
   const [newStatus, setNewStatus] = useState<string>(currentStatus)
   const [note, setNote] = useState('')
+  // The assignee's own ETA ("I expect to finish by…"), reported upward. NOT
+  // due_date — that's the supervisor-set deadline the SLA measures against,
+  // which technicians deliberately cannot move.
+  const [eta, setEta] = useState(estimatedCompletionDate || '')
   const [updaterName, setUpdaterName] = useState(userName ?? '')
   const { photos, photoPreviews, compressing, addPhotos, removePhoto, resetPhotos } = usePhotoCapture(5)
   const [allowRollback, setAllowRollback] = useState(false)
@@ -99,7 +104,8 @@ export default function ProgressUpdate({
 
   async function submit() {
     const statusChanged = newStatus !== currentStatus
-    if (!note.trim() && !statusChanged) {
+    const etaChanged = eta !== (estimatedCompletionDate || '')
+    if (!note.trim() && !statusChanged && !etaChanged) {
       toast.error(t('progressUpdate.needStatusOrNote'))
       return
     }
@@ -159,15 +165,31 @@ export default function ProgressUpdate({
       })
       if (logErr) throw logErr
 
-      // Update incident status (+ stamp accepted_at). For 'closed' the close
-      // API already updated status/closed_at above, so skip the raw update.
-      if (statusChanged && newStatus !== 'closed') {
-        const patch: Record<string, unknown> = { status: newStatus, updated_at: new Date().toISOString() }
-        if (currentStatus === 'reported' && newStatus !== 'reported') {
-          patch.accepted_at = new Date().toISOString()
-          patch.accepted_by_id = user?.id ?? null
+      // Update incident status (+ stamp accepted_at) and/or the assignee's
+      // ETA. For 'closed' the close API already updated status/closed_at
+      // above, so skip the status part there.
+      if ((statusChanged && newStatus !== 'closed') || etaChanged) {
+        const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+        if (statusChanged && newStatus !== 'closed') {
+          patch.status = newStatus
+          if (currentStatus === 'reported' && newStatus !== 'reported') {
+            patch.accepted_at = new Date().toISOString()
+            patch.accepted_by_id = user?.id ?? null
+          }
         }
-        const { error: updErr } = await supabase.from('incidents').update(patch).eq('id', incidentId)
+        if (etaChanged) patch.estimated_completion_date = eta || null
+        let { error: updErr } = await supabase.from('incidents').update(patch).eq('id', incidentId)
+        // DB without the ETA column yet (SYNC_SCHEMA_LATEST not run): drop
+        // just that field and retry, so a schema-drift DB can't block status
+        // updates. Postgres says 42703; PostgREST's schema cache says PGRST204.
+        if (updErr && etaChanged && (updErr.code === '42703' || updErr.code === 'PGRST204')) {
+          delete patch.estimated_completion_date
+          if (Object.keys(patch).length > 1) {
+            ({ error: updErr } = await supabase.from('incidents').update(patch).eq('id', incidentId))
+          } else {
+            updErr = null
+          }
+        }
         if (updErr) throw updErr
       }
 
@@ -245,6 +267,17 @@ export default function ProgressUpdate({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Assignee's own ETA — reported upward, never touches due_date (the
+          supervisor-set SLA deadline technicians can't move). Hidden when
+          closing: an ETA is meaningless on a case being closed right now. */}
+      {newStatus !== 'closed' && (
+        <div>
+          <Label>{t('progressUpdate.etaLabel', '你預計什麼時候可以完成？（選填）')}</Label>
+          <Input type="date" value={eta} onChange={e => setEta(e.target.value)} className="mt-1" />
+          <p className="text-xs text-gray-400 mt-1">{t('progressUpdate.etaHint', '回報給主管參考，不會改動主管設定的截止日')}</p>
+        </div>
+      )}
 
       {/* Completion type — only when closing. Drives the first-fix / repeat KPI:
           a temporary fix re-arms repeat-failure detection for 30 days. */}

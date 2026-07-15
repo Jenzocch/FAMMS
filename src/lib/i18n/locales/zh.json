@@ -211,6 +211,8 @@
     "updater": "處理人員",
     "updaterPlaceholder": "維修人員姓名",
     "newStatus": "現在到哪個階段了？",
+    "etaLabel": "你預計什麼時候可以完成？（選填）",
+    "etaHint": "回報給主管參考，不會改動主管設定的截止日",
     "note": "你做了什麼？",
     "notePlaceholder": "說明處理內容、發現的問題、更換的零件...",
     "photos": "工作照片（選填）",
