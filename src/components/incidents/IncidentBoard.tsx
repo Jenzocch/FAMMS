@@ -16,6 +16,17 @@ import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { useProgressNudge } from '@/lib/useProgressNudge'
 import NextStepHint from '@/components/incidents/NextStepHint'
 
+// Urgency is now shown as a colored left edge bar on the card (not a pill —
+// see the top row below), reusing the same red/amber/green intent as
+// URGENCY_FROM_IMPACT. A and B both read as "red" (urgent), C is amber, D is
+// the calm default.
+const URGENCY_BAR_COLOR: Record<string, string> = {
+  A: 'border-l-red-500',
+  B: 'border-l-red-400',
+  C: 'border-l-amber-400',
+  D: 'border-l-green-500',
+}
+
 export interface BoardRow {
   id: string
   incident_no: string
@@ -85,7 +96,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
 
   return (
     <div className="space-y-4 md:space-y-5">
-      <h1 className="text-xl font-bold text-gray-900">{t('board.heading')}</h1>
+      <h1 className="text-2xl font-semibold text-gray-900">{t('board.heading')}</h1>
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
@@ -146,19 +157,17 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
               // the anchor (invalid HTML + screen-reader confusion).
               <div
                 key={inc.id}
-                className="bg-white rounded-2xl border border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400 transition-all"
+                aria-label={t(`urgency.${inc.downtime_impact}`, urgency.label)}
+                className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 ${URGENCY_BAR_COLOR[inc.downtime_impact] ?? URGENCY_BAR_COLOR.D}`}
               >
               <Link
                 href={`/incidents/${inc.id}`}
-                className="block p-4 md:p-5 xl:p-6 rounded-2xl active:bg-gray-50"
+                className="block p-4 md:p-5 xl:p-6 rounded-2xl active:bg-gray-50 active:scale-[0.98] transition-transform duration-150"
               >
-                {/* Top row — the two things a technician triages on: how urgent,
-                    and what state it's in. Everything else (case no., reporter)
-                    is demoted so the card reads at a glance. */}
+                {/* Top row — status pill + (at most) one attention badge, plus
+                    the chevron. Urgency now reads from the card's left edge bar
+                    instead of a third pill, so triage stays a glance, not a read. */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-sm px-2.5 py-1 rounded-full font-semibold ${urgency.color}`}>
-                    {t(`urgency.${inc.downtime_impact}`, urgency.label)}
-                  </span>
                   <span className={`text-sm px-2.5 py-1 rounded-full font-medium ${STATUS_ZH_COLOR[inc.status]}`}>
                     {t(`boardStatus.${inc.status}`)}
                   </span>
@@ -195,7 +204,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                 )}
 
                 {/* Footer meta — demoted: who/when, assignee, case no. */}
-                <div className="flex items-center justify-between gap-2 mt-3 text-xs text-gray-400">
+                <div className="flex items-center justify-between gap-2 mt-3 text-[13px] text-gray-500">
                   <span className="truncate">
                     {inc.reporter_name ? `${inc.reporter_name} · ` : ''}
                     {formatDistanceToNow(new Date(inc.reported_at), { addSuffix: true, locale: dateLocale })}
