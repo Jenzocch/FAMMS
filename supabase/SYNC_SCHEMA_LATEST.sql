@@ -43,6 +43,12 @@ ALTER TABLE incidents ADD COLUMN IF NOT EXISTS client_request_id UUID UNIQUE;
 -- deadline the SLA measures against, and technicians can't (and shouldn't)
 -- move it — this column is how they communicate a date instead.
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS estimated_completion_date DATE;
+-- How many photos came with the ORIGINAL report. The photos themselves live
+-- only in storage (incident-photos/{id}/, no DB record), so without this the
+-- board would need one storage.list per card just to show a 📷 indicator.
+-- Written once at report creation; 0 for rows from before this column
+-- existed (their photos still show on the detail page as always).
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS photo_count INT NOT NULL DEFAULT 0;
 
 -- ---------------------------------------------------------------------------
 -- TELEGRAM — new-report drafts
@@ -309,4 +315,7 @@ UNION ALL SELECT 'telegram_groups.factory_id nullable (shared groups)',
 UNION ALL SELECT 'incidents.estimated_completion_date',
        EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_name='incidents' AND column_name='estimated_completion_date')
-UNION ALL SELECT 'telegram_report_drafts table', to_regclass('public.telegram_report_drafts') IS NOT NULL;
+UNION ALL SELECT 'telegram_report_drafts table', to_regclass('public.telegram_report_drafts') IS NOT NULL
+UNION ALL SELECT 'incidents.photo_count',
+       EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='incidents' AND column_name='photo_count');

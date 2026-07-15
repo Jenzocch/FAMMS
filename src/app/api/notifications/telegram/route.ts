@@ -431,13 +431,19 @@ async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient
   // Photo, if the description reply included one — downloaded now for the
   // first time (see handleNewReportDescription).
   if (draft.photo_file_id) {
-    const file = await downloadTelegramFile(draft.photo_file_id)
-    if (file) {
-      const path = `${incident.id}/${Date.now()}-0.${file.ext}`
-      await admin.storage.from('incident-photos')
-        .upload(path, file.bytes, { contentType: `image/${file.ext === 'jpg' ? 'jpeg' : file.ext}` })
-        .catch(() => {})
-    }
+    try {
+      const file = await downloadTelegramFile(draft.photo_file_id)
+      if (file) {
+        const path = `${incident.id}/${Date.now()}-0.${file.ext}`
+        const { error: upErr } = await admin.storage.from('incident-photos')
+          .upload(path, file.bytes, { contentType: `image/${file.ext === 'jpg' ? 'jpeg' : file.ext}` })
+        // Board 📷 badge — only counted once the upload actually landed, same
+        // as the app form. Best-effort: tolerates a pre-photo_count database.
+        if (!upErr) {
+          await admin.from('incidents').update({ photo_count: 1 }).eq('id', incident.id)
+        }
+      }
+    } catch { /* photo is best-effort — the incident itself is already saved */ }
   }
 
   await logAuditEvent(admin, {

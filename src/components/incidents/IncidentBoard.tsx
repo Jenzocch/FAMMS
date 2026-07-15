@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, ChevronRight, UserCheck, CalendarClock } from 'lucide-react'
+import { AlertCircle, ChevronRight, UserCheck, CalendarClock, Camera } from 'lucide-react'
 import NudgeCardButton from '@/components/incidents/NudgeCardButton'
 import { formatDistanceToNow, format } from 'date-fns'
 import { zhTW, enUS, id as idLocale } from 'date-fns/locale'
@@ -28,6 +28,10 @@ export interface BoardRow {
   assigned_to: string | null
   due_date: string | null
   observation_end_date: string | null
+  // Photos attached to the original report — written at creation time (the
+  // photos themselves live only in storage, so this is the board's only
+  // affordable way to know). undefined on pre-photo_count rows.
+  photo_count?: number | null
   machine: { machine_code: string | null; machine_name: string } | null
   factory: { name: string } | null
 }
@@ -197,15 +201,25 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                     {formatDistanceToNow(new Date(inc.reported_at), { addSuffix: true, locale: dateLocale })}
                     {!overdue && inc.due_date ? ` · ${t('board.due', '截止')} ${format(new Date(inc.due_date), 'MM/dd')}` : ''}
                   </span>
-                  {inc.status !== 'closed' && (
-                    inc.assigned_to ? (
-                      <span className="inline-flex items-center gap-0.5 text-blue-600 shrink-0">
-                        <UserCheck className="w-3.5 h-3.5" /> {inc.assigned_to}
+                  <span className="flex items-center gap-2 shrink-0">
+                    {(inc.photo_count ?? 0) > 0 && (
+                      <span
+                        className="inline-flex items-center gap-0.5 text-gray-500"
+                        aria-label={`${inc.photo_count} ${t('board.photos', '張照片')}`}
+                      >
+                        <Camera className="w-3.5 h-3.5" /> {inc.photo_count}
                       </span>
-                    ) : (
-                      <span className="text-amber-600 shrink-0">{t('board.unassigned')}</span>
-                    )
-                  )}
+                    )}
+                    {inc.status !== 'closed' && (
+                      inc.assigned_to ? (
+                        <span className="inline-flex items-center gap-0.5 text-blue-600">
+                          <UserCheck className="w-3.5 h-3.5" /> {inc.assigned_to}
+                        </span>
+                      ) : (
+                        <span className="text-amber-600">{t('board.unassigned')}</span>
+                      )
+                    )}
+                  </span>
                 </div>
               </Link>
 
