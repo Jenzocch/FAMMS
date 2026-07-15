@@ -60,11 +60,13 @@ export default function ReportPhotoPicker({
             <span className="text-sm font-semibold text-blue-700">
               {compressing ? t('report.compressing') : t('report.takePhoto')}
             </span>
+            {/* No `capture` attribute: on Android it forces the camera open
+                directly, making gallery uploads impossible. Without it the OS
+                shows its chooser — take a photo OR pick from the album. */}
             <input
               type="file"
               accept="image/*"
               multiple
-              capture="environment"
               onChange={e => onAddPhotos(Array.from(e.target.files ?? []))}
               disabled={compressing}
               className="hidden"

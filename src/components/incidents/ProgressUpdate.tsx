@@ -416,11 +416,12 @@ export default function ProgressUpdate({
               <span className="text-sm text-gray-500">
                 {compressing ? t('progressUpdate.compressing') : t('progressUpdate.addPhoto')}
               </span>
+              {/* No `capture`: it forces the camera on Android, blocking
+                  gallery uploads — the OS chooser offers both without it. */}
               <input
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
                 onChange={e => addPhotos(Array.from(e.target.files ?? []))}
                 disabled={compressing}
                 className="hidden"
