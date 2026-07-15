@@ -169,18 +169,28 @@ export default async function IncidentDetailPage({
         {incident.title || <IncidentTypeText code={incident.incident_type} problemFallback />}
       </h1>
 
-      <div className="mt-2 space-y-1 text-sm text-gray-600">
-        <p><IncidentTypeText code={incident.incident_type} /></p>
-        <p>
-          📍 {factory?.name || '?'}
-          {machine ? ` · ${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}` : ''}
-          {incident.location_note ? ` · ${incident.location_note}` : ''}
+      {/* Type+location and reporter+time each share ONE wrapping row instead
+          of four stacked full-width lines — those lines were each only a few
+          words wide, leaving most of the card's width empty and pushing
+          everything else down an extra two rows for no reason. flex-wrap
+          still breaks each row onto its own line if the content is long. */}
+      <div className="mt-2 space-y-1.5 text-sm text-gray-600">
+        <p className="flex items-center gap-1.5 flex-wrap">
+          <IncidentTypeText code={incident.incident_type} />
+          <span className="text-gray-300">·</span>
+          <span>
+            📍 {factory?.name || '?'}
+            {machine ? ` · ${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}` : ''}
+            {incident.location_note ? ` · ${incident.location_note}` : ''}
+          </span>
         </p>
-        {incident.reporter_name && (
-          <p className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {incident.reporter_name}</p>
-        )}
-        <p className="flex items-center gap-1 text-gray-400">
-          <Clock className="w-3.5 h-3.5" /> {format(new Date(incident.reported_at), 'yyyy-MM-dd HH:mm')}
+        <p className="flex items-center gap-3 flex-wrap">
+          {incident.reporter_name && (
+            <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {incident.reporter_name}</span>
+          )}
+          <span className="flex items-center gap-1 text-gray-400">
+            <Clock className="w-3.5 h-3.5" /> {format(new Date(incident.reported_at), 'yyyy-MM-dd HH:mm')}
+          </span>
         </p>
       </div>
 

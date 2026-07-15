@@ -35,10 +35,19 @@ export interface InlineKeyboard {
   inline_keyboard: { text: string; callback_data: string }[][]
 }
 
+// force_reply: pins the client's text input to THIS message and opens the
+// keyboard automatically — the user just types and hits send, no need to
+// long-press and pick "Reply" themselves. Used for the "📝 Tambah catatan"
+// prompt so replying doesn't require knowing Telegram's reply gesture.
+export interface ForceReply {
+  force_reply: true
+  input_field_placeholder?: string
+}
+
 export async function sendTelegramMessage(
   chatId: number | string,
   html: string,
-  replyMarkup?: InlineKeyboard
+  replyMarkup?: InlineKeyboard | ForceReply
 ): Promise<SendResult> {
   if (!TOKEN) return { ok: false, error: 'TELEGRAM_BOT_TOKEN belum dikonfigurasi' }
   try {
@@ -64,14 +73,39 @@ export async function sendTelegramMessage(
 // Status-report buttons attached to assignment/reminder DMs. callback_data
 // stays under Telegram's 64-byte cap: "st|<uuid36>|repairing" ≈ 50 bytes.
 // Only technician-safe forward statuses — closing stays in-app (RCA gate,
-// supervisor-only).
+// supervisor-only). Third row: prompts a force_reply so adding a note/photo
+// doesn't require knowing "long-press → Reply" — see handleNoteButton.
 export function incidentActionButtons(incidentId: string): InlineKeyboard {
   return {
+    inline_keyboard: [
+      [
+        { text: '🔧 Mulai dikerjakan', callback_data: `st|${incidentId}|repairing` },
+        { text: '✅ Selesai, siap dicek', callback_data: `st|${incidentId}|testing` },
+      ],
+      [{ text: '📝 Tambah catatan / foto', callback_data: `note|${incidentId}` }],
+    ],
+  }
+}
+
+// Urgency picker shown after a /lapor description is received. Plain
+// severity levels only, matching the app's report form (no production-impact
+// wording) — see URGENCY_FROM_IMPACT.
+export function newReportUrgencyButtons(): InlineKeyboard {
+  return {
     inline_keyboard: [[
-      { text: '🔧 Mulai dikerjakan', callback_data: `st|${incidentId}|repairing` },
-      { text: '✅ Selesai, siap dicek', callback_data: `st|${incidentId}|testing` },
+      { text: '🔴 Mendesak', callback_data: 'newrpt|A' },
+      { text: '🟡 Sedang', callback_data: 'newrpt|C' },
+      { text: '🟢 Biasa', callback_data: 'newrpt|D' },
     ]],
   }
+}
+
+const URGENCY_LABEL_ID: Record<string, string> = { A: '🔴 Mendesak', C: '🟡 Sedang', D: '🟢 Biasa' }
+
+// Checked, inert state after the urgency tap — same "visibly registered"
+// treatment as incidentActionButtonsAfter.
+export function newReportUrgencyButtonsAfter(picked: 'A' | 'C' | 'D'): InlineKeyboard {
+  return { inline_keyboard: [[{ text: `✅ ${URGENCY_LABEL_ID[picked]}`, callback_data: 'noop' }]] }
 }
 
 // Acknowledge a button tap (stops the client-side loading spinner). The text
@@ -83,6 +117,45 @@ export async function answerCallbackQuery(callbackQueryId: string, text?: string
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ callback_query_id: callbackQueryId, ...(text ? { text } : {}) }),
   }).catch(() => {})
+}
+
+// Rewrite the keyboard on the ORIGINAL message after a button tap — Telegram
+// gives no other visual sign a button was pressed (no built-in pressed/
+// disabled state), so without this the buttons look untouched forever and a
+// technician can't tell whether their tap registered. The done action
+// becomes a checked, inert label (callback_data 'noop'); a still-available
+// forward action stays live.
+export async function editMessageKeyboard(
+  chatId: number | string,
+  messageId: number,
+  keyboard: InlineKeyboard
+): Promise<void> {
+  if (!TOKEN) return
+  await fetch(`${API_BASE}/editMessageReplyMarkup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: keyboard }),
+  }).catch(() => {})
+}
+
+// Keyboard reflecting a status that was just set via button: the completed
+// action shows checked + inert; 'repairing' still offers the forward step to
+// 'testing' (closing is never a button — stays in-app). The note button stays
+// live either way — adding a note/photo isn't a one-time action.
+export function incidentActionButtonsAfter(incidentId: string, target: 'repairing' | 'testing'): InlineKeyboard {
+  const noteRow = [{ text: '📝 Tambah catatan / foto', callback_data: `note|${incidentId}` }]
+  if (target === 'testing') {
+    return { inline_keyboard: [[{ text: '✅ Selesai, siap dicek', callback_data: 'noop' }], noteRow] }
+  }
+  return {
+    inline_keyboard: [
+      [
+        { text: '✅ Sedang dikerjakan', callback_data: 'noop' },
+        { text: '✅ Selesai, siap dicek', callback_data: `st|${incidentId}|testing` },
+      ],
+      noteRow,
+    ],
+  }
 }
 
 // Download a file a user sent to the bot (photos attached to progress

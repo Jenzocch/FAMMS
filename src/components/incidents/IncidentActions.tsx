@@ -40,7 +40,7 @@ const FALLBACK_ISSUE_TYPES = [
 const URGENCY = [
   { value: 'A', label: '🔴 緊急' },
   { value: 'C', label: '🟡 中' },
-  { value: 'D', label: '🟢 低' },
+  { value: 'D', label: '🟢 一般' },
 ]
 const URGENCY_LEGACY = { value: 'B', label: '🟠 高' }
 
