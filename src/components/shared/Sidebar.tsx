@@ -120,7 +120,7 @@ export default function Sidebar({ profile, incidentBadge = 0, capabilities = nul
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{profile?.full_name || t('navigation.profile')}</p>
-            {roleDisplay && <p className="text-xs text-gray-400">{roleDisplay}</p>}
+            {roleDisplay && <p className="text-[13px] text-gray-500">{roleDisplay}</p>}
           </div>
         </div>
         <div className="mt-1 space-y-0.5">

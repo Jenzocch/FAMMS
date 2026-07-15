@@ -15,7 +15,7 @@ export default function NewPMSchedulePage() {
             Kembali
           </Button>
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Jadwal PM Baru</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Jadwal PM Baru</h1>
       </div>
       <PMScheduleManager />
     </div>

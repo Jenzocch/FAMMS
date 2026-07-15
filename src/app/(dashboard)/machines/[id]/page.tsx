@@ -52,7 +52,7 @@ export default async function MachineDetailPage({ params }: { params: { id: stri
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{machine.machine_code}</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">{machine.machine_code}</h1>
             <p className="text-sm text-gray-600">{machine.machine_name}</p>
           </div>
         </div>

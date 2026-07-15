@@ -60,7 +60,7 @@ export default function TopBar({ profile, customRole = null }: TopBarProps) {
             <div className="px-3 py-2">
               <p className="text-sm font-medium">{profile?.full_name || '使用者'}</p>
               {roleDisplay && (
-                <p className="text-xs text-gray-400 mt-0.5">{roleDisplay}</p>
+                <p className="text-[13px] text-gray-500 mt-0.5">{roleDisplay}</p>
               )}
             </div>
             <DropdownMenuSeparator />

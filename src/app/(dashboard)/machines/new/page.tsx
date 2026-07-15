@@ -12,7 +12,7 @@ export default async function NewMachinePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">Tambah Mesin Baru</h1>
+      <h1 className="text-2xl font-semibold text-gray-900">Tambah Mesin Baru</h1>
       <MachineForm />
     </div>
   )

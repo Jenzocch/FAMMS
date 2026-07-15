@@ -22,7 +22,7 @@ export default async function EditMachinePage({ params }: { params: { id: string
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">Edit Mesin</h1>
+      <h1 className="text-2xl font-semibold text-gray-900">Edit Mesin</h1>
       <MachineForm machine={machine} />
     </div>
   )
