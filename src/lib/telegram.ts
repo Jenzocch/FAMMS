@@ -85,6 +85,26 @@ export async function answerCallbackQuery(callbackQueryId: string, text?: string
   }).catch(() => {})
 }
 
+// Download a file a user sent to the bot (photos attached to progress
+// replies). Two-step per Telegram's API: getFile resolves the file_id to a
+// path, then the file endpoint serves the bytes. Photos come pre-compressed
+// by Telegram (largest size ≈ 1280px), conveniently close to the app's own
+// upload compression target.
+export async function downloadTelegramFile(fileId: string): Promise<{ bytes: ArrayBuffer; ext: string } | null> {
+  if (!TOKEN) return null
+  try {
+    const meta = await fetch(`${API_BASE}/getFile?file_id=${encodeURIComponent(fileId)}`).then(r => r.json())
+    const filePath: string | undefined = meta?.result?.file_path
+    if (!meta?.ok || !filePath) return null
+    const res = await fetch(`https://api.telegram.org/file/bot${TOKEN}/${filePath}`)
+    if (!res.ok) return null
+    const ext = filePath.includes('.') ? filePath.split('.').pop()! : 'jpg'
+    return { bytes: await res.arrayBuffer(), ext }
+  } catch {
+    return null
+  }
+}
+
 // ----------------------------------------------------------------------------
 // Message formatters (Bahasa Indonesia + English technical terms)
 // ----------------------------------------------------------------------------

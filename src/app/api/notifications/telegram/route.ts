@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendTelegramMessage, answerCallbackQuery, isTelegramConfigured, esc } from '@/lib/telegram'
+import { sendTelegramMessage, answerCallbackQuery, downloadTelegramFile, isTelegramConfigured, esc } from '@/lib/telegram'
 import { logAuditEvent } from '@/lib/audit'
 import type { IncidentStatus } from '@/types'
 
@@ -141,19 +141,24 @@ async function handleStatusButton(admin: ReturnType<typeof createAdminClient>, c
   ].join('\n'))
 }
 
-// A text reply to one of the bot's incident messages → progress note. The
-// quoted message text carries the FIT- number, which identifies the case.
+// A reply to one of the bot's incident messages → progress note, with photos
+// supported: a photo reply (with optional caption) is downloaded from
+// Telegram and stored alongside app-uploaded work photos. The quoted message
+// text carries the FIT- number, which identifies the case.
 async function handleReplyNote(admin: ReturnType<typeof createAdminClient>, message: {
   chat?: { id?: number }
   text?: string
-  reply_to_message?: { text?: string; from?: { is_bot?: boolean } }
+  caption?: string
+  photo?: { file_id: string }[]
+  reply_to_message?: { text?: string; caption?: string; from?: { is_bot?: boolean } }
 }) {
   const chatId = message.chat?.id
-  const note = (message.text ?? '').trim()
+  const note = (message.text ?? message.caption ?? '').trim()
+  const hasPhoto = Array.isArray(message.photo) && message.photo.length > 0
   const quoted = message.reply_to_message
-  if (!chatId || !note || !quoted?.from?.is_bot) return
+  if (!chatId || (!note && !hasPhoto) || !quoted?.from?.is_bot) return
 
-  const m = (quoted.text ?? '').match(/FIT-\d{8}-\d{3}(?:-dup\d+)?/)
+  const m = (quoted.text ?? quoted.caption ?? '').match(/FIT-\d{8}-\d{3}(?:-dup\d+)?/)
   if (!m) return
 
   const profile = await resolveProfile(admin, chatId)
@@ -179,16 +184,34 @@ async function handleReplyNote(admin: ReturnType<typeof createAdminClient>, mess
     return
   }
 
+  // Photo reply: Telegram offers several sizes per photo — take the largest
+  // (Telegram pre-compresses "photo" sends to ≈1280px, matching the app's own
+  // upload compression), store it with the app's work photos.
+  const photoPaths: string[] = []
+  if (hasPhoto) {
+    const largest = message.photo![message.photo!.length - 1]
+    const file = await downloadTelegramFile(largest.file_id)
+    if (file) {
+      const path = `${incident.id}/updates/tg-${Date.now()}.${file.ext}`
+      const { error: upErr } = await admin.storage
+        .from('incident-photos')
+        .upload(path, file.bytes, { contentType: `image/${file.ext === 'jpg' ? 'jpeg' : file.ext}` })
+      if (!upErr) photoPaths.push(path)
+    }
+  }
+
   const { error } = await admin.from('incident_updates').insert({
     incident_id: incident.id,
     new_status: null,
-    note,
+    note: note || (photoPaths.length > 0 ? '📷 (foto via Telegram)' : null),
     updated_by: profile.full_name || null,
     updated_by_id: profile.id,
+    photos: photoPaths.length > 0 ? JSON.stringify(photoPaths) : null,
   })
   if (!error) {
     await admin.from('incidents').update({ updated_at: new Date().toISOString() }).eq('id', incident.id)
-    await sendTelegramMessage(chatId, `📝 Catatan tersimpan di <b>${esc(incident.incident_no)}</b>.`)
+    const what = photoPaths.length > 0 && note ? 'Catatan + foto' : photoPaths.length > 0 ? 'Foto' : 'Catatan'
+    await sendTelegramMessage(chatId, `📝 ${what} tersimpan di <b>${esc(incident.incident_no)}</b>.`)
   }
 }
 
