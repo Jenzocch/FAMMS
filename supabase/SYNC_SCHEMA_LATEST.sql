@@ -38,6 +38,11 @@ ALTER TABLE incidents ADD COLUMN IF NOT EXISTS last_sla_alert_at TIMESTAMP;
 -- creating a duplicate incident. NULL for rows created before this existed —
 -- UNIQUE allows any number of NULLs, so that's not a conflict.
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS client_request_id UUID UNIQUE;
+-- The assignee's own "I expect to finish by" ETA, reported from the progress
+-- form. Deliberately separate from due_date: due_date is the supervisor-set
+-- deadline the SLA measures against, and technicians can't (and shouldn't)
+-- move it — this column is how they communicate a date instead.
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS estimated_completion_date DATE;
 
 -- Reference photo so a reporter can tell areas apart at a glance in the
 -- report form (e.g. two areas both named "Line 2"). One photo per area is
@@ -283,4 +288,7 @@ UNION ALL SELECT 'telegram_users.factory_id nullable',
 UNION ALL SELECT 'telegram_groups.factory_id nullable (shared groups)',
        EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_name='telegram_groups' AND column_name='factory_id'
-                 AND is_nullable='YES');
+                 AND is_nullable='YES')
+UNION ALL SELECT 'incidents.estimated_completion_date',
+       EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='incidents' AND column_name='estimated_completion_date');

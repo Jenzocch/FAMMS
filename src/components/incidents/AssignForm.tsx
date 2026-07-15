@@ -399,6 +399,14 @@ export default function AssignForm({
         <div>
           <Label>{t('assign.dueDate', '預計完成日')}</Label>
           <Input type="date" value={due} onChange={e => setDue(e.target.value)} className="mt-1" disabled={!canAssign || !canEditDueDate} />
+          {/* This field is never actually empty — the report form
+              auto-calculates a value from urgency when the reporter leaves it
+              blank (see report.dueDateHint). Without this note, a supervisor
+              seeing a pre-filled date here has no way to tell "reporter chose
+              this" from "system guessed this", and may not think to review it. */}
+          {canAssign && canEditDueDate && (
+            <p className="text-xs text-gray-400 mt-1">{t('assign.dueDateAutoHint', '若回報時未手動選日期，這是系統依緊急程度自動算的建議值，請確認是否需要調整')}</p>
+          )}
           {canAssign && !canEditDueDate && (
             <p className="text-xs text-gray-400 mt-1">{t('assign.dueDateSupervisorOnly', '完成日由主管設定')}</p>
           )}

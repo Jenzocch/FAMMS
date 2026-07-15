@@ -421,10 +421,12 @@ export default function FactoryManager() {
                           <label className="flex items-center gap-2 text-sm border rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-50">
                             {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                             {areaForm.photo_url ? t('settings.areaPhotoReplace', '更換照片') : t('settings.areaPhotoAdd', '新增照片')}
+                            {/* No `capture`: it forces the camera on Android,
+                                blocking gallery uploads — the OS chooser
+                                offers both without it. */}
                             <input
                               type="file"
                               accept="image/*"
-                              capture="environment"
                               className="hidden"
                               disabled={uploadingPhoto}
                               onChange={e => { const f = e.target.files?.[0]; if (f) uploadAreaPhoto(f); e.target.value = '' }}

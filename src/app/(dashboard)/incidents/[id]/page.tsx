@@ -197,7 +197,7 @@ export default async function IncidentDetailPage({
         </div>
       )}
 
-      {(incident.assigned_to || incident.due_date) && (
+      {(incident.assigned_to || incident.due_date || incident.estimated_completion_date) && (
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           {incident.assigned_to && (
             <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
@@ -207,6 +207,13 @@ export default async function IncidentDetailPage({
           )}
           {incident.due_date && (
             <DueDateChip dueDate={incident.due_date} isClosed={isClosed} />
+          )}
+          {/* Assignee-reported ETA — distinct from the supervisor-set due date */}
+          {!isClosed && incident.estimated_completion_date && (
+            <span className="inline-flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-full">
+              <Clock className="w-3.5 h-3.5" />
+              技師預計 {format(new Date(incident.estimated_completion_date), 'MM/dd')}
+            </span>
           )}
         </div>
       )}
@@ -238,6 +245,7 @@ export default async function IncidentDetailPage({
           currentStatus={status}
           userRole={user?.role}
           userName={user?.full_name}
+          estimatedCompletionDate={incident.estimated_completion_date}
         />
       ) : (
         <ClosedBanner closedAt={incident.closed_at} />
@@ -276,6 +284,8 @@ export default async function IncidentDetailPage({
           userRole={user?.role}
           userName={user?.full_name}
           factoryId={incident.factory_id}
+          machineId={incident.machine_id}
+          locationNote={incident.location_note}
         />
       </CollapsibleSection>
     </div>
@@ -294,16 +304,20 @@ export default async function IncidentDetailPage({
     </div>
   )
 
-  // Assignment — always the top of the management rail on desktop. On mobile,
-  // a fresh/unowned case (status === 'reported') needs an owner before
-  // progress updates make sense, so it's placed earlier in that one case (see
-  // the `order` arrays below); every other status keeps it with the rest of
-  // the rail, right after the timeline.
+  // Assignment placement depends on whether the case has entered the work
+  // phase. A fresh/unowned case (status === 'reported') needs an owner before
+  // anything else, so AssignForm leads the rail (sticky, row 1). Once
+  // assigned, the viewer is usually the assignee working the case — who owns
+  // it is no longer the point — so AssignForm drops to the BOTTOM of the rail
+  // and the action pieces (remind/parts) take the top. Sticky only applies in
+  // the row-1 case: two stacked sticky siblings pin to the same offset and
+  // slide over each other.
+  const assignLeads = status === 'reported'
   const assignFormEl = (
     <div
       key="assign"
       id="section-assign"
-      className={`relative xl:col-start-2 xl:[grid-row:1] xl:sticky xl:top-4 ${assignIsYourTurn ? 'rounded-xl ring-2 ring-blue-100' : ''}`}
+      className={`relative xl:col-start-2 ${assignLeads ? 'xl:[grid-row:1] xl:sticky xl:top-4' : 'xl:[grid-row:2/-1]'} ${assignIsYourTurn ? 'rounded-xl ring-2 ring-blue-100' : ''}`}
     >
       {assignIsYourTurn && <YourTurnBadge />}
       <AssignForm
@@ -320,13 +334,9 @@ export default async function IncidentDetailPage({
   )
 
   // Remaining management-rail pieces: nudge (Telegram), Gudang One parts
-  // request, and the read-only parts-request tracker — always in this order,
-  // always right after AssignForm.
-  // NOT sticky: AssignForm above it is sticky at the same top offset, and two
-  // stacked sticky siblings pin to the same spot — this block slid up OVER the
-  // assign form while scrolling, hiding the assignee picker entirely.
+  // request, and the read-only parts-request tracker.
   const railRestEl = (
-    <div key="railRest" className="space-y-4 xl:col-start-2 xl:[grid-row:2/-1]">
+    <div key="railRest" className={`space-y-4 xl:col-start-2 ${assignLeads ? 'xl:[grid-row:2/-1]' : 'xl:[grid-row:1]'}`}>
       {!isClosed && user && PERMISSIONS.remindProgress(user.role) && (
         <RemindButton incidentId={id} />
       )}
@@ -337,9 +347,9 @@ export default async function IncidentDetailPage({
 
   // Single flat order — this is the real mobile reading/DOM order; the grid
   // above just repositions the two rail pieces into column 2 at `xl:`.
-  const order = status === 'reported'
+  const order = assignLeads
     ? [headerAndProgressEl, assignFormEl, pastRecordsEl, progressOrClosedEl, timelineEl, railRestEl, manageEl, auditEl]
-    : [headerAndProgressEl, pastRecordsEl, progressOrClosedEl, timelineEl, assignFormEl, railRestEl, manageEl, auditEl]
+    : [headerAndProgressEl, pastRecordsEl, progressOrClosedEl, timelineEl, railRestEl, assignFormEl, manageEl, auditEl]
 
   return (
     <div className="space-y-4">

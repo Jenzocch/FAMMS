@@ -72,6 +72,9 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
   const [editingRealEmail, setEditingRealEmail] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  // Edit-mode only, synthetic accounts only: the login identifier, decoupled
+  // from the display name (renaming display used to silently rename the login).
+  const [loginName, setLoginName] = useState('')
   // Either a plain UserRole ('technician'…) or `custom:<key>`.
   const [roleSelection, setRoleSelection] = useState<string>('technician')
   const [factoryId, setFactoryId] = useState('')
@@ -127,7 +130,9 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
 
   function startEdit(u: ManagedUser) {
     setEditingId(u.id)
-    setEditingRealEmail(u.email.endsWith('@famms.local') ? null : u.email)
+    const synthetic = u.email.endsWith('@famms.local')
+    setEditingRealEmail(synthetic ? null : u.email)
+    setLoginName(synthetic ? u.email.split('@')[0] : '')
     setPassword('')
     setFullName(u.full_name)
     setRoleSelection(u.custom_role_key ? `${CUSTOM_PREFIX}${u.custom_role_key}` : u.role)
@@ -140,6 +145,7 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
     setShowForm(false)
     setEditingId(null)
     setEditingRealEmail(null)
+    setLoginName('')
     setPassword('')
     setTelegramChatId('')
   }
@@ -165,6 +171,9 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             full_name: fullName,
+            // Synthetic accounts only: the login identifier, edited separately
+            // from the display name.
+            ...(editingRealEmail === null && loginName.trim() ? { login_name: loginName.trim() } : {}),
             ...roleFields(),
             factory_id: factoryId || null,
             telegram_chat_id: telegramChatId.trim() || undefined,
@@ -247,7 +256,24 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
           </p>
 
           <div>
-            <Label>{editingRealEmail ? t('settings.displayNameOnly', '顯示名稱') : t('settings.loginName')}</Label>
+            {/* Create mode: one field — the name IS the login. Edit mode:
+                login and display name are separate, so renaming how someone
+                appears can never silently change how they sign in (that bite:
+                a display rename locked the main admin out of their login). */}
+            {editingId && editingRealEmail === null && (
+              <div className="mb-3">
+                <Label>{t('settings.loginAccount', '登入帳號')}</Label>
+                <Input
+                  value={loginName}
+                  onChange={e => setLoginName(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className="mt-1 font-mono"
+                />
+                <p className="text-xs text-gray-400 mt-1">{t('settings.loginAccountHint', '登入時輸入的帳號（英文或數字）。改這裡才會改登入方式。')}</p>
+              </div>
+            )}
+            <Label>{editingId ? t('settings.displayNameOnly', '顯示名稱') : t('settings.loginName')}</Label>
             <Input
               value={fullName}
               onChange={e => setFullName(e.target.value)}
@@ -260,6 +286,8 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
               <p className="text-xs text-gray-400 mt-1">
                 {t('settings.displayNameOnlyHint', '此帳號用 email 登入（{email}），這裡只改顯示名稱，不影響登入方式。').replace('{email}', editingRealEmail)}
               </p>
+            ) : editingId ? (
+              <p className="text-xs text-gray-400 mt-1">{t('settings.displayNameHint', '畫面上顯示的名字，不影響登入。')}</p>
             ) : (
               <p className="text-xs text-gray-400 mt-1">{t('settings.loginNameHint')}</p>
             )}
