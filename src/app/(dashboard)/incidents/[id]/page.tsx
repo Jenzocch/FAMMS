@@ -50,15 +50,50 @@ export default async function IncidentDetailPage({
   const user = await getCurrentUser()
   const supabase = await createClient()
 
-  const { data: incident } = await supabase
-    .from('incidents')
-    .select(`
-      *,
-      machine:machines(machine_code, machine_name),
-      factory:factories(name, code)
-    `)
-    .eq('id', id)
-    .single()
+  // incident/updates/partsRequests/reportPhotos are all keyed only on `id` —
+  // none depends on another's result — so fetch them in one round trip instead
+  // of four sequential ones. (Permission/notFound checks below still run
+  // before anything renders, so an unauthorized viewer never sees the extra
+  // data — it's just a wasted read, not an exposure.)
+  const [{ data: incident }, { data: updates }, { data: partsRequests }, reportPhotos] = await Promise.all([
+    supabase
+      .from('incidents')
+      .select(`
+        *,
+        machine:machines(machine_code, machine_name),
+        factory:factories(name, code)
+      `)
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('incident_updates')
+      .select('*')
+      .eq('incident_id', id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('parts_requests')
+      .select('id, items, urgency, status, requested_at')
+      .eq('incident_id', id)
+      .order('requested_at', { ascending: false }),
+    // Photos attached to the ORIGINAL report live directly under
+    // incident-photos/{id}/ with no DB record (progress-update photos go to
+    // the updates/ subfolder and are tracked on their update rows), so the
+    // only way to show them is to list the storage folder. Admin client:
+    // storage.list is gated by storage RLS even on public buckets.
+    // Best-effort — a storage hiccup must not break the page.
+    (async (): Promise<string[]> => {
+      try {
+        const { data: files } = await createAdminClient()
+          .storage.from('incident-photos')
+          .list(id, { limit: 20 })
+        return (files ?? [])
+          .filter(f => f.id && !f.name.startsWith('.'))
+          .map(f => `${id}/${f.name}`)
+      } catch {
+        return [] // storage unavailable / key missing — just skip the gallery
+      }
+    })(),
+  ])
 
   if (!incident) notFound()
 
@@ -70,22 +105,11 @@ export default async function IncidentDetailPage({
     if (!assignedIds.includes(user.id) && !isReporter) notFound()
   }
 
-  const { data: updates } = await supabase
-    .from('incident_updates')
-    .select('*')
-    .eq('incident_id', id)
-    .order('created_at', { ascending: false })
-
-  const { data: partsRequests } = await supabase
-    .from('parts_requests')
-    .select('id, items, urgency, status, requested_at')
-    .eq('incident_id', id)
-    .order('requested_at', { ascending: false })
-
   // Past experience on the same machine — so the assignee sees last time's
   // fix before heading to the machine. Open cases only; a closed case no
   // longer needs the hint. KB entries from this incident itself are excluded
-  // (they'd be circular).
+  // (they'd be circular). Depends on incident.machine_id, so this wave can't
+  // start until the incident above resolves.
   let pastIncidents: PastIncident[] = []
   let kbEntries: KBMatch[] = []
   if (incident.machine_id && incident.status !== 'closed') {
@@ -108,22 +132,6 @@ export default async function IncidentDetailPage({
     pastIncidents = (pi.data as PastIncident[]) ?? []
     kbEntries = ((kb.data ?? []) as unknown as KBMatch[]).map(({ id: kbId, problem, repair_method }) => ({ id: kbId, problem, repair_method }))
   }
-
-  // Photos attached to the ORIGINAL report live directly under
-  // incident-photos/{id}/ with no DB record (progress-update photos go to the
-  // updates/ subfolder and are tracked on their update rows), so the only way
-  // to show them is to list the storage folder. Admin client: storage.list is
-  // gated by storage RLS even on public buckets. Best-effort — a storage
-  // hiccup must not break the page.
-  let reportPhotos: string[] = []
-  try {
-    const { data: files } = await createAdminClient()
-      .storage.from('incident-photos')
-      .list(id, { limit: 20 })
-    reportPhotos = (files ?? [])
-      .filter(f => f.id && !f.name.startsWith('.'))
-      .map(f => `${id}/${f.name}`)
-  } catch { /* storage unavailable / key missing — just skip the gallery */ }
 
   const machine = incident.machine as { machine_code: string | null; machine_name: string } | null
   const factory = incident.factory as { name: string; code: string | null } | null

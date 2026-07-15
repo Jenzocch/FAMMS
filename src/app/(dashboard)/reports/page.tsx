@@ -29,14 +29,13 @@ export default async function ReportsPage({
 
   const supabase = await createClient()
 
-  const { data: factories } = await supabase.from('factories').select('id, name').order('name')
   // Factory scope: explicit param wins; otherwise the user's own factory;
   // admins without a factory default to all.
   const factoryId = params.factory === 'all'
     ? ''
     : (params.factory || user.factory_id || '')
 
-  // All four reads are independent — one round-trip.
+  // All five reads are independent — one round-trip.
   let incidentQuery = supabase
     .from('incidents')
     .select(`
@@ -75,7 +74,8 @@ export default async function ReportsPage({
     .limit(2000)
   if (factoryId) costsQuery = costsQuery.eq('factory_id', factoryId)
 
-  const [incidentsRes, pmRes, logsRes, costsRes] = await Promise.all([
+  const [{ data: factories }, incidentsRes, pmRes, logsRes, costsRes] = await Promise.all([
+    supabase.from('factories').select('id, name').order('name'),
     incidentQuery, pmQuery, logsQuery, costsQuery,
   ])
 

@@ -22,6 +22,24 @@
 // stuck on stale assets served by an older service worker.
 const CACHE_VERSION = 'famms-v2'
 
+// fetch() has no built-in timeout. On a truly offline device the browser
+// rejects almost instantly, but on a WEAK/lossy connection (spotty factory
+// wifi, one bar of signal) it can hang for 30s+ before failing — during
+// which the tab-switch just sits frozen instead of falling back to the
+// cached copy. Race the network against a short timer so a bad connection
+// degrades to "stale page" instead of "stuck page".
+const NAV_TIMEOUT_MS = 4000
+
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('sw-fetch-timeout')), ms)
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v) },
+      (e) => { clearTimeout(timer); reject(e) }
+    )
+  })
+}
+
 self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
@@ -47,7 +65,7 @@ self.addEventListener('fetch', (event) => {
   // server) — network-first so users always get fresh data when online.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      withTimeout(fetch(request), NAV_TIMEOUT_MS)
         .then((res) => {
           // Only cache good responses: a transient 5xx/404 resolves (doesn't
           // throw), and caching it would overwrite the last GOOD copy of the

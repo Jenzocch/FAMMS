@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Plus, Edit2, Trash2, QrCode } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -29,17 +29,18 @@ interface MachinesListProps {
 
 export default function MachinesList({ machines, deleteAction, canManage = false }: MachinesListProps) {
   const { t } = useI18n()
-  const router = useRouter()
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">{t('machines.title', '機器列表')}</h1>
         {canManage && (
-          <Button onClick={() => router.push('/machines/new')} className="gap-2">
-            <Plus className="w-4 h-4" />
-            {t('machines.addBtn', '新增機器')}
-          </Button>
+          <Link href="/machines/new">
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              {t('machines.addBtn', '新增機器')}
+            </Button>
+          </Link>
         )}
       </div>
 
@@ -65,24 +66,18 @@ export default function MachinesList({ machines, deleteAction, canManage = false
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon" className="h-10 w-10"
-                  aria-label="QR"
-                  onClick={() => router.push(`/machines/${m.id}/qr`)}
-                >
-                  <QrCode className="w-4 h-4" />
-                </Button>
+                <Link href={`/machines/${m.id}/qr`}>
+                  <Button variant="outline" size="icon" className="h-10 w-10" aria-label="QR">
+                    <QrCode className="w-4 h-4" />
+                  </Button>
+                </Link>
                 {canManage && (
                   <>
-                    <Button
-                      variant="outline"
-                      size="icon" className="h-10 w-10"
-                      aria-label={t('common.edit', '編輯')}
-                      onClick={() => router.push(`/machines/${m.id}/edit`)}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
+                    <Link href={`/machines/${m.id}/edit`}>
+                      <Button variant="outline" size="icon" className="h-10 w-10" aria-label={t('common.edit', '編輯')}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                    </Link>
                     <DeleteMachineButton machineId={m.id} deleteAction={deleteAction} />
                   </>
                 )}

@@ -17,28 +17,30 @@ export default async function MachineDetailPage({ params }: { params: { id: stri
   if (!user.capabilities.viewMachines) redirect('/incidents')
   const supabase = await createClient()
 
-  const { data: machine } = await supabase
-    .from('machines')
-    .select('*, area:areas(name), owner:profiles(full_name), factory:factories(name)')
-    .eq('id', params.id)
-    .single()
+  // All three reads are keyed on params.id directly (not on each other's
+  // result), so fetch them in one round trip instead of three sequential ones.
+  const [{ data: machine }, { data: incidents }, { data: health }] = await Promise.all([
+    supabase
+      .from('machines')
+      .select('*, area:areas(name), owner:profiles(full_name), factory:factories(name)')
+      .eq('id', params.id)
+      .single(),
+    supabase
+      .from('incidents')
+      .select('*, failure_code:failure_codes(code, name)')
+      .eq('machine_id', params.id)
+      .order('reported_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('equipment_health_scores')
+      .select('*')
+      .eq('machine_id', params.id)
+      .order('last_updated', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
 
   if (!machine) redirect('/machines')
-
-  const { data: incidents } = await supabase
-    .from('incidents')
-    .select('*, failure_code:failure_codes(code, name)')
-    .eq('machine_id', params.id)
-    .order('reported_at', { ascending: false })
-    .limit(5)
-
-  const { data: health } = await supabase
-    .from('equipment_health_scores')
-    .select('*')
-    .eq('machine_id', params.id)
-    .order('last_updated', { ascending: false })
-    .limit(1)
-    .maybeSingle()
 
   return (
     <div className="space-y-6">

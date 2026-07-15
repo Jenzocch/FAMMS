@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Profile, Factory, ROLE_LABELS } from '@/types'
+import { Profile, ROLE_LABELS } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { Loader2, User } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { useFactories } from '@/lib/useFactories'
 
 export default function ProfilePage() {
   const supabase = createClient()
   const { t } = useI18n()
+  const { factories } = useFactories()
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [factories, setFactories] = useState<Factory[]>([])
   const [fullName, setFullName] = useState('')
   const [factoryId, setFactoryId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -24,14 +25,10 @@ export default function ProfilePage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const [{ data: p }, { data: facs }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('factories').select('*').order('name'),
-      ])
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(p)
       setFullName(p?.full_name ?? '')
       setFactoryId(p?.factory_id ?? '')
-      setFactories(facs ?? [])
     }
     load()
   }, [])
@@ -54,7 +51,29 @@ export default function ProfilePage() {
     else toast.success(t('profile.saved', '個人資料已儲存'))
   }
 
-  if (!profile) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+  // Skeleton matching the real card below, not a blank spinner — the profile
+  // fetch is a single query but still a network round trip, and the old
+  // full-page spinner made the tab feel like it hadn't loaded at all.
+  if (!profile) {
+    return (
+      <div className="max-w-md mx-auto animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-32 mb-6" />
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-14 h-14 rounded-full bg-gray-200" />
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-32" />
+              <div className="h-3 bg-gray-200 rounded w-20" />
+            </div>
+          </div>
+          <div className="h-10 bg-gray-100 rounded-lg" />
+          <div className="h-10 bg-gray-100 rounded-lg" />
+          <div className="h-10 bg-gray-100 rounded-lg" />
+          <div className="h-10 bg-gray-200 rounded-lg" />
+        </div>
+      </div>
+    )
+  }
 
   const factoryName = factories.find(f => f.id === profile.factory_id)?.name
 

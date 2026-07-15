@@ -136,6 +136,7 @@ export async function submitIncidentReport(
   // Upload photos if any. Best-effort: the incident is already saved, so a
   // storage problem (missing bucket / permissions) must not fail the report.
   let photoUploadFailed = false
+  let uploadedCount = 0
   if (input.photos.length > 0) {
     try {
       for (const [i, photo] of input.photos.entries()) {
@@ -145,11 +146,19 @@ export async function submitIncidentReport(
         const path = `${incident.id}/${Date.now()}-${i}.${ext}`
         const { error: upErr } = await supabase.storage.from('incident-photos').upload(path, photo)
         if (upErr) throw upErr
+        uploadedCount++
       }
     } catch (photoErr) {
       console.error('Photo upload failed:', photoErr)
       photoUploadFailed = true
     }
+  }
+  // Written AFTER the uploads (not on the insert) so the board's 📷 badge
+  // counts photos that actually made it to storage, not what was selected.
+  // Best-effort like everything post-insert — also quietly tolerates a
+  // database where SYNC_SCHEMA_LATEST.sql hasn't added photo_count yet.
+  if (uploadedCount > 0) {
+    await supabase.from('incidents').update({ photo_count: uploadedCount }).eq('id', incident.id)
   }
 
   await logAuditEvent(supabase, {

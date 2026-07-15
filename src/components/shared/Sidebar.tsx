@@ -124,12 +124,12 @@ export default function Sidebar({ profile, incidentBadge = 0, capabilities = nul
           </div>
         </div>
         <div className="mt-1 space-y-0.5">
-          <button
-            onClick={() => router.push('/profile')}
+          <Link
+            href="/profile"
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
           >
             <User className="w-4 h-4" /> {t('navigation.profile')}
-          </button>
+          </Link>
           <button
             onClick={signOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
