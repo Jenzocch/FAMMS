@@ -18,7 +18,7 @@ export default async function IncidentsPage({
     id, incident_no, status, downtime_impact, incident_type,
     title, reporter_name, reported_at, assigned_to, due_date, observation_end_date, photo_count,
     machine:machines(machine_code, machine_name),
-    factory:factories(name)
+    factory:factories(id, name)
   `
 
   // user.capabilities.boardFull already IS PERMISSIONS.boardFull(user.role)
@@ -29,21 +29,23 @@ export default async function IncidentsPage({
 
   if (isFullBoard) {
     // Supervisors/managers see the whole board, scoped to their factory.
-    // Admins see every factory's cases.
+    // Admins/cross-factory accounts see every factory's cases — `factory`
+    // from the URL (the dashboard's per-factory links) is no longer applied
+    // as a server-side restriction here; it's only used below to pre-select
+    // the board's client-side factory tab, so switching factories on the
+    // board itself doesn't need a full page refetch.
     let query = supabase
       .from('incidents')
       .select(SELECT)
       .order('reported_at', { ascending: false })
       .limit(200)
     if (user?.factory_id && user.role !== 'admin') query = query.eq('factory_id', user.factory_id)
-    // Optional factory filter from the dashboard's per-factory rows.
-    if (factory) query = query.eq('factory_id', factory)
 
     // Cross-factory assignments must stay visible: a supervisor assigned to a
     // case in another factory still needs it on their board. Fetched as a
     // separate .contains() query — array-contains inside .or() is unreliable
     // in supabase-js (silently drops multi-assignee rows).
-    const needsAssignedExtra = !!user && !!user.factory_id && user.role !== 'admin' && !factory
+    const needsAssignedExtra = !!user && !!user.factory_id && user.role !== 'admin'
     const [scopedRes, assignedRes] = await Promise.all([
       query,
       needsAssignedExtra
@@ -86,5 +88,5 @@ export default async function IncidentsPage({
     )
   }
 
-  return <IncidentsBoardWithSearch rows={rows} userRole={user?.role} initialFilter={filter} />
+  return <IncidentsBoardWithSearch rows={rows} userRole={user?.role} initialFilter={filter} initialFactory={factory} />
 }

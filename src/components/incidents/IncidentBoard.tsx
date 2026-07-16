@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, ChevronRight, UserCheck, CalendarClock, Camera } from 'lucide-react'
+import { AlertCircle, ChevronRight, UserCheck, CalendarClock, Camera, Factory } from 'lucide-react'
 import NudgeCardButton from '@/components/incidents/NudgeCardButton'
 import { formatDistanceToNow, format } from 'date-fns'
 import { zhTW, enUS, id as idLocale } from 'date-fns/locale'
@@ -22,7 +22,6 @@ import NextStepHint from '@/components/incidents/NextStepHint'
 // the calm default.
 const URGENCY_BAR_COLOR: Record<string, string> = {
   A: 'border-l-red-500',
-  B: 'border-l-red-400',
   C: 'border-l-amber-400',
   D: 'border-l-green-500',
 }
@@ -31,7 +30,7 @@ export interface BoardRow {
   id: string
   incident_no: string
   status: IncidentStatus
-  downtime_impact: 'A' | 'B' | 'C' | 'D'
+  downtime_impact: 'A' | 'C' | 'D'
   incident_type: string
   title: string | null
   reporter_name: string | null
@@ -44,16 +43,17 @@ export interface BoardRow {
   // affordable way to know). undefined on pre-photo_count rows.
   photo_count?: number | null
   machine: { machine_code: string | null; machine_name: string } | null
-  factory: { name: string } | null
+  factory: { id: string; name: string } | null
 }
 
 interface IncidentBoardProps {
   rows: BoardRow[]
   userRole?: UserRole
   initialFilter?: string
+  initialFactory?: string
 }
 
-export default function IncidentBoard({ rows, userRole = 'technician', initialFilter }: IncidentBoardProps) {
+export default function IncidentBoard({ rows, userRole = 'technician', initialFilter, initialFactory }: IncidentBoardProps) {
   const { t, locale } = useI18n()
   const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
   const typeLabel = useIncidentTypeLabel()
@@ -63,10 +63,24 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
   const canRemind = PERMISSIONS.remindProgress(userRole)
   const { remindingId, nudge } = useProgressNudge()
 
+  // Distinct factories actually present in the fetched rows. Only rendered as
+  // tabs when there's more than one — a factory-scoped supervisor's rows are
+  // always a single factory, so the tab row would be pure clutter for them;
+  // it only matters for admin/cross-factory viewers whose board spans plants.
+  const factoriesPresent = (() => {
+    const byId = new Map<string, string>()
+    for (const r of rows) if (r.factory) byId.set(r.factory.id, r.factory.name)
+    return [...byId.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  })()
+  const [factoryFilter, setFactoryFilter] = useState(
+    initialFactory && factoriesPresent.some(f => f.id === initialFactory) ? initialFactory : 'all'
+  )
+
   const activeFilter = BOARD_FILTERS.find(f => f.key === filter)!
+  const factoryScoped = factoryFilter === 'all' ? rows : rows.filter(r => r.factory?.id === factoryFilter)
   const filtered = activeFilter.statuses
-    ? rows.filter(r => activeFilter.statuses!.includes(r.status))
-    : rows
+    ? factoryScoped.filter(r => activeFilter.statuses!.includes(r.status))
+    : factoryScoped
 
   // Surface the most pressing work first: overdue cases, then observation
   // periods that have ended (ready for close review), then by urgency
@@ -74,7 +88,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
   // to tackle next at a glance.
   const today = new Date(new Date().toDateString())
   const todayStr = format(today, 'yyyy-MM-dd')
-  const URGENCY_RANK: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 }
+  const URGENCY_RANK: Record<string, number> = { A: 0, C: 2, D: 3 }
   const isOverdue = (r: BoardRow) =>
     !!r.due_date && r.status !== 'closed' && new Date(r.due_date) < today
   const isObsDue = (r: BoardRow) =>
@@ -89,9 +103,20 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
     return new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()
   })
 
+  // Each filter's count reflects the OTHER dimension's current selection —
+  // status tab counts narrow to the selected factory, factory tab counts
+  // narrow to the selected status — so neither number lies about what
+  // tapping it will actually show.
   function countFor(statuses: IncidentStatus[] | null) {
-    if (!statuses) return rows.length
-    return rows.filter(r => statuses.includes(r.status)).length
+    if (!statuses) return factoryScoped.length
+    return factoryScoped.filter(r => statuses.includes(r.status)).length
+  }
+  const statusScoped = activeFilter.statuses
+    ? rows.filter(r => activeFilter.statuses!.includes(r.status))
+    : rows
+  function countForFactory(factoryId: string | null) {
+    if (!factoryId) return statusScoped.length
+    return statusScoped.filter(r => r.factory?.id === factoryId).length
   }
 
   return (
@@ -119,11 +144,46 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
         })}
       </div>
 
+      {/* Factory tabs — only when the board actually spans more than one
+          factory (admin/cross-factory viewers); a single-factory supervisor
+          never sees this row since it'd always show just their one plant. */}
+      {factoriesPresent.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          <button
+            onClick={() => setFactoryFilter('all')}
+            aria-pressed={factoryFilter === 'all'}
+            className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              factoryFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600'
+            }`}
+          >
+            <Factory className="w-3.5 h-3.5" />
+            {t('board.allFactories', '全部工廠')}
+            <span className={factoryFilter === 'all' ? 'text-gray-300' : 'text-gray-400'}>{countForFactory(null)}</span>
+          </button>
+          {factoriesPresent.map(f => {
+            const active = factoryFilter === f.id
+            return (
+              <button
+                key={f.id}
+                onClick={() => setFactoryFilter(f.id)}
+                aria-pressed={active}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  active ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600'
+                }`}
+              >
+                {f.name}
+                <span className={`ml-1 ${active ? 'text-gray-300' : 'text-gray-400'}`}>{countForFactory(f.id)}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Cards */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          {filter !== 'all' ? (
+          {filter !== 'all' || factoryFilter !== 'all' ? (
             // A specific tab is empty — the other tabs may still have cases.
             <p className="text-sm">{t('board.noInFilter', '此分類目前沒有工單')}</p>
           ) : (
@@ -149,7 +209,7 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
         // columns read worse than fewer columns.
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5 xl:gap-6 items-start">
           {sorted.map(inc => {
-            const urgency = URGENCY_FROM_IMPACT[inc.downtime_impact]
+            const urgency = URGENCY_FROM_IMPACT[inc.downtime_impact] ?? URGENCY_FROM_IMPACT.A
             const overdue = isOverdue(inc)
             return (
               // Card chrome lives on the wrapper div; the Link only covers the
@@ -164,10 +224,18 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                 href={`/incidents/${inc.id}`}
                 className="block p-4 md:p-5 xl:p-6 rounded-2xl active:bg-gray-50 active:scale-[0.98] transition-transform duration-150"
               >
-                {/* Top row — status pill + (at most) one attention badge, plus
-                    the chevron. Urgency now reads from the card's left edge bar
-                    instead of a third pill, so triage stays a glance, not a read. */}
-                <div className="flex items-center gap-2 flex-wrap">
+                {/* Where — factory leads, machine second. Topmost line: which
+                    plant to head to is the first thing to register. */}
+                <p className="flex items-center gap-1 text-[13px] font-medium text-gray-500 truncate">
+                  <Factory className="w-3.5 h-3.5 shrink-0" />
+                  {inc.factory ? inc.factory.name : t('board.noFactory', '未設定工廠')}
+                  {inc.machine ? ` · ${inc.machine.machine_name}` : ''}
+                </p>
+
+                {/* Status pill + (at most) one attention badge, plus the
+                    chevron. Urgency reads from the card's left edge bar
+                    instead of a third pill, so triage stays a glance. */}
+                <div className="flex items-center gap-2 flex-wrap mt-2">
                   <span className={`text-sm px-2.5 py-1 rounded-full font-medium ${STATUS_ZH_COLOR[inc.status]}`}>
                     {t(`boardStatus.${inc.status}`)}
                   </span>
@@ -190,12 +258,6 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                   {inc.title || typeLabel(inc.incident_type, t('board.problem')) }
                 </p>
 
-                {/* Where — machine first (that's what a technician walks to) */}
-                <p className="text-base text-gray-600 mt-1 truncate">
-                  {inc.machine ? inc.machine.machine_name : typeLabel(inc.incident_type)}
-                  {inc.factory ? ` · ${inc.factory.name}` : ''}
-                </p>
-
                 {/* Next-step nudge: what this case needs next, at a glance */}
                 {inc.status !== 'closed' && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
@@ -210,26 +272,26 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                     {formatDistanceToNow(new Date(inc.reported_at), { addSuffix: true, locale: dateLocale })}
                     {!overdue && inc.due_date ? ` · ${t('board.due', '截止')} ${format(new Date(inc.due_date), 'MM/dd')}` : ''}
                   </span>
-                  <span className="flex items-center gap-2 shrink-0">
-                    {(inc.photo_count ?? 0) > 0 && (
-                      <span
-                        className="inline-flex items-center gap-0.5 text-gray-500"
-                        aria-label={`${inc.photo_count} ${t('board.photos', '張照片')}`}
-                      >
-                        <Camera className="w-3.5 h-3.5" /> {inc.photo_count}
+                  {inc.status !== 'closed' && (
+                    inc.assigned_to ? (
+                      <span className="inline-flex items-center gap-0.5 text-blue-600 shrink-0">
+                        <UserCheck className="w-3.5 h-3.5" /> {inc.assigned_to}
                       </span>
-                    )}
-                    {inc.status !== 'closed' && (
-                      inc.assigned_to ? (
-                        <span className="inline-flex items-center gap-0.5 text-blue-600">
-                          <UserCheck className="w-3.5 h-3.5" /> {inc.assigned_to}
-                        </span>
-                      ) : (
-                        <span className="text-amber-600">{t('board.unassigned')}</span>
-                      )
-                    )}
-                  </span>
+                    ) : (
+                      <span className="text-amber-600 shrink-0">{t('board.unassigned')}</span>
+                    )
+                  )}
                 </div>
+
+                {/* Photo indicator — last, bottom-most line on the card. */}
+                {(inc.photo_count ?? 0) > 0 && (
+                  <p
+                    className="flex items-center gap-1 mt-1.5 text-[13px] text-gray-500"
+                    aria-label={`${inc.photo_count} ${t('board.photos', '張照片')}`}
+                  >
+                    <Camera className="w-3.5 h-3.5" /> {inc.photo_count}
+                  </p>
+                )}
               </Link>
 
               {/* Nudge for progress — supervisors+ only, open cases only.

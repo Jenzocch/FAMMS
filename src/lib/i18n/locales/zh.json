@@ -4,10 +4,11 @@
     "overview": "工單與保養總覽",
     "open": "未結案工單",
     "urgent": "緊急工單",
+    "stale": "停滯工單",
     "cases": "{count} 件",
     "openByFactory": "各廠未結案工單",
     "noOpen": "目前沒有處理中工單",
-    "urgentCases": "緊急工單（A/B 級）",
+    "urgentCases": "緊急工單",
     "noUrgent": "沒有緊急工單",
     "staleCases": "停滯工單（逾 3 天未更新）",
     "noStale": "沒有停滯工單",
@@ -62,11 +63,11 @@
     "urgencyHigh": "🟠 高",
     "urgencyHighDesc": "1 天內完成",
     "urgencyMedium": "🟡 中",
-    "urgencyMediumDesc": "正常排入處理，3 天內",
+    "urgencyMediumDesc": "正常排入處理，7 天內",
     "urgencyLow": "🟢 一般",
-    "urgencyLowDesc": "不急，7 天內",
+    "urgencyLowDesc": "不急，一個月內",
     "dueDate": "截止日",
-    "dueDateHint": "留空則依緊急程度自動計算（緊急=當天、高=1天、中=3天、低=7天）",
+    "dueDateHint": "留空則依緊急程度自動計算（緊急=當天、中=7天、一般=30天）",
     "location": "位置",
     "selectFactory": "選擇工廠",
     "selectArea": "選擇區域（可選）",
@@ -191,7 +192,6 @@
   },
   "impactLevels": {
     "A": "緊急",
-    "B": "高",
     "C": "中",
     "D": "一般"
   },
@@ -273,7 +273,7 @@
     "pending": "待處理",
     "frequency": "频率",
     "lastMaintained": "上次保養",
-    "nextDue": "下次预定",
+    "nextDue": "下次預定",
     "performedBy": "执行者",
     "notes": "備註",
     "findings": "發現",
@@ -438,11 +438,11 @@
     "failureCount": "故障數",
     "downtime": "總停機時間",
     "area": "區域",
-    "factory": "工厂",
+    "factory": "工廠",
     "details": "機器詳情",
     "history": "歷史",
-    "selectFactory": "選擇工厂",
-    "allFactories": "全部工厂（跨厂）",
+    "selectFactory": "選擇工廠",
+    "allFactories": "全部工廠（跨廠）",
     "selectArea": "選擇區域",
     "selectMachine": "選擇機器",
     "issueType": "問題類型",
@@ -465,7 +465,7 @@
     "failureDistribution": "故障分布",
     "byMachine": "按機器",
     "byFailureCode": "按故障代碼",
-    "weeklyComparison": "周对比"
+    "weeklyComparison": "週對比"
   },
   "healthScore": {
     "excellent": "優秀",
@@ -694,7 +694,7 @@
     "selectOption": "選擇選項",
     "addMore": "添加",
     "removeItem": "刪除",
-    "upload": "上传",
+    "upload": "上傳",
     "downloadFile": "下載檔案"
   },
   "errors": {
@@ -702,7 +702,7 @@
     "saveFailed": "保存失敗",
     "deleteFailed": "刪除失敗",
     "requiredField": "此字段為必填項",
-    "invalidInput": "输入無效",
+    "invalidInput": "輸入無效",
     "networkError": "網路錯誤"
   },
   "issueTypes": {
@@ -716,7 +716,6 @@
   },
   "urgency": {
     "A": "🔴 緊急",
-    "B": "🟠 高",
     "C": "🟡 中",
     "D": "🟢 一般"
   },
@@ -733,6 +732,8 @@
     "heading": "工單看板",
     "noIncidents": "沒有工單",
     "unassigned": "未指派",
+    "allFactories": "全部工廠",
+    "noFactory": "未設定工廠",
     "photos": "張照片",
     "problem": "問題",
     "overdue": "逾期",
@@ -813,6 +814,11 @@
     "cancel": "取消",
     "updated": "工單已更新",
     "photoUploadFailed": "工單已更新，但照片上傳失敗",
+    "existingPhotos": "已上傳的照片",
+    "deletePhoto": "刪除照片",
+    "confirmDeletePhoto": "確定刪除這張照片？",
+    "photoDeleted": "照片已刪除",
+    "deletePhotoFailed": "刪除照片失敗",
     "updateFailed": "更新失敗"
   },
   "login": {

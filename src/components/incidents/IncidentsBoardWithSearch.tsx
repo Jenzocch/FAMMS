@@ -11,12 +11,14 @@ interface IncidentsBoardWithSearchProps {
   rows: BoardRow[]
   userRole?: UserRole
   initialFilter?: string
+  initialFactory?: string
 }
 
 export default function IncidentsBoardWithSearch({
   rows,
   userRole = 'technician',
   initialFilter,
+  initialFactory,
 }: IncidentsBoardWithSearchProps) {
   const { t } = useI18n()
   const [view, setView] = useState<'board' | 'search'>('board')
@@ -51,7 +53,7 @@ export default function IncidentsBoardWithSearch({
 
       {/* Board View */}
       {view === 'board' && (
-        <IncidentBoard rows={rows} userRole={userRole} initialFilter={initialFilter} />
+        <IncidentBoard rows={rows} userRole={userRole} initialFilter={initialFilter} initialFactory={initialFactory} />
       )}
 
       {/* Search View */}
