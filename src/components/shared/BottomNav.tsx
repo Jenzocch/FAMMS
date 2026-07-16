@@ -59,9 +59,9 @@ export default function BottomNav({ userRole = 'technician', incidentBadge = 0, 
               <Link
                 key={href}
                 href={href}
-                className="flex flex-col items-center justify-center -mt-6"
+                className="flex flex-col items-center justify-center -mt-5 active:scale-[0.98] transition-transform duration-150"
               >
-                <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-md">
                   <Icon className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-xs text-blue-600 font-medium mt-1">{label}</span>

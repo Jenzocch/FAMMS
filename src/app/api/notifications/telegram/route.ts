@@ -3,7 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   sendTelegramMessage, answerCallbackQuery, editMessageKeyboard, downloadTelegramFile,
   incidentActionButtons, incidentActionButtonsAfter, newReportUrgencyButtons,
-  newReportUrgencyButtonsAfter, notifyFactory, isTelegramConfigured, esc,
+  newReportUrgencyButtonsAfter, newReportFactoryButtons, newReportFactoryButtonAfter,
+  notifyFactory, isTelegramConfigured, esc,
 } from '@/lib/telegram'
 import { logAuditEvent } from '@/lib/audit'
 import { deadlineFromUrgency } from '@/lib/incident-display'
@@ -19,13 +20,15 @@ import type { IncidentStatus } from '@/types'
 //  3. A text reply to one of the bot's incident messages — recorded as a
 //     progress note on that incident (the FIT- number in the quoted message
 //     identifies the case).
-//  4. /lapor — report a brand-new incident without opening the app. Two-step
-//     (describe → pick urgency) because a chat can only carry state across
-//     separate updates via telegram_report_drafts (no in-memory state on a
-//     serverless webhook). Deliberately minimal: no area/machine picker —
-//     factory comes from the reporter's own account, and if the description
-//     happens to contain a machine code (e.g. "[DIN-HMG-001]") it's matched
-//     automatically so repeat-failure detection still works.
+//  4. /lapor — report a brand-new incident without opening the app. Steps
+//     (optional pick factory → describe → pick urgency) because a chat can
+//     only carry state across separate updates via telegram_report_drafts
+//     (no in-memory state on a serverless webhook). Deliberately minimal: no
+//     area/machine picker — a single-factory account's factory comes from
+//     its own profile, a cross-factory account picks one of the (few) plants
+//     via buttons, and if the description happens to contain a machine code
+//     (e.g. "[DIN-HMG-001]") it's matched automatically so repeat-failure
+//     detection still works.
 
 // Prompt prefix Telegram echoes back verbatim in reply_to_message.text — used
 // to tell "replying to a /lapor prompt" apart from "replying to an incident
@@ -279,24 +282,11 @@ async function handleReplyNote(admin: ReturnType<typeof createAdminClient>, mess
   }
 }
 
-// /lapor — start a new-incident report. Requires a single-factory account
-// (the quick-report has no factory picker); cross-factory/unregistered
-// accounts are told to use the app instead. Overwrites any stale draft for
-// this chat so a second /lapor is always a fresh start, never a stuck one.
-async function handleNewReportStart(admin: ReturnType<typeof createAdminClient>, chatId: number) {
-  const profile = await resolveProfile(admin, chatId)
-  if (!profile) {
-    await sendTelegramMessage(chatId, 'Chat ID Anda belum terdaftar di FAMMS — hubungi admin.')
-    return
-  }
-  if (!profile.factory_id) {
-    await sendTelegramMessage(chatId, 'Akun Anda tidak terikat ke satu pabrik — laporan cepat lewat Telegram butuh itu. Silakan lapor lewat aplikasi.')
-    return
-  }
-
-  await admin.from('telegram_report_drafts').delete().eq('chat_id', chatId)
-  await admin.from('telegram_report_drafts').insert({ chat_id: chatId, profile_id: profile.id })
-
+// Second half of /lapor's start: the "describe the problem" force_reply
+// prompt. Split out because it fires from two places — immediately for a
+// single-factory account, or after the factory-pick tap for a cross-factory
+// one — and must behave identically either way.
+async function sendDescriptionPrompt(chatId: number) {
   await sendTelegramMessage(
     chatId,
     [
@@ -306,6 +296,70 @@ async function handleNewReportStart(admin: ReturnType<typeof createAdminClient>,
     ].join('\n'),
     { force_reply: true, input_field_placeholder: 'Jelaskan masalahnya…' }
   )
+}
+
+// /lapor — start a new-incident report. A single-factory account goes
+// straight to the description prompt; a cross-factory account (no
+// profiles.factory_id — e.g. a technician who moves between plants) picks a
+// factory first via 3-ish buttons, since there's no other way to know which
+// plant the report belongs to. Overwrites any stale draft for this chat so a
+// second /lapor is always a fresh start, never a stuck one.
+async function handleNewReportStart(admin: ReturnType<typeof createAdminClient>, chatId: number) {
+  const profile = await resolveProfile(admin, chatId)
+  if (!profile) {
+    await sendTelegramMessage(chatId, 'Chat ID Anda belum terdaftar di FAMMS — hubungi admin.')
+    return
+  }
+
+  await admin.from('telegram_report_drafts').delete().eq('chat_id', chatId)
+
+  if (profile.factory_id) {
+    await admin.from('telegram_report_drafts').insert({
+      chat_id: chatId, profile_id: profile.id, factory_id: profile.factory_id,
+    })
+    await sendDescriptionPrompt(chatId)
+    return
+  }
+
+  // Cross-factory account: ask which plant this report is for.
+  const { data: factories } = await admin.from('factories').select('id, name').order('name')
+  if (!factories || factories.length === 0) {
+    await sendTelegramMessage(chatId, 'Tidak ada data pabrik — silakan lapor lewat aplikasi.')
+    return
+  }
+  await admin.from('telegram_report_drafts').insert({ chat_id: chatId, profile_id: profile.id })
+  await sendTelegramMessage(chatId, 'Laporan untuk pabrik mana?', newReportFactoryButtons(factories))
+}
+
+// Factory tapped (cross-factory accounts only) → save the pick, then
+// continue exactly like a single-factory /lapor from here on.
+async function handleNewReportFactoryPick(admin: ReturnType<typeof createAdminClient>, cq: {
+  id: string
+  from?: { id?: number }
+  message?: { chat?: { id?: number }; message_id?: number }
+  data?: string
+}) {
+  const chatId = cq.from?.id ?? cq.message?.chat?.id
+  const messageId = cq.message?.message_id
+  const factoryId = (cq.data ?? '').split('|')[1]
+  if (!chatId || !factoryId) { await answerCallbackQuery(cq.id); return }
+
+  const { data: draft } = await admin
+    .from('telegram_report_drafts')
+    .select('chat_id')
+    .eq('chat_id', chatId)
+    .maybeSingle()
+  if (!draft) {
+    await answerCallbackQuery(cq.id, 'Sesi laporan sudah kedaluwarsa — ketik /lapor untuk mulai lagi.')
+    return
+  }
+  const { data: factory } = await admin.from('factories').select('id, name').eq('id', factoryId).maybeSingle()
+  if (!factory) { await answerCallbackQuery(cq.id, 'Pabrik tidak ditemukan.'); return }
+
+  await admin.from('telegram_report_drafts').update({ factory_id: factory.id }).eq('chat_id', chatId)
+  await answerCallbackQuery(cq.id)
+  if (messageId) await editMessageKeyboard(chatId, messageId, newReportFactoryButtonAfter(factory.name))
+  await sendDescriptionPrompt(chatId)
 }
 
 // Reply to the /lapor prompt → save description/photo into the draft, then
@@ -327,10 +381,13 @@ async function handleNewReportDescription(admin: ReturnType<typeof createAdminCl
 
   const { data: draft } = await admin
     .from('telegram_report_drafts')
-    .select('chat_id')
+    .select('chat_id, factory_id')
     .eq('chat_id', chatId)
     .maybeSingle()
-  if (!draft) {
+  // No factory_id yet means either a stale draft or a reply sent before the
+  // factory-pick tap resolved — either way there's nowhere to attach the
+  // report yet, so treat it the same as an expired session.
+  if (!draft || !draft.factory_id) {
     await sendTelegramMessage(chatId, 'Sesi laporan sudah kedaluwarsa — ketik /lapor untuk mulai lagi.')
     return
   }
@@ -366,7 +423,7 @@ async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient
     .select('*')
     .eq('chat_id', chatId)
     .maybeSingle()
-  if (!profile || !profile.factory_id || !draft || !draft.description) {
+  if (!profile || !draft || !draft.factory_id || !draft.description) {
     await answerCallbackQuery(cq.id, 'Sesi laporan sudah kedaluwarsa — ketik /lapor untuk mulai lagi.')
     return
   }
@@ -376,14 +433,16 @@ async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient
   // Best-effort machine-code match: a bracketed or bare token in the
   // description compared against this factory's machine codes. No match is
   // completely normal — the report just goes in without a machine link,
-  // same as leaving that field blank in the app form.
+  // same as leaving that field blank in the app form. Scoped to the draft's
+  // chosen factory (not profile.factory_id — a cross-factory account has
+  // none of its own; the pick made moments ago is the source of truth).
   let machineId: string | null = null
   const codeMatch = draft.description.match(/\[?([A-Z]{2,}-[A-Z0-9-]+)\]?/i)
   if (codeMatch) {
     const { data: machine } = await admin
       .from('machines')
       .select('id')
-      .eq('factory_id', profile.factory_id)
+      .eq('factory_id', draft.factory_id)
       .ilike('machine_code', codeMatch[1])
       .maybeSingle()
     machineId = machine?.id ?? null
@@ -398,7 +457,7 @@ async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient
 
   const title = draft.description.length > 60 ? `${draft.description.slice(0, 57)}...` : draft.description
   const basePayload = {
-    factory_id: profile.factory_id,
+    factory_id: draft.factory_id,
     machine_id: machineId,
     incident_type: 'other',
     title,
@@ -454,7 +513,7 @@ async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient
     resourceId: incident.id,
     newValue: { incident_no: incident.incident_no, title, incident_type: 'other' },
     changeSummary: `工單已建立：${incident.incident_no}（via Telegram）`,
-    factoryId: profile.factory_id,
+    factoryId: draft.factory_id,
   })
 
   await admin.from('telegram_report_drafts').delete().eq('chat_id', chatId)
@@ -473,7 +532,7 @@ async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient
   // Best-effort: notify the factory's Telegram groups/opted-in users, same
   // as a report filed through the app.
   await notifyFactory(admin, {
-    factoryId: profile.factory_id,
+    factoryId: draft.factory_id,
     type: 'new_incident',
     html: [
       `🚨 <b>Laporan Baru</b> — ${esc(incident.incident_no)}`,
@@ -512,6 +571,8 @@ export async function POST(req: Request) {
     const data: string = update.callback_query.data ?? ''
     if (data.startsWith('note|')) {
       await handleNoteButton(admin, update.callback_query)
+    } else if (data.startsWith('newrptfac|')) {
+      await handleNewReportFactoryPick(admin, update.callback_query)
     } else if (data.startsWith('newrpt|')) {
       await handleNewReportUrgency(admin, update.callback_query)
     } else {

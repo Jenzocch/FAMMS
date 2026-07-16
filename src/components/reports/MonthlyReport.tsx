@@ -130,7 +130,7 @@ export default function MonthlyReport({ data }: { data: ReportData }) {
       {/* Header + controls (controls hidden when printing) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 print:hidden" />
             {t('reports.title', '月報')} — {data.month}
           </h1>

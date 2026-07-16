@@ -108,6 +108,17 @@ export function newReportUrgencyButtonsAfter(picked: 'A' | 'C' | 'D'): InlineKey
   return { inline_keyboard: [[{ text: `✅ ${URGENCY_LABEL_ID[picked]}`, callback_data: 'noop' }]] }
 }
 
+// Factory picker — only shown to accounts NOT bound to a single factory
+// (cross-factory technicians). One button per factory; FAMMS only has a
+// handful (SJA/DIN/Olentia), so this stays a single tap, not a real picker.
+export function newReportFactoryButtons(factories: { id: string; name: string }[]): InlineKeyboard {
+  return { inline_keyboard: factories.map(f => [{ text: f.name, callback_data: `newrptfac|${f.id}` }]) }
+}
+
+export function newReportFactoryButtonAfter(name: string): InlineKeyboard {
+  return { inline_keyboard: [[{ text: `✅ ${name}`, callback_data: 'noop' }]] }
+}
+
 // Acknowledge a button tap (stops the client-side loading spinner). The text
 // shows as a small toast in Telegram.
 export async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {

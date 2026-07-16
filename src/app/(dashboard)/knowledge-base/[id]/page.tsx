@@ -59,7 +59,7 @@ export default async function KBDetailPage({ params }: { params: Promise<{ id: s
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{entry.problem}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{entry.problem}</h1>
           <div className="flex gap-3 mt-2 text-xs text-gray-400">
             {entry.author?.full_name && <span>oleh {entry.author.full_name}</span>}
             <span>{format(new Date(entry.created_at), 'dd MMM yyyy HH:mm')}</span>

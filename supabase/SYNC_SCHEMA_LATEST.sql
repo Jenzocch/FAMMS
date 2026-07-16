@@ -50,6 +50,15 @@ ALTER TABLE incidents ADD COLUMN IF NOT EXISTS estimated_completion_date DATE;
 -- existed (their photos still show on the detail page as always).
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS photo_count INT NOT NULL DEFAULT 0;
 
+-- Marks a login as a SHARED DEVICE account (e.g. one tablet logged in
+-- permanently and handed between several technicians) rather than one
+-- person's own login. The report form auto-fills "回報人" from whoever is
+-- logged in — fine for a personal account, but on a shared account that
+-- default would silently attribute every report to the tablet instead of
+-- the actual technician. useReporterAccounts() checks this flag and leaves
+-- the field blank (forcing an active pick) when true.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_shared_device BOOLEAN NOT NULL DEFAULT false;
+
 -- ---------------------------------------------------------------------------
 -- TELEGRAM — new-report drafts
 -- ---------------------------------------------------------------------------
@@ -66,6 +75,11 @@ CREATE TABLE IF NOT EXISTS telegram_report_drafts (
   photo_file_id TEXT,
   created_at   TIMESTAMP DEFAULT NOW()
 );
+-- Cross-factory accounts (no single profiles.factory_id) have to pick which
+-- factory a report belongs to — this holds that pick across the extra step.
+-- NULL until chosen; single-factory accounts skip the picker and this gets
+-- set to their one factory immediately.
+ALTER TABLE telegram_report_drafts ADD COLUMN IF NOT EXISTS factory_id UUID REFERENCES factories(id);
 
 -- Reference photo so a reporter can tell areas apart at a glance in the
 -- report form (e.g. two areas both named "Line 2"). One photo per area is
@@ -318,4 +332,10 @@ UNION ALL SELECT 'incidents.estimated_completion_date',
 UNION ALL SELECT 'telegram_report_drafts table', to_regclass('public.telegram_report_drafts') IS NOT NULL
 UNION ALL SELECT 'incidents.photo_count',
        EXISTS (SELECT 1 FROM information_schema.columns
-               WHERE table_name='incidents' AND column_name='photo_count');
+               WHERE table_name='incidents' AND column_name='photo_count')
+UNION ALL SELECT 'profiles.is_shared_device',
+       EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='profiles' AND column_name='is_shared_device')
+UNION ALL SELECT 'telegram_report_drafts.factory_id',
+       EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='telegram_report_drafts' AND column_name='factory_id');

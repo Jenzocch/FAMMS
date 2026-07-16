@@ -10,6 +10,16 @@ import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import NextStepHint from '@/components/incidents/NextStepHint'
 
+// Same left-edge urgency bar treatment as the board (IncidentBoard.tsx) — kept
+// in sync there so a card reads the same "how urgent" signal everywhere in
+// the app instead of a redundant pill.
+const URGENCY_BAR_COLOR: Record<string, string> = {
+  A: 'border-l-red-500',
+  B: 'border-l-red-400',
+  C: 'border-l-amber-400',
+  D: 'border-l-green-500',
+}
+
 export interface DashboardRow {
   id: string
   incident_no: string
@@ -60,7 +70,7 @@ export default function DashboardView({
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{t('dash.title')}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{t('dash.title')}</h1>
           <p className="text-sm text-gray-500 mt-1">{t('dash.overview')}</p>
         </div>
         <Link
@@ -134,7 +144,10 @@ export default function DashboardView({
             {byFactory.length === 0 ? (
               <Empty text={t('dash.noOpen')} />
             ) : (
-              <div className="space-y-1.5">
+              // One grouped card with hairline dividers between rows, instead
+              // of N separate bordered boxes — same content, fewer competing
+              // outlines.
+              <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
                 {byFactory.map(([name, count, factoryId]) => {
                   const content = (
                     <>
@@ -150,12 +163,12 @@ export default function DashboardView({
                     <Link
                       key={name}
                       href={`/incidents?factory=${factoryId}`}
-                      className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2.5 active:bg-gray-50 hover:border-blue-300 transition-colors"
+                      className="flex items-center justify-between px-3 py-2.5 active:bg-gray-50 active:scale-[0.98] transition-transform duration-150"
                     >
                       {content}
                     </Link>
                   ) : (
-                    <div key={name} className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2.5">
+                    <div key={name} className="flex items-center justify-between px-3 py-2.5">
                       {content}
                     </div>
                   )
@@ -169,20 +182,21 @@ export default function DashboardView({
             {overdue.length === 0 ? (
               <Empty text={t('dash.noOverdue')} />
             ) : (
-              <div className="space-y-1.5">
+              // Grouped card, hairline rows. The red bold day-count is enough
+              // urgency signal here — the per-row red tint it used to sit in
+              // was redundant once the rows share one card.
+              <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
                 {overdue.map(m => (
-                  <div key={m.machine_id} className="bg-red-50 rounded-lg border border-red-200 px-3 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {t('pm.maintenanceFreq')}: {pmTypeLabel(m.pm_type)}
-                        </p>
-                      </div>
-                      <p className="text-sm font-bold text-red-600">{t('pm.overdueDays').replace('{count}', String(m.days_overdue))}</p>
+                  <div key={m.machine_id} className="flex items-center justify-between px-3 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+                      </p>
+                      <p className="text-[13px] text-gray-500 mt-0.5">
+                        {t('pm.maintenanceFreq')}: {pmTypeLabel(m.pm_type)}
+                      </p>
                     </div>
+                    <p className="text-sm font-bold text-red-600">{t('pm.overdueDays').replace('{count}', String(m.days_overdue))}</p>
                   </div>
                 ))}
               </div>
@@ -201,8 +215,8 @@ function InboxCard({ href, label, count, activeClass }: {
   return (
     <Link
       href={href}
-      className={`rounded-xl border p-3 text-center transition-colors active:opacity-80 ${
-        count > 0 ? activeClass : 'border-gray-200 bg-white text-gray-400'
+      className={`rounded-2xl p-3 text-center transition-all active:opacity-80 active:scale-[0.98] ${
+        count > 0 ? `border ${activeClass}` : 'shadow-sm bg-white text-gray-400'
       }`}
     >
       <p className="text-2xl font-bold">{count}</p>
@@ -215,15 +229,15 @@ function SummaryCard({ label, value, color, href }: { label: string; value: numb
   const body = (
     <>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+      <p className="text-[13px] text-gray-500 mt-0.5">{label}</p>
     </>
   )
-  const cls = 'block bg-white rounded-xl border border-gray-200 p-3 text-center'
+  const cls = 'block bg-white rounded-2xl shadow-sm p-3 text-center'
   if (!href) return <div className={cls}>{body}</div>
   // In-page anchors jump to the section below; the board link navigates.
   return href.startsWith('#')
-    ? <a href={href} className={`${cls} active:bg-gray-50`}>{body}</a>
-    : <Link href={href} className={`${cls} active:bg-gray-50`}>{body}</Link>
+    ? <a href={href} className={`${cls} active:bg-gray-50 active:scale-[0.98] transition-transform duration-150`}>{body}</a>
+    : <Link href={href} className={`${cls} active:bg-gray-50 active:scale-[0.98] transition-transform duration-150`}>{body}</Link>
 }
 
 function Section({ id, icon, title, children }: { id?: string; icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -255,20 +269,27 @@ function CaseList({
 }) {
   const typeLabel = useIncidentTypeLabel()
   return (
-    <div className="space-y-1.5">
+    // One grouped card, hairline rows — matches the byFactory/overdue lists.
+    // Urgency reads from a left edge bar (same treatment as the board) instead
+    // of a redundant pill, used consistently for both urgent and stale lists.
+    <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
       {rows.map(r => {
         const urgency = URGENCY_FROM_IMPACT[r.downtime_impact]
         return (
-          <Link key={r.id} href={`/incidents/${r.id}`} className="block bg-white rounded-lg border border-gray-200 p-3 active:bg-gray-50">
+          <Link
+            key={r.id}
+            href={`/incidents/${r.id}`}
+            aria-label={t(`urgency.${r.downtime_impact}`, urgency.label)}
+            className={`block p-3 active:bg-gray-50 active:scale-[0.98] transition-transform duration-150 border-l-4 ${URGENCY_BAR_COLOR[r.downtime_impact] ?? URGENCY_BAR_COLOR.D}`}
+          >
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_ZH_COLOR[r.status]}`}>{t(`boardStatus.${r.status}`, STATUS_ZH[r.status])}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${urgency.color}`}>{t(`urgency.${r.downtime_impact}`, urgency.label)}</span>
               <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
             </div>
             <p className="text-sm font-medium text-gray-900 mt-1.5 line-clamp-1">
               {r.title || typeLabel(r.incident_type, t('board.problem'))}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-[13px] text-gray-500 mt-0.5">
               {r.factory?.name || ''} · {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: dateLocale })}
             </p>
             {r.status !== 'closed' && (

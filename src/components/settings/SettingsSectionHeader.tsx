@@ -4,7 +4,7 @@ import { useI18n } from '@/lib/i18n'
 
 export function SettingsHeading() {
   const { t } = useI18n()
-  return <h1 className="text-xl font-bold text-gray-900">{t('settings.title')}</h1>
+  return <h1 className="text-2xl font-semibold text-gray-900">{t('settings.title')}</h1>
 }
 
 export function SettingsSectionHeader({
