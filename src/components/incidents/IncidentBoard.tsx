@@ -224,19 +224,10 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                 href={`/incidents/${inc.id}`}
                 className="block p-4 md:p-5 xl:p-6 rounded-2xl active:bg-gray-50 active:scale-[0.98] transition-transform duration-150"
               >
-                {/* Where — factory leads (which plant this even belongs to),
-                    machine second. Topmost line: on a cross-factory board,
-                    that's the first thing a viewer needs to place the card. */}
-                <p className="flex items-center gap-1 text-[13px] font-medium text-gray-500 truncate">
-                  <Factory className="w-3.5 h-3.5 shrink-0" />
-                  {inc.factory ? inc.factory.name : t('board.noFactory', '未設定工廠')}
-                  {inc.machine ? ` · ${inc.machine.machine_name}` : ''}
-                </p>
-
                 {/* Status pill + (at most) one attention badge, plus the
                     chevron. Urgency reads from the card's left edge bar
                     instead of a third pill, so triage stays a glance. */}
-                <div className="flex items-center gap-2 flex-wrap mt-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`text-sm px-2.5 py-1 rounded-full font-medium ${STATUS_ZH_COLOR[inc.status]}`}>
                     {t(`boardStatus.${inc.status}`)}
                   </span>
@@ -254,9 +245,19 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
                   <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 ml-auto" />
                 </div>
 
-                {/* Title — the biggest thing on the card */}
+                {/* Title — the biggest thing on the card. WHAT the problem is
+                    outranks WHERE it is: the title leads, the factory/machine
+                    line follows right under it (owner call — factory-first
+                    made every card open with the least distinguishing info). */}
                 <p className="font-bold text-lg xl:text-xl text-gray-900 mt-2.5 leading-snug line-clamp-2">
                   {inc.title || typeLabel(inc.incident_type, t('board.problem')) }
+                </p>
+
+                {/* Where — factory + machine, right under the title */}
+                <p className="flex items-center gap-1 text-[13px] font-medium text-gray-500 truncate mt-1">
+                  <Factory className="w-3.5 h-3.5 shrink-0" />
+                  {inc.factory ? inc.factory.name : t('board.noFactory', '未設定工廠')}
+                  {inc.machine ? ` · ${inc.machine.machine_name}` : ''}
                 </p>
 
                 {/* Next-step nudge: what this case needs next, at a glance */}
