@@ -395,4 +395,12 @@ UNION ALL SELECT 'profiles.is_shared_device',
                WHERE table_name='profiles' AND column_name='is_shared_device')
 UNION ALL SELECT 'telegram_report_drafts.factory_id',
        EXISTS (SELECT 1 FROM information_schema.columns
-               WHERE table_name='telegram_report_drafts' AND column_name='factory_id');
+               WHERE table_name='telegram_report_drafts' AND column_name='factory_id')
+UNION ALL SELECT 'rca_records.factory_id',
+       EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='rca_records' AND column_name='factory_id')
+UNION ALL SELECT 'incident-photos bucket locked down (file_size_limit set)',
+       EXISTS (SELECT 1 FROM storage.buckets
+               WHERE id='incident-photos' AND file_size_limit IS NOT NULL)
+UNION ALL SELECT 'incidents_machine_factory_guard trigger',
+       EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='incidents_machine_factory_guard');
