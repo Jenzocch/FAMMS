@@ -299,6 +299,7 @@
     "addSchedule": "Tambah Jadwal PM",
     "editSchedule": "Edit Jadwal PM",
     "noSchedules": "Belum ada jadwal PM",
+    "neverCompleted": "Belum pernah selesai",
     "notesOptional": "Catatan (Opsional)",
     "confirmDeactivate": "Nonaktifkan jadwal PM ini?",
     "deactivated": "Dinonaktifkan",
@@ -306,6 +307,9 @@
     "scheduleUpdated": "Jadwal PM diperbarui",
     "selectMachineRequired": "Pilih mesin terlebih dahulu",
     "dueTaskList": "Tugas Perawatan Pending",
+    "overdueDue": "🔴 Terlambat ({count})",
+    "thisWeekDue": "🟠 Minggu Ini ({count})",
+    "laterDue": "⚪ Nanti ({count})",
     "noDueTasks": "Tidak ada tugas perawatan dalam 7 hari ke depan",
     "overdueAlert": "{count} tugas perawatan overdue — segera tindaklanjuti",
     "scheduledDate": "Dijadwalkan",
@@ -464,7 +468,8 @@
     "failuresValue": "{n}",
     "mtbfLabel": "MTBF (rata-rata hari antar kegagalan)",
     "mtbfValue": "{n} hari",
-    "totalCostLabel": "Total biaya perawatan"
+    "totalCostLabel": "Total biaya perawatan",
+    "pmStatusTitle": "Status Perawatan"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -586,6 +591,7 @@
     "deactivated": "Dinonaktifkan",
     "activated": "Diaktifkan",
     "cannotDeleteSelf": "Anda tidak dapat menghapus akun sendiri",
+    "systemAdminProtected": "Tidak berwenang mengubah akun System Admin",
     "confirmDeleteUser": "Hapus akun {email}? Tindakan ini tidak dapat dibatalkan.",
     "userDeleted": "Akun dihapus",
     "noUsers": "Belum ada akun",
@@ -755,6 +761,7 @@
     "overdue": "Terlambat",
     "due": "Tenggat",
     "obsDue": "Masa observasi selesai",
+    "pmOverdueBanner": "🗓️ Perawatan: {count} terlambat →",
     "noInFilter": "Tidak ada laporan di tab ini",
     "emptyMine": "Tidak ada laporan yang ditugaskan atau dilaporkan oleh Anda",
     "reportCta": "Lapor masalah",
@@ -1124,5 +1131,13 @@
   },
   "offline": {
     "banner": "Tidak ada koneksi — tampilan offline, kirim data setelah sinyal kembali"
+  },
+  "repeatFailure": {
+    "title": "⚠️ Kemungkinan Kerusakan Berulang",
+    "prompt": "Apakah {title} ({incidentNo}) masalah yang sama?",
+    "yes": "Ya, masalah yang sama",
+    "no": "Bukan, ini masalah baru",
+    "confirmed": "Ditandai sebagai kerusakan berulang",
+    "confirmFailed": "Gagal menandai — coba lagi"
   }
 }

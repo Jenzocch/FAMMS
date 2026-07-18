@@ -17,10 +17,12 @@ import AssignForm from '@/components/incidents/AssignForm'
 import IncidentActions from '@/components/incidents/IncidentActions'
 import AuditTrail from '@/components/incidents/AuditTrail'
 import IncidentTypeText from '@/components/incidents/IncidentTypeText'
+import RepeatFailureConfirm from '@/components/incidents/RepeatFailureConfirm'
 import { IncidentStatus } from '@/types'
 import { URGENCY_FROM_IMPACT } from '@/lib/incident-display'
 import { Clock, User, UserCheck } from 'lucide-react'
 import { format } from 'date-fns'
+import type { ReactNode } from 'react'
 
 interface UpdateRow {
   id: string
@@ -43,10 +45,13 @@ function parsePhotos(raw: unknown): string[] {
 
 export default async function IncidentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ repeatOf?: string }>
 }) {
   const { id } = await params
+  const { repeatOf } = await searchParams
   const user = await getCurrentUser()
   const supabase = await createClient()
 
@@ -131,6 +136,31 @@ export default async function IncidentDetailPage({
     ])
     pastIncidents = (pi.data as PastIncident[]) ?? []
     kbEntries = ((kb.data ?? []) as unknown as KBMatch[]).map(({ id: kbId, problem, repair_method }) => ({ id: kbId, problem, repair_method }))
+  }
+
+  // Repeat-failure confirm prompt — only when the report flow flagged a
+  // candidate (?repeatOf=<prior incident id> on THIS incident's own URL,
+  // set right after creation by IncidentForm/Telegram) AND the viewer has
+  // supervisor+ permission to confirm it. Re-validated here (not just
+  // trusted from the query string): the prior incident must actually exist,
+  // and share both factory and machine with this one.
+  let repeatFailureEl: ReactNode = null
+  if (repeatOf && user && PERMISSIONS.remindProgress(user.role)) {
+    const { data: prior } = await supabase
+      .from('incidents')
+      .select('id, incident_no, title, description, incident_type, factory_id, machine_id')
+      .eq('id', repeatOf)
+      .maybeSingle()
+    if (prior && prior.factory_id === incident.factory_id && prior.machine_id && prior.machine_id === incident.machine_id) {
+      repeatFailureEl = (
+        <RepeatFailureConfirm
+          incidentId={id}
+          priorIncidentId={prior.id}
+          priorIncidentNo={prior.incident_no}
+          priorTitle={prior.title || prior.description || prior.incident_type}
+        />
+      )
+    }
   }
 
   const machine = incident.machine as { machine_code: string | null; machine_name: string } | null
@@ -375,6 +405,7 @@ export default async function IncidentDetailPage({
 
   return (
     <div className="space-y-4">
+      {repeatFailureEl}
       <div className="flex items-center justify-between gap-2">
         <BackLink />
         <PrintReportLink incidentId={id} />

@@ -299,6 +299,7 @@
     "addSchedule": "新增保養計畫",
     "editSchedule": "編輯保養計畫",
     "noSchedules": "尚無保養計畫",
+    "neverCompleted": "從未完成",
     "notesOptional": "備註（可選）",
     "confirmDeactivate": "確認停用此保養計畫？",
     "deactivated": "已停用",
@@ -306,6 +307,9 @@
     "scheduleUpdated": "保養計畫已更新",
     "selectMachineRequired": "請先選擇機器",
     "dueTaskList": "待處理保養任務",
+    "overdueDue": "🔴 逾期 ({count})",
+    "thisWeekDue": "🟠 本週 ({count})",
+    "laterDue": "⚪ 之後 ({count})",
     "noDueTasks": "近7天內沒有待處理的保養任務",
     "overdueAlert": "{count}個保養任務已逾期，請盡快處理",
     "scheduledDate": "預定",
@@ -464,7 +468,8 @@
     "failuresValue": "{n} 次",
     "mtbfLabel": "MTBF（平均故障間隔天數）",
     "mtbfValue": "{n} 天",
-    "totalCostLabel": "累計維修成本"
+    "totalCostLabel": "累計維修成本",
+    "pmStatusTitle": "保養狀態"
   },
   "dashboard": {
     "title": "仪表板",
@@ -586,6 +591,7 @@
     "deactivated": "已停用",
     "activated": "已啟用",
     "cannotDeleteSelf": "無法刪除自己的帳號",
+    "systemAdminProtected": "無權限操作系統管理員帳號",
     "confirmDeleteUser": "確認刪除帳號 {email}？此動作無法復原。",
     "userDeleted": "已刪除帳號",
     "noUsers": "尚無帳號",
@@ -755,6 +761,7 @@
     "overdue": "逾期",
     "due": "截止",
     "obsDue": "觀察期已滿",
+    "pmOverdueBanner": "🗓️ 保養：{count} 件逾期 →",
     "noInFilter": "此分類目前沒有工單",
     "emptyMine": "目前沒有指派給你或你回報的工單",
     "reportCta": "回報問題",
@@ -1124,5 +1131,13 @@
   },
   "offline": {
     "banner": "沒有網路連線 — 顯示的是離線畫面，送出動作要等訊號恢復"
+  },
+  "repeatFailure": {
+    "title": "⚠️ 可能是重複故障",
+    "prompt": "{title}（{incidentNo}）是同一個問題嗎？",
+    "yes": "是，同一個問題",
+    "no": "不是，這是新問題",
+    "confirmed": "已標記為重複故障",
+    "confirmFailed": "標記失敗，請稍後再試"
   }
 }

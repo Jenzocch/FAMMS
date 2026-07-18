@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireUserManager } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { accountNameToEmail, isValidLoginName } from '@/lib/login-name'
 import type { UserRole } from '@/types'
 
 const VALID_ROLES: UserRole[] = ['technician', 'supervisor', 'manager', 'director', 'admin']
 
-// GET — list all users, admin only.
+// GET — list all users. System admin, or a custom role granted the
+// manageUsers capability (Account Admin), may call this.
 // Source of truth is the profiles table (always reliable). Emails come from the
 // auth admin API as a best-effort enrichment — if that call fails (network,
 // key, proxy), we still return the user list instead of crashing the page.
 export async function GET() {
-  const guard = await requireAdmin()
+  const guard = await requireUserManager()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
 
   const admin = createAdminClient()
@@ -57,10 +58,15 @@ export async function GET() {
   return NextResponse.json({ users })
 }
 
-// POST — create a new user (admin only)
+// POST — create a new user. System admin, or an Account Admin (custom role
+// with the manageUsers capability), may call this — but an Account Admin
+// must never be able to mint a system admin account (self-escalation via a
+// throwaway account, or handing full admin to someone else). See the
+// isTrueAdmin check below.
 export async function POST(req: Request) {
-  const guard = await requireAdmin()
+  const guard = await requireUserManager()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
+  const isTrueAdmin = guard.user.role === 'admin'
 
   let body: {
     email?: string
@@ -115,6 +121,14 @@ export async function POST(req: Request) {
   }
   if (!VALID_ROLES.includes(role)) {
     return NextResponse.json({ error: '角色不正確' }, { status: 400 })
+  }
+  // Privilege-escalation guard: an Account Admin (manageUsers capability on a
+  // non-admin base tier) may create technician/supervisor/manager/director
+  // accounts and other custom roles, but can never mint a system admin —
+  // custom_roles.base_role is DB-constrained to exclude 'admin' already, so
+  // the only path left is the plain `role` field.
+  if (!isTrueAdmin && role === 'admin') {
+    return NextResponse.json({ error: '無法建立系統管理員帳號' }, { status: 403 })
   }
 
   // factory_id may be null = "cross-factory" (not bound to one factory).

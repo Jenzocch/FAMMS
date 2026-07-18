@@ -91,6 +91,11 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
 })
 
 // Guard for admin-only API routes. Returns the admin user or an error reason.
+// Strictly `role === 'admin'` (系統管理員) — used wherever TRUE unrestricted
+// admin is required. Do NOT loosen this to accept the manageUsers capability;
+// use requireUserManager() below for routes that only need account-management
+// power (currently that's the only caller of requireAdmin() left — the
+// user-management API routes switched to requireUserManager()).
 export async function requireAdmin(): Promise<
   | { ok: true; user: CurrentUser }
   | { ok: false; status: 401 | 403 }
@@ -101,6 +106,28 @@ export async function requireAdmin(): Promise<
   // the layout blocks them in the browser, but API routes don't go through it.
   if (!user.is_active) return { ok: false, status: 403 }
   if (user.role !== 'admin') return { ok: false, status: 403 }
+  return { ok: true, user }
+}
+
+// Guard for user-account-management API routes (Settings → 使用者管理).
+// Accepts EITHER a true system admin (role === 'admin', unrestricted) OR a
+// custom role granted the `manageUsers` capability override (e.g. the
+// "帳號管理員 / Account Admin" preset seeded in migration_custom_roles.sql) —
+// see lib/roles.ts CAPABILITY_KEYS for why this one capability is allowed to
+// gate a real API action instead of just UI visibility. This guard alone does
+// NOT grant admin's other powers (settings/machines/factories/etc. stay
+// behind their own PERMISSIONS.* checks) and does NOT allow an Account Admin
+// to create/promote a system admin — callers must still apply the
+// privilege-escalation checks documented in
+// src/app/api/admin/users/route.ts and [id]/route.ts.
+export async function requireUserManager(): Promise<
+  | { ok: true; user: CurrentUser }
+  | { ok: false; status: 401 | 403 }
+> {
+  const user = await getCurrentUser()
+  if (!user) return { ok: false, status: 401 }
+  if (!user.is_active) return { ok: false, status: 403 }
+  if (user.role !== 'admin' && !user.capabilities.manageUsers) return { ok: false, status: 403 }
   return { ok: true, user }
 }
 

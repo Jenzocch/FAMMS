@@ -3,8 +3,75 @@ import { getCurrentUser } from '@/lib/auth'
 import IncidentBoard, { BoardRow } from '@/components/incidents/IncidentBoard'
 import IncidentsBoardWithSearch from '@/components/incidents/IncidentsBoardWithSearch'
 import { OPEN_STATUSES } from '@/lib/incident-display'
+import { addDays, addWeeks, addMonths } from 'date-fns'
 
 export const metadata = { title: 'Board | FAMMS' }
+
+// Mirrors dashboard/page.tsx's getNextDueDate exactly (same cadence math) so
+// the board banner's overdue count agrees with the dashboard's own PM widget.
+// Duplicated rather than imported — dashboard/page.tsx is a route module, not
+// a shared lib, so importing from it would pull a whole other page in.
+function getNextDueDate(lastMaintained: string | null, pmType: string, intervalDays?: number | null): Date {
+  const base = lastMaintained ? new Date(lastMaintained) : new Date()
+  switch (pmType) {
+    case 'daily': return addDays(base, 1)
+    case 'weekly': return addWeeks(base, 1)
+    case 'monthly': return addMonths(base, 1)
+    case 'quarterly': return addMonths(base, 3)
+    case 'half_yearly': return addMonths(base, 6)
+    case 'yearly': return addMonths(base, 12)
+    case 'custom': return addDays(base, intervalDays && intervalDays > 0 ? intervalDays : 30)
+    default: return addMonths(base, 1)
+  }
+}
+
+// Count of overdue active PM schedules, scoped to what this viewer's board
+// can see (their factory, or every factory for admin/cross-factory accounts)
+// — same scoping condition used below for the incident queries. Powers the
+// "🗓️ 保養：N 件逾期" banner above the board's filter tabs.
+async function getPmOverdueCount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+): Promise<number> {
+  const historyFloor = new Date(Date.now() - 366 * 86400000).toISOString()
+
+  let scheduleQuery = supabase
+    .from('pm_schedules')
+    .select('id, machine_id, pm_type, interval_days')
+    .eq('is_active', true)
+  if (user?.factory_id && user.role !== 'admin') scheduleQuery = scheduleQuery.eq('factory_id', user.factory_id)
+
+  const [schedulesRes, logsRes, pmRecordsRes] = await Promise.all([
+    scheduleQuery,
+    supabase.from('maintenance_logs').select('machine_id, performed_at')
+      .gte('performed_at', historyFloor).order('performed_at', { ascending: false }).limit(2000),
+    supabase.from('pm_records').select('pm_schedule_id, completed_at')
+      .eq('status', 'completed').gte('completed_at', historyFloor)
+      .order('completed_at', { ascending: false }).limit(2000),
+  ])
+
+  const scheduleToMachine: Record<string, string> = {}
+  for (const s of schedulesRes.data ?? []) scheduleToMachine[(s as { id: string }).id] = s.machine_id
+
+  const lastByMachine: Record<string, string> = {}
+  const recordLatest = (machineId: string, date: string) => {
+    const existing = lastByMachine[machineId]
+    if (!existing || date > existing) lastByMachine[machineId] = date
+  }
+  for (const log of logsRes.data ?? []) recordLatest(log.machine_id, log.performed_at)
+  for (const rec of pmRecordsRes.data ?? []) {
+    const machineId = scheduleToMachine[(rec as { pm_schedule_id: string }).pm_schedule_id]
+    if (machineId && (rec as { completed_at: string | null }).completed_at) {
+      recordLatest(machineId, (rec as { completed_at: string }).completed_at)
+    }
+  }
+
+  return (schedulesRes.data ?? []).filter(s => {
+    const lastMaintained = lastByMachine[s.machine_id] ?? null
+    const dueDate = getNextDueDate(lastMaintained, s.pm_type, (s as { interval_days: number | null }).interval_days)
+    return Date.now() - dueDate.getTime() > 0
+  }).length
+}
 
 export default async function IncidentsPage({
   searchParams,
@@ -14,6 +81,12 @@ export default async function IncidentsPage({
   const { factory, filter } = await searchParams
   const user = await getCurrentUser()
   const supabase = await createClient()
+
+  // Kicked off now (not awaited yet) so it runs concurrently with the
+  // incident queries below instead of adding a sequential round trip — this
+  // page previously had a fetch-waterfall bug, so a new blocking fetch here
+  // would be a regression.
+  const pmOverdueCountPromise = getPmOverdueCount(supabase, user)
 
   const SELECT = `
     id, incident_no, status, downtime_impact, incident_type,
@@ -27,6 +100,7 @@ export default async function IncidentsPage({
   const isFullBoard = !user || user.capabilities.boardFull
 
   let rows: BoardRow[]
+  let pmOverdueCount: number
 
   // A single "newest 200 of any status" cap silently dropped genuinely-open,
   // long-stuck cases (e.g. 3+ weeks in waiting_parts) once enough newer rows
@@ -61,7 +135,7 @@ export default async function IncidentsPage({
     // separate .contains() query — array-contains inside .or() is unreliable
     // in supabase-js (silently drops multi-assignee rows).
     const needsAssignedExtra = !!user && !!user.factory_id && user.role !== 'admin'
-    const [openRes, closedRes, assignedRes] = await Promise.all([
+    const [openRes, closedRes, assignedRes, pmOverdueResult] = await Promise.all([
       openQuery,
       closedQuery,
       needsAssignedExtra
@@ -69,7 +143,9 @@ export default async function IncidentsPage({
             .contains('assigned_user_ids', [user!.id])
             .order('reported_at', { ascending: false }).limit(OPEN_LIMIT)
         : Promise.resolve({ data: null }),
+      pmOverdueCountPromise,
     ])
+    pmOverdueCount = pmOverdueResult
     const byId = new Map<string, BoardRow>()
     for (const r of [...(openRes.data ?? []), ...(closedRes.data ?? []), ...(assignedRes.data ?? [])]) {
       byId.set((r as { id: string }).id, r as unknown as BoardRow)
@@ -88,7 +164,7 @@ export default async function IncidentsPage({
     // .contains() — exactly the "assigned to two people → case won't show" bug).
     // .contains() here matches the badge's filter, so board and badge agree.
     // Same open/closed cap split as the full board, for the same reason.
-    const [assignedOpenRes, assignedClosedRes, reportedOpenRes, reportedClosedRes] = await Promise.all([
+    const [assignedOpenRes, assignedClosedRes, reportedOpenRes, reportedClosedRes, pmOverdueResult] = await Promise.all([
       supabase.from('incidents').select(SELECT)
         .contains('assigned_user_ids', [user!.id]).in('status', OPEN_STATUSES)
         .order('reported_at', { ascending: false }).limit(OPEN_LIMIT),
@@ -101,7 +177,9 @@ export default async function IncidentsPage({
       supabase.from('incidents').select(SELECT)
         .eq('reported_by_id', user!.id).eq('status', 'closed')
         .order('reported_at', { ascending: false }).limit(CLOSED_LIMIT),
+      pmOverdueCountPromise,
     ])
+    pmOverdueCount = pmOverdueResult
     const byId = new Map<string, BoardRow>()
     for (const r of [
       ...(assignedOpenRes.data ?? []), ...(assignedClosedRes.data ?? []),
@@ -114,5 +192,13 @@ export default async function IncidentsPage({
     )
   }
 
-  return <IncidentsBoardWithSearch rows={rows} userRole={user?.role} initialFilter={filter} initialFactory={factory} />
+  return (
+    <IncidentsBoardWithSearch
+      rows={rows}
+      userRole={user?.role}
+      initialFilter={filter}
+      initialFactory={factory}
+      pmOverdueCount={pmOverdueCount}
+    />
+  )
 }

@@ -28,7 +28,11 @@ const NAV: NavItem[] = [
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
   { href: '/knowledge-base', labelKey: 'navigation.knowledgeBase', icon: BookOpen },
-  { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r) => PERMISSIONS.viewSettings(r) },
+  // An Account Admin custom role (manageUsers capability) needs the Settings
+  // link too — the page itself only opens the user-management section for
+  // them (see app/(dashboard)/settings/page.tsx), but they still need to be
+  // able to navigate there.
+  { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r, c) => PERMISSIONS.viewSettings(r) || !!c?.manageUsers },
 ]
 
 interface SidebarProps {

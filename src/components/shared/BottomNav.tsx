@@ -24,7 +24,9 @@ const NAV: NavItem[] = [
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus, primary: true },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
-  { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r) => PERMISSIONS.viewSettings(r) },
+  // An Account Admin custom role (manageUsers capability) needs the Settings
+  // link too — see the matching comment in components/shared/Sidebar.tsx.
+  { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r, c) => PERMISSIONS.viewSettings(r) || !!c?.manageUsers },
 ]
 
 interface BottomNavProps {

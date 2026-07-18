@@ -299,6 +299,7 @@
     "addSchedule": "Add PM Schedule",
     "editSchedule": "Edit PM Schedule",
     "noSchedules": "No PM schedules yet",
+    "neverCompleted": "Never completed",
     "notesOptional": "Notes (Optional)",
     "confirmDeactivate": "Deactivate this PM schedule?",
     "deactivated": "Deactivated",
@@ -306,6 +307,9 @@
     "scheduleUpdated": "PM schedule updated",
     "selectMachineRequired": "Please select a machine",
     "dueTaskList": "Pending Maintenance Tasks",
+    "overdueDue": "🔴 Overdue ({count})",
+    "thisWeekDue": "🟠 This Week ({count})",
+    "laterDue": "⚪ Later ({count})",
     "noDueTasks": "No maintenance tasks in the next 7 days",
     "overdueAlert": "{count} maintenance tasks overdue — please action soon",
     "scheduledDate": "Scheduled",
@@ -464,7 +468,8 @@
     "failuresValue": "{n}",
     "mtbfLabel": "MTBF (avg. days between failures)",
     "mtbfValue": "{n} days",
-    "totalCostLabel": "Total maintenance cost"
+    "totalCostLabel": "Total maintenance cost",
+    "pmStatusTitle": "PM Status"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -586,6 +591,7 @@
     "deactivated": "Deactivated",
     "activated": "Activated",
     "cannotDeleteSelf": "You cannot delete your own account",
+    "systemAdminProtected": "Not authorized to modify a System Admin account",
     "confirmDeleteUser": "Delete account {email}? This cannot be undone.",
     "userDeleted": "Account deleted",
     "noUsers": "No accounts yet",
@@ -755,6 +761,7 @@
     "overdue": "Overdue",
     "due": "Due",
     "obsDue": "Observation ended",
+    "pmOverdueBanner": "🗓️ Maintenance: {count} overdue →",
     "noInFilter": "No cases in this tab",
     "emptyMine": "No cases assigned to or reported by you",
     "reportCta": "Report an issue",
@@ -1124,5 +1131,13 @@
   },
   "offline": {
     "banner": "No connection — showing offline view; submits need signal back"
+  },
+  "repeatFailure": {
+    "title": "⚠️ Possible Repeat Failure",
+    "prompt": "Is {title} ({incidentNo}) the same issue?",
+    "yes": "Yes, same issue",
+    "no": "No, this is new",
+    "confirmed": "Marked as a repeat failure",
+    "confirmFailed": "Failed to confirm — try again"
   }
 }

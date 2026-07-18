@@ -34,9 +34,13 @@ interface ManagedUser {
 // supervisor (the single elevated operational role), and admin are the base
 // tiers you can assign directly. Legacy accounts that still carry
 // manager/director keep working (label maps below still cover them); they
-// just can't be picked for new/edited users. Anything else — QC and whatever
-// gets added later — is a custom role (Settings → 角色管理), fetched below.
-const BASE_ROLES: UserRole[] = ['technician', 'supervisor', 'admin']
+// just can't be picked for new/edited users. Anything else — QC, 帳號管理員,
+// 工廠管理員 and whatever gets added later — is a custom role (Settings →
+// 角色管理), fetched below. 'admin' is filtered out client-side (see
+// canAssignAdmin below) for anyone who isn't themselves a true system admin —
+// the API additionally enforces this server-side, since a client-side-only
+// guard is bypassable via a direct request.
+const ALL_BASE_ROLES: UserRole[] = ['technician', 'supervisor', 'admin']
 
 // A select needs one flat value space; prefix custom role keys so they can't
 // collide with a base UserRole string.
@@ -55,10 +59,14 @@ const ROLE_BADGE: Record<UserRole, string> = {
 }
 const CUSTOM_ROLE_BADGE = 'bg-teal-100 text-teal-700'
 
-export default function UserManager({ currentUserId }: { currentUserId: string }) {
+export default function UserManager({ currentUserId, canAssignAdmin = false }: { currentUserId: string; canAssignAdmin?: boolean }) {
   const { t, locale } = useI18n()
   const supabase = createClient()
   const roleLabel = (r: UserRole) => t(`roles.${r}`, ROLE_ZH[r])
+  // Only a true system admin may hand out (or keep viewing as an option) the
+  // admin tier — an Account Admin viewing this form never sees it, matching
+  // the server-side privilege-escalation guard in the API routes.
+  const BASE_ROLES: UserRole[] = canAssignAdmin ? ALL_BASE_ROLES : ALL_BASE_ROLES.filter(r => r !== 'admin')
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [factories, setFactories] = useState<Factory[]>([])
   const [customRoles, setCustomRoles] = useState<CustomRole[]>([])
@@ -398,6 +406,11 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
         ) : (
           users.map(u => {
             const { label: roleText, badgeClass } = displayRole(u)
+            // An Account Admin (canAssignAdmin === false) can't edit, deactivate,
+            // or delete a true system admin's account — mirrors the server-side
+            // privilege-escalation guards in the API routes exactly, so the UI
+            // never dangles a button that would just 403.
+            const isProtectedAdmin = u.role === 'admin' && !canAssignAdmin
             return (
             <div key={u.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg bg-white gap-2">
               <div className="min-w-0 flex-1">
@@ -425,21 +438,28 @@ export default function UserManager({ currentUserId }: { currentUserId: string }
                   size="icon"
                   variant="outline"
                   onClick={() => toggleActive(u)}
-                  title={u.is_active ? t('settings.deactivate') : t('settings.activate')}
+                  disabled={isProtectedAdmin}
+                  title={isProtectedAdmin ? t('settings.systemAdminProtected', '無權限操作系統管理員帳號') : (u.is_active ? t('settings.deactivate') : t('settings.activate'))}
                   className={`h-10 w-10 ${u.is_active ? 'text-green-600' : 'text-red-500'}`}
                 >
                   {u.is_active ? <CircleCheck className="w-4 h-4" /> : <CircleX className="w-4 h-4" />}
                 </Button>
-                <Button size="icon" className="h-10 w-10" variant="outline" onClick={() => startEdit(u)}>
+                <Button
+                  size="icon" className="h-10 w-10" variant="outline"
+                  onClick={() => startEdit(u)}
+                  disabled={isProtectedAdmin}
+                  title={isProtectedAdmin ? t('settings.systemAdminProtected', '無權限操作系統管理員帳號') : undefined}
+                >
                   <Pencil className="w-4 h-4" />
                 </Button>
                 <Button
                   size="icon" className="h-10 w-10"
                   variant="outline"
                   onClick={() => remove(u)}
-                  disabled={u.id === currentUserId}
+                  disabled={u.id === currentUserId || isProtectedAdmin}
+                  title={isProtectedAdmin ? t('settings.systemAdminProtected', '無權限操作系統管理員帳號') : undefined}
                 >
-                  <Trash2 className={`w-4 h-4 ${u.id === currentUserId ? 'text-gray-300' : 'text-red-600'}`} />
+                  <Trash2 className={`w-4 h-4 ${u.id === currentUserId || isProtectedAdmin ? 'text-gray-300' : 'text-red-600'}`} />
                 </Button>
               </div>
             </div>

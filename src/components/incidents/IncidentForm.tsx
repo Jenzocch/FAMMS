@@ -102,7 +102,7 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
     setSubmitting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      const { incident_no, id, photoUploadFailed } = await submitIncidentReport(supabase, {
+      const { incident_no, id, photoUploadFailed, potentialRepeatOf } = await submitIncidentReport(supabase, {
         factoryId: location.factoryId,
         incidentType,
         machineId: location.assetId || null,
@@ -120,7 +120,11 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       if (photoUploadFailed) toast.warning('工單已建立，但照片上傳失敗')
       location.rememberLocation()
       toast.success(`工單 ${incident_no} 已建立`)
-      router.push(`/incidents/${id}`)
+      // A candidate repeat failure gets surfaced on the new incident's own
+      // detail page (not here) — that's where the viewer's role is known
+      // server-side, so only a supervisor+ actually sees the confirm prompt.
+      // Navigation is never blocked on this either way.
+      router.push(potentialRepeatOf ? `/incidents/${id}?repeatOf=${potentialRepeatOf.id}` : `/incidents/${id}`)
     } catch (err) {
       // Supabase errors (PostgrestError / StorageError) are plain objects with
       // a `message`, NOT Error instances — extract it so the real cause shows.

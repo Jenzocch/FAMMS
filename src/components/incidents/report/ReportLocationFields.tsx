@@ -32,33 +32,38 @@ export default function ReportLocationFields({
   return (
     <div className="space-y-3">
       <Label className="text-base">{t('report.location')} <span className="text-red-500">*</span></Label>
-      <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
-        <SelectTrigger><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
-        <SelectContent>
-          {factories.map(f => (
-            <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {/* Factory + area side by side: matches the natural "pick factory →
+          its area" reading order without an extra scroll/tap. Machine and
+          the free-text note stay full-width below since names/codes run long. */}
+      <div className="grid grid-cols-2 gap-2">
+        <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
+          <SelectTrigger><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
+          <SelectContent>
+            {factories.map(f => (
+              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <Select
-        value={areaId}
-        onValueChange={(v) => setAreaId(v ?? '')}
-        items={Object.fromEntries([
-          ...areas.map(a => [a.id, a.name]),
-          ...(areas.length === 0 ? [['__other__', t('report.selectAreaOther', '其他')]] : []),
-        ])}
-      >
-        <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
-        <SelectContent>
-          {areas.map(a => (
-            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-          ))}
-          {areas.length === 0 && (
-            <SelectItem value="__other__">{t('report.selectAreaOther', '其他')}</SelectItem>
-          )}
-        </SelectContent>
-      </Select>
+        <Select
+          value={areaId}
+          onValueChange={(v) => setAreaId(v ?? '')}
+          items={Object.fromEntries([
+            ...areas.map(a => [a.id, a.name]),
+            ...(areas.length === 0 ? [['__other__', t('report.selectAreaOther', '其他')]] : []),
+          ])}
+        >
+          <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
+          <SelectContent>
+            {areas.map(a => (
+              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+            ))}
+            {areas.length === 0 && (
+              <SelectItem value="__other__">{t('report.selectAreaOther', '其他')}</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
 
       {areaId === '__other__' && (
         <Input

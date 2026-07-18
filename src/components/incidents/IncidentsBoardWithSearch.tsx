@@ -12,6 +12,7 @@ interface IncidentsBoardWithSearchProps {
   userRole?: UserRole
   initialFilter?: string
   initialFactory?: string
+  pmOverdueCount?: number
 }
 
 export default function IncidentsBoardWithSearch({
@@ -19,6 +20,7 @@ export default function IncidentsBoardWithSearch({
   userRole = 'technician',
   initialFilter,
   initialFactory,
+  pmOverdueCount = 0,
 }: IncidentsBoardWithSearchProps) {
   const { t } = useI18n()
   const [view, setView] = useState<'board' | 'search'>('board')
@@ -53,7 +55,13 @@ export default function IncidentsBoardWithSearch({
 
       {/* Board View */}
       {view === 'board' && (
-        <IncidentBoard rows={rows} userRole={userRole} initialFilter={initialFilter} initialFactory={initialFactory} />
+        <IncidentBoard
+          rows={rows}
+          userRole={userRole}
+          initialFilter={initialFilter}
+          initialFactory={initialFactory}
+          pmOverdueCount={pmOverdueCount}
+        />
       )}
 
       {/* Search View */}

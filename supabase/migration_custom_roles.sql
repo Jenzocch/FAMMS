@@ -105,6 +105,61 @@ INSERT INTO role_capabilities (role_key, capability, allowed) VALUES
   ('general_staff', 'viewMachines', false)
 ON CONFLICT (role_key, capability) DO UPDATE SET allowed = EXCLUDED.allowed;
 
+-- ---------------------------------------------------------------------------
+-- Seed 帳號管理員 (Account Admin) — splits the old all-or-nothing 系統管理員
+-- into a narrower, assignable role: manages user accounts ONLY (create/edit/
+-- deactivate/reset password/assign roles via Settings → 使用者管理), nothing
+-- else. Base tier is 'technician' — the lowest tier — because the manageUsers
+-- capability is what actually unlocks the Settings page + user-management API
+-- routes (see requireUserManager() in lib/auth.ts and the extended
+-- viewSettings check in app/(dashboard)/settings/page.tsx); technician's own
+-- DB-enforced permissions (no manage-machines/factories/vendors/PM, no
+-- close/RCA beyond what a technician can already do) are exactly the "nothing
+-- else" this role is supposed to have. dashboard/boardFull/viewMachines stay
+-- off by default, same as general_staff — an Account Admin's job is the users
+-- list, not the incident board.
+-- ---------------------------------------------------------------------------
+INSERT INTO custom_roles (key, label_zh, label_en, label_id, base_role, is_system)
+VALUES ('account_admin', '帳號管理員', 'Account Admin', 'Admin Akun', 'technician', true)
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO role_capabilities (role_key, capability, allowed) VALUES
+  ('account_admin', 'dashboard', false),
+  ('account_admin', 'boardFull', false),
+  ('account_admin', 'viewMachines', false),
+  ('account_admin', 'manageUsers', true)
+ON CONFLICT (role_key, capability) DO UPDATE SET allowed = EXCLUDED.allowed;
+
+-- ---------------------------------------------------------------------------
+-- Seed 工廠管理員 (Factory Admin) — the other half of the admin split: manages
+-- their OWN factory's machines/areas/incident-types... actually incident
+-- types stay admin-only (PERMISSIONS.manageIncidentTypes is role === 'admin'
+-- and 'manager' doesn't get it — deliberately, so Factory Admin can't do
+-- anything admin-only), but machines/areas/factories/PM schedules/vendors,
+-- exactly what 'manager' already does. No extra capability grants needed —
+-- 'manager' already has manageMachines/manageFactories/manageVendors/
+-- managePMSchedules, and the existing app-layer "if (user.factory_id &&
+-- role !== 'admin') scope to factory_id" convention (used throughout, e.g.
+-- app/(dashboard)/machines/page.tsx, app/(dashboard)/incidents/page.tsx)
+-- already confines any manager-tier account with a factory_id set to their
+-- own factory. This row exists so the owner can pick "工廠管理員" by name in
+-- the role picker instead of the more abstract "經理 (manager)" label — it is
+-- otherwise behaviorally identical to assigning the manager base role
+-- directly (a real custom_roles row was still used, matching the existing
+-- QC-role seeding pattern, rather than silently overloading the base-tier
+-- label — see the task write-up for the reasoning).
+-- ---------------------------------------------------------------------------
+INSERT INTO custom_roles (key, label_zh, label_en, label_id, base_role, is_system)
+VALUES ('factory_admin', '工廠管理員', 'Factory Admin', 'Admin Pabrik', 'manager', true)
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO role_capabilities (role_key, capability, allowed) VALUES
+  ('factory_admin', 'dashboard', true),
+  ('factory_admin', 'boardFull', true),
+  ('factory_admin', 'viewMachines', true),
+  ('factory_admin', 'manageUsers', false)
+ON CONFLICT (role_key, capability) DO UPDATE SET allowed = EXCLUDED.allowed;
+
 -- Verify
 SELECT 'custom_roles table' AS check, to_regclass('public.custom_roles') IS NOT NULL AS ok
 UNION ALL
@@ -115,4 +170,8 @@ SELECT 'profiles.custom_role_key column', EXISTS (
   WHERE table_name = 'profiles' AND column_name = 'custom_role_key'
 )
 UNION ALL
-SELECT 'qc seeded', EXISTS (SELECT 1 FROM custom_roles WHERE key = 'qc');
+SELECT 'qc seeded', EXISTS (SELECT 1 FROM custom_roles WHERE key = 'qc')
+UNION ALL
+SELECT 'account_admin seeded', EXISTS (SELECT 1 FROM custom_roles WHERE key = 'account_admin')
+UNION ALL
+SELECT 'factory_admin seeded', EXISTS (SELECT 1 FROM custom_roles WHERE key = 'factory_admin');
