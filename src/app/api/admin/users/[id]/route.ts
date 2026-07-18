@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireUserManager } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { accountNameToEmail, isValidLoginName, SYNTHETIC_EMAIL_DOMAIN } from '@/lib/login-name'
 import type { UserRole } from '@/types'
 
 const VALID_ROLES: UserRole[] = ['technician', 'supervisor', 'manager', 'director', 'admin']
 
-// PATCH — update profile fields and/or reset password (admin only)
+// PATCH — update profile fields and/or reset password. System admin, or an
+// Account Admin (custom role with the manageUsers capability), may call this.
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const guard = await requireAdmin()
+  const guard = await requireUserManager()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
+  const isTrueAdmin = guard.user.role === 'admin'
 
   const { id } = await params
 
@@ -34,6 +36,17 @@ export async function PATCH(
   }
 
   const admin = createAdminClient()
+
+  // Privilege-escalation guard #1: an Account Admin must never be able to
+  // touch a true system admin's account at all — not edit its fields, not
+  // reset its password, not deactivate it. (A true admin editing themselves
+  // or another admin is unaffected — isTrueAdmin skips this entirely.)
+  if (!isTrueAdmin) {
+    const { data: targetProfile } = await admin.from('profiles').select('role').eq('id', id).maybeSingle()
+    if (targetProfile?.role === 'admin') {
+      return NextResponse.json({ error: '無法編輯系統管理員帳號' }, { status: 403 })
+    }
+  }
 
   // Optional password reset
   if (body.password !== undefined && body.password !== '') {
@@ -91,12 +104,22 @@ export async function PATCH(
         if (!VALID_ROLES.includes(body.role as UserRole)) {
           return NextResponse.json({ error: '角色不正確' }, { status: 400 })
         }
+        // Privilege-escalation guard #2: an Account Admin can't promote
+        // anyone (including themselves) to system admin. custom_roles.
+        // base_role is DB-constrained to exclude 'admin', so the `cr.base_role`
+        // branch above can never reach 'admin' — only this direct-role path can.
+        if (!isTrueAdmin && body.role === 'admin') {
+          return NextResponse.json({ error: '無法將帳號設為系統管理員' }, { status: 403 })
+        }
         update.role = body.role
       }
     }
   } else if (body.role !== undefined) {
     if (!VALID_ROLES.includes(body.role as UserRole)) {
       return NextResponse.json({ error: '角色不正確' }, { status: 400 })
+    }
+    if (!isTrueAdmin && body.role === 'admin') {
+      return NextResponse.json({ error: '無法將帳號設為系統管理員' }, { status: 403 })
     }
     update.role = body.role
   }
@@ -147,13 +170,15 @@ export async function PATCH(
   return NextResponse.json({ ok: true, telegramLinkError })
 }
 
-// DELETE — remove a user entirely (admin only)
+// DELETE — remove a user entirely. System admin, or an Account Admin (custom
+// role with the manageUsers capability), may call this.
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const guard = await requireAdmin()
+  const guard = await requireUserManager()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
+  const isTrueAdmin = guard.user.role === 'admin'
 
   const { id } = await params
 
@@ -163,6 +188,16 @@ export async function DELETE(
   }
 
   const admin = createAdminClient()
+
+  // Privilege-escalation guard: an Account Admin can never delete a true
+  // system admin's account.
+  if (!isTrueAdmin) {
+    const { data: targetProfile } = await admin.from('profiles').select('role').eq('id', id).maybeSingle()
+    if (targetProfile?.role === 'admin') {
+      return NextResponse.json({ error: '無法刪除系統管理員帳號' }, { status: 403 })
+    }
+  }
+
   // Deleting the auth user cascades to profiles (FK ON DELETE CASCADE)
   const { error } = await admin.auth.admin.deleteUser(id)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
