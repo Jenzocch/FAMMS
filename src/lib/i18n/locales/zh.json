@@ -760,6 +760,7 @@
     "overdue": "逾期",
     "due": "截止",
     "obsDue": "觀察期已滿",
+    "pmOverdueBanner": "🗓️ 保養：{count} 件逾期 →",
     "noInFilter": "此分類目前沒有工單",
     "emptyMine": "目前沒有指派給你或你回報的工單",
     "reportCta": "回報問題",

@@ -760,6 +760,7 @@
     "overdue": "Overdue",
     "due": "Due",
     "obsDue": "Observation ended",
+    "pmOverdueBanner": "🗓️ Maintenance: {count} overdue →",
     "noInFilter": "No cases in this tab",
     "emptyMine": "No cases assigned to or reported by you",
     "reportCta": "Report an issue",

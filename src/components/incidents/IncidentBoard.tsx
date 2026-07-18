@@ -51,9 +51,13 @@ interface IncidentBoardProps {
   userRole?: UserRole
   initialFilter?: string
   initialFactory?: string
+  // Overdue active PM schedules, scoped the same way the board rows are —
+  // drives the "🗓️ 保養：N 件逾期" banner below. Not derived from `rows`
+  // (PM schedules aren't incidents) — computed server-side and passed in.
+  pmOverdueCount?: number
 }
 
-export default function IncidentBoard({ rows, userRole = 'technician', initialFilter, initialFactory }: IncidentBoardProps) {
+export default function IncidentBoard({ rows, userRole = 'technician', initialFilter, initialFactory, pmOverdueCount = 0 }: IncidentBoardProps) {
   const { t, locale } = useI18n()
   const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
   const typeLabel = useIncidentTypeLabel()
@@ -135,6 +139,17 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
   return (
     <div className="space-y-4 md:space-y-5">
       <h1 className="text-2xl font-semibold text-gray-900">{t('board.heading')}</h1>
+
+      {/* PM-overdue banner — only when there's something to act on; links to
+          the PM page rather than duplicating its list here. */}
+      {pmOverdueCount > 0 && (
+        <Link
+          href="/pm"
+          className="block px-3.5 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium"
+        >
+          {t('board.pmOverdueBanner', '🗓️ 保養：{count} 件逾期 →').replace('{count}', String(pmOverdueCount))}
+        </Link>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">

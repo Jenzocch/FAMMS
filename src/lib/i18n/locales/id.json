@@ -760,6 +760,7 @@
     "overdue": "Terlambat",
     "due": "Tenggat",
     "obsDue": "Masa observasi selesai",
+    "pmOverdueBanner": "🗓️ Perawatan: {count} terlambat →",
     "noInFilter": "Tidak ada laporan di tab ini",
     "emptyMine": "Tidak ada laporan yang ditugaskan atau dilaporkan oleh Anda",
     "reportCta": "Lapor masalah",
