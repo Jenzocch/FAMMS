@@ -1130,5 +1130,13 @@
   },
   "offline": {
     "banner": "Tidak ada koneksi — tampilan offline, kirim data setelah sinyal kembali"
+  },
+  "repeatFailure": {
+    "title": "⚠️ Kemungkinan Kerusakan Berulang",
+    "prompt": "Apakah {title} ({incidentNo}) masalah yang sama?",
+    "yes": "Ya, masalah yang sama",
+    "no": "Bukan, ini masalah baru",
+    "confirmed": "Ditandai sebagai kerusakan berulang",
+    "confirmFailed": "Gagal menandai — coba lagi"
   }
 }

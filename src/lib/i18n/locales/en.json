@@ -1130,5 +1130,13 @@
   },
   "offline": {
     "banner": "No connection — showing offline view; submits need signal back"
+  },
+  "repeatFailure": {
+    "title": "⚠️ Possible Repeat Failure",
+    "prompt": "Is {title} ({incidentNo}) the same issue?",
+    "yes": "Yes, same issue",
+    "no": "No, this is new",
+    "confirmed": "Marked as a repeat failure",
+    "confirmFailed": "Failed to confirm — try again"
   }
 }

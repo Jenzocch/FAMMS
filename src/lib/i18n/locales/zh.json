@@ -1130,5 +1130,13 @@
   },
   "offline": {
     "banner": "沒有網路連線 — 顯示的是離線畫面，送出動作要等訊號恢復"
+  },
+  "repeatFailure": {
+    "title": "⚠️ 可能是重複故障",
+    "prompt": "{title}（{incidentNo}）是同一個問題嗎？",
+    "yes": "是，同一個問題",
+    "no": "不是，這是新問題",
+    "confirmed": "已標記為重複故障",
+    "confirmFailed": "標記失敗，請稍後再試"
   }
 }

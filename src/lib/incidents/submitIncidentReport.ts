@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { logAuditEvent } from '@/lib/audit'
+import { checkPotentialRepeatFailure, type PotentialRepeat } from '@/lib/repeat-failure'
 
 type SupabaseClient = ReturnType<typeof createClient>
 
@@ -28,7 +29,17 @@ export interface SubmitIncidentReportInput {
 export async function submitIncidentReport(
   supabase: SupabaseClient,
   input: SubmitIncidentReportInput
-): Promise<{ id: string; incident_no: string; photoUploadFailed: boolean }> {
+): Promise<{
+  id: string
+  incident_no: string
+  photoUploadFailed: boolean
+  // Set when a prior incident on the same machine + incident_type, closed as
+  // a temporary fix (or with no root cause on record), was reported within
+  // the last 30 days — a CANDIDATE repeat failure. The caller decides
+  // whether/how to ask a supervisor to confirm; nothing is written to
+  // incident_relations here. See src/lib/repeat-failure.ts.
+  potentialRepeatOf?: PotentialRepeat
+}> {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Shared-device backstop: the "must pick a real reporter" rule was only
@@ -191,5 +202,18 @@ export async function submitIncidentReport(
     body: JSON.stringify({ incidentId: incident.id }),
   }).catch(() => {})
 
-  return { id: incident.id, incident_no, photoUploadFailed }
+  // Best-effort repeat-failure candidate check — must never fail or delay
+  // the report itself, same discipline as the audit/photo/notify steps above.
+  let potentialRepeatOf: PotentialRepeat | undefined
+  try {
+    potentialRepeatOf = (await checkPotentialRepeatFailure(supabase, {
+      machineId: input.machineId,
+      incidentType: input.incidentType,
+      excludeIncidentId: incident.id,
+    })) ?? undefined
+  } catch (err) {
+    console.error('Repeat-failure check failed:', err)
+  }
+
+  return { id: incident.id, incident_no, photoUploadFailed, potentialRepeatOf }
 }
