@@ -1,5 +1,6 @@
 import { zhTW, id as idLocale, enUS } from 'date-fns/locale'
 import type { Locale as DateFnsLocale } from 'date-fns'
+export { PM_TYPE_LABELS, PM_TYPE_KEYS } from '@/lib/pm'
 
 export interface PMTask {
   record_id: string
@@ -43,16 +44,6 @@ export interface PMTaskAction {
   cost: string
   reason: string
   checks: boolean[]
-}
-
-export const PM_TYPE_LABELS: Record<string, string> = {
-  daily: '每日', weekly: '每週', monthly: '每月',
-  quarterly: '每季', half_yearly: '每半年', yearly: '每年', custom: '自訂天數',
-}
-
-export const PM_TYPE_KEYS: Record<string, string> = {
-  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
-  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly', yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
 }
 
 export const DATE_LOCALES: Record<string, DateFnsLocale> = {

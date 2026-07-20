@@ -23,7 +23,7 @@ npx tsc --noEmit        # Type check (should exit 0)
 | Styling | Tailwind CSS v4 + shadcn/ui (@base-ui/react) |
 | Database | Supabase (PostgreSQL + Auth + RLS) |
 | Storage | Supabase Storage (photos, attachments) |
-| AI | OpenAI `gpt-4o-mini` (future knowledge base) |
+| AI | Qwen (Alibaba Cloud DashScope, free tier) — knowledge base auto-summary at close |
 | Charts | Recharts (KPI dashboard) |
 | Notifications | Telegram Bot API |
 | Date Utils | date-fns |
@@ -376,8 +376,13 @@ NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# OpenAI (for knowledge base AI summary)
-OPENAI_API_KEY=sk-...
+# Qwen / Alibaba Cloud DashScope, OpenAI-compatible endpoint (knowledge base
+# auto-summary at incident close — src/lib/qwen.ts). Optional: unset means
+# the KB entry still saves, just with the technician's raw close note
+# instead of an AI-cleaned-up version. Free-tier key from
+# https://dashscope.console.aliyun.com/
+QWEN_API_KEY=sk-...
+QWEN_MODEL=qwen-flash # optional, defaults to qwen-flash if unset
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij
@@ -399,7 +404,7 @@ GUDANG_WEBHOOK_SECRET=same_secret_as_gudang_famms_request # sent as x-famms-secr
 
 Before first run:
 
-1. ✅ Create `.env.local` with Supabase + OpenAI + Telegram keys
+1. ✅ Create `.env.local` with Supabase + Qwen (optional) + Telegram keys
 2. ✅ Run `supabase/schema.sql` in Supabase SQL editor (creates tables + 3 factories + 5 level-1 failure categories)
 3. ✅ Run `supabase/SYNC_SCHEMA_LATEST.sql` — **idempotent; run after every `git pull`**. Adds all columns/tables later features need (PM assignee, incident `assigned_user_ids`/`location_note`, vendors, audit/maintenance logs…). This is the single source of "the DB has everything the app expects"; skip it and features silently fail to save/show.
 4. ✅ Run `supabase/seed_fault_tree.sql` (subcategories + 100+ failure codes, Bahasa Indonesia + English)

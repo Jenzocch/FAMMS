@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { checkRCARequirement } from '@/lib/rca'
 import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { summarizeForKnowledgeBase } from '@/lib/qwen'
 
 // POST /api/incidents/[id]/close — close an incident.
 // Blocks closing when RCA is required (same failure_code >= 3x in 90d) but no
@@ -160,16 +161,34 @@ export async function POST(
   let kbSaved = false
   if (save_to_kb && (root_cause || repair_method)) {
     const machine = incident.machine as unknown as { machine_name?: string; machine_code?: string | null } | null
-    const problem = [incident.title, incident.description].filter(Boolean).join(' — ')
+    const machineName = machine
+      ? `${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name ?? ''}`
+      : null
+    const rawProblem = [incident.title, incident.description].filter(Boolean).join(' — ')
       || incident.incident_type
-    const keywords = [machine?.machine_code, machine?.machine_name, incident.incident_type]
+    const rawKeywords = [machine?.machine_code, machine?.machine_name, incident.incident_type]
       .filter(Boolean).join(' ')
+
+    // Best-effort: Qwen turns the technician's raw notes into a cleaner,
+    // better-keyworded entry. Any failure (no API key, network, timeout,
+    // unparseable response) falls straight back to the raw text below —
+    // see src/lib/qwen.ts. Never blocks or delays closing beyond the
+    // request itself; never loses the entry.
+    const summary = await summarizeForKnowledgeBase({
+      problem: rawProblem,
+      rootCause: root_cause || repair_method || '',
+      repairMethod: repair_method || root_cause || '',
+      machineName,
+      incidentType: incident.incident_type,
+    })
+
     const { error: kbErr } = await supabase.from('knowledge_base').insert({
       incident_id: incident.id,
-      problem,
-      root_cause: root_cause || repair_method || '-',
-      repair_method: repair_method || root_cause || '-',
-      keywords,
+      problem: summary?.problem || rawProblem,
+      root_cause: summary?.rootCause || root_cause || repair_method || '-',
+      repair_method: summary?.repairMethod || repair_method || root_cause || '-',
+      lessons_learned: summary?.lessonsLearned || null,
+      keywords: summary?.keywords ? `${summary.keywords} ${rawKeywords}` : rawKeywords,
       created_by_id: user.id,
     })
     kbSaved = !kbErr

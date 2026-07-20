@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { nextOccurrenceAfter } from '@/lib/pm'
+import { nextOccurrenceAfter, checklistIncompleteError } from '@/lib/pm'
 import type { PMType, PMDelayReason } from '@/types'
 
 // POST /api/pm/records — complete or skip a *projected* PM occurrence.
@@ -45,21 +45,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Jadwal PM tidak ditemukan' }, { status: 404 })
   }
 
-  // The schedule's own checklist is the source of truth: completing requires
-  // every item ticked. Checking only the client-sent array would let a client
-  // that omits checklist_results (or sends fewer items) bypass the rule.
   if (status === 'completed') {
-    let required = 0
-    try { required = (JSON.parse(schedule.checklist || '[]') as unknown[]).length } catch { required = 0 }
-    if (required > 0) {
-      const done = Array.isArray(checklist_results) ? checklist_results.filter(c => c?.done).length : 0
-      if (done < required) {
-        return NextResponse.json(
-          { error: 'Semua item checklist harus dicentang sebelum menandai selesai' },
-          { status: 400 }
-        )
-      }
-    }
+    const checklistError = checklistIncompleteError(schedule.checklist, checklist_results)
+    if (checklistError) return NextResponse.json({ error: checklistError }, { status: 400 })
   }
 
   const values = {

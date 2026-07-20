@@ -5,7 +5,7 @@ import { Loader2, Search, CalendarClock, CheckCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
 import { toast } from 'sonner'
-import { wibTodayStr } from '@/lib/pm'
+import { wibTodayStr, PM_TYPE_LABELS, PM_TYPE_KEYS, daysBetween } from '@/lib/pm'
 
 interface PMDueListProps {
   factoryId: string
@@ -25,17 +25,6 @@ interface Task {
   status: string
 }
 
-// zh fallbacks; rendered through t(pm.cad*) so labels follow app language.
-const PM_TYPE_LABELS: Record<string, string> = {
-  daily: '每日', weekly: '每週', monthly: '每月',
-  quarterly: '每季', half_yearly: '每半年', yearly: '每年', custom: '自訂天數',
-}
-const PM_TYPE_KEYS: Record<string, string> = {
-  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
-  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly',
-  yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
-}
-
 // Only these statuses are "things a technician still needs to do".
 const ACTIONABLE = new Set(['overdue', 'pending', 'scheduled'])
 
@@ -44,12 +33,6 @@ const ACTIONABLE = new Set(['overdue', 'pending', 'scheduled'])
 // overdue task as merely "due today" and undercounting the overdue badge.
 function todayStr() {
   return wibTodayStr()
-}
-
-function daysBetween(from: string, to: string): number {
-  const a = new Date(from + 'T00:00:00Z').getTime()
-  const b = new Date(to + 'T00:00:00Z').getTime()
-  return Math.round((b - a) / 86400000)
 }
 
 export default function PMDueList({ factoryId }: PMDueListProps) {

@@ -1,29 +1,12 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n'
-
-// zh fallbacks; rendered through t(pm.cad*) so labels follow app language —
-// same map as PMDueList.tsx, duplicated locally to avoid a cross-feature import.
-const PM_TYPE_LABELS: Record<string, string> = {
-  daily: '每日', weekly: '每週', monthly: '每月',
-  quarterly: '每季', half_yearly: '每半年', yearly: '每年', custom: '自訂天數',
-}
-const PM_TYPE_KEYS: Record<string, string> = {
-  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
-  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly',
-  yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
-}
+import { PM_TYPE_LABELS, PM_TYPE_KEYS, daysBetween } from '@/lib/pm'
 
 export interface PmScheduleStatus {
   id: string
   pm_type: string
   next_due_date: string // YYYY-MM-DD
-}
-
-function daysBetween(from: string, to: string): number {
-  const a = new Date(from + 'T00:00:00Z').getTime()
-  const b = new Date(to + 'T00:00:00Z').getTime()
-  return Math.round((b - a) / 86400000)
 }
 
 // PM status card for the machine detail page: next-due date per active

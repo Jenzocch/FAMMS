@@ -9,6 +9,7 @@ import { URGENCY_FROM_IMPACT, STATUS_ZH, STATUS_ZH_COLOR } from '@/lib/incident-
 import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import NextStepHint from '@/components/incidents/NextStepHint'
+import { PM_TYPE_KEYS } from '@/lib/pm'
 
 // Same left-edge urgency bar treatment as the board (IncidentBoard.tsx) — kept
 // in sync there so a card reads the same "how urgent" signal everywhere in
@@ -52,11 +53,6 @@ interface DashboardViewProps {
   stale: DashboardRow[]
   overdue: OverdueRow[]
   userRole: UserRole
-}
-
-const PM_TYPE_KEYS: Record<string, string> = {
-  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
-  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly', yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
 }
 
 export default function DashboardView({
