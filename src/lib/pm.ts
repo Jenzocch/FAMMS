@@ -16,6 +16,39 @@
 
 import type { PMType } from '@/types'
 
+// zh fallbacks; rendered through t(PM_TYPE_KEYS[type]) so labels follow the
+// active app language — this pair used to be redefined independently in
+// PMDueList.tsx, PMPage.tsx, MachinePmStatus.tsx and pm/calendar/types.ts,
+// which meant a translation fix to one could silently miss the others.
+export const PM_TYPE_LABELS: Record<string, string> = {
+  daily: '每日', weekly: '每週', monthly: '每月',
+  quarterly: '每季', half_yearly: '每半年', yearly: '每年', custom: '自訂天數',
+}
+export const PM_TYPE_KEYS: Record<string, string> = {
+  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
+  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly',
+  yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
+}
+
+// The schedule's own checklist is the source of truth for what "completed"
+// requires: every item ticked. Checking only the client-sent array would let
+// a client that omits checklist_results (or sends fewer items) bypass the
+// rule — "completed" with unticked items is exactly the paper-whipping this
+// module exists to prevent, so this is enforced server-side, identically for
+// both the pm_records list route (materializing a projected occurrence) and
+// the [id] route (updating an existing row). Returns the same Bahasa error
+// message both routes already surfaced, or null if it's fine to proceed.
+export function checklistIncompleteError(
+  scheduleChecklistJson: string | null | undefined,
+  checklistResults: { item: string; done: boolean }[] | null | undefined,
+): string | null {
+  let required = 0
+  try { required = (JSON.parse(scheduleChecklistJson || '[]') as unknown[]).length } catch { required = 0 }
+  if (required === 0) return null
+  const done = Array.isArray(checklistResults) ? checklistResults.filter(c => c?.done).length : 0
+  return done < required ? 'Semua item checklist harus dicentang sebelum menandai selesai' : null
+}
+
 // Custom "every N days" schedules fall back to this when no interval is set.
 const DEFAULT_CUSTOM_DAYS = 30
 function customDays(intervalDays?: number | null): number {
@@ -39,6 +72,11 @@ export function wibTodayStr(now: Date = new Date()): string {
 }
 
 const DAY_MS = 86_400_000
+
+// Whole days between two 'YYYY-MM-DD' strings (UTC midnight to UTC midnight).
+export function daysBetween(from: string, to: string): number {
+  return Math.round((parseDateStr(to).getTime() - parseDateStr(from).getTime()) / DAY_MS)
+}
 
 function addDaysUtc(d: Date, n: number): Date {
   return new Date(d.getTime() + n * DAY_MS)

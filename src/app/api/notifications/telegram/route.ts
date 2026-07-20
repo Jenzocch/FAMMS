@@ -34,6 +34,24 @@ import type { IncidentStatus, UserRole } from '@/types'
 //     (e.g. "[DIN-HMG-001]") it's matched automatically so repeat-failure
 //     detection still works.
 
+// Shape of Telegram's callback_query object, as far as any handler below
+// reads it — was independently redeclared inline on 5 handler functions.
+interface TelegramCallbackQuery {
+  id: string
+  from?: { id?: number }
+  message?: { chat?: { id?: number }; message_id?: number }
+  data?: string
+}
+
+// Every button handler starts by resolving who tapped it and which message
+// to (maybe) rewrite — same two lines duplicated across all 5 handlers.
+function chatAndMessageFrom(cq: TelegramCallbackQuery) {
+  return {
+    chatId: cq.from?.id ?? cq.message?.chat?.id,
+    messageId: cq.message?.message_id,
+  }
+}
+
 // Prompt prefix Telegram echoes back verbatim in reply_to_message.text — used
 // to tell "replying to a /lapor prompt" apart from "replying to an incident
 // message" (FIT- number match) without any extra state lookup.
@@ -75,14 +93,8 @@ async function resolveProfile(admin: ReturnType<typeof createAdminClient>, chatI
   return profile
 }
 
-async function handleStatusButton(admin: ReturnType<typeof createAdminClient>, cq: {
-  id: string
-  from?: { id?: number }
-  message?: { chat?: { id?: number }; message_id?: number }
-  data?: string
-}) {
-  const chatId = cq.from?.id ?? cq.message?.chat?.id
-  const messageId = cq.message?.message_id
+async function handleStatusButton(admin: ReturnType<typeof createAdminClient>, cq: TelegramCallbackQuery) {
+  const { chatId, messageId } = chatAndMessageFrom(cq)
 
   // The already-done button on a rewritten keyboard is inert by design
   // (callback_data 'noop') — just clear the spinner, no state change.
@@ -187,13 +199,8 @@ async function handleStatusButton(admin: ReturnType<typeof createAdminClient>, c
 // a photo, no need to know Telegram's long-press-to-reply gesture. The
 // prompt's own text carries the FIT- number so handleReplyNote's regex match
 // keeps working on it exactly like a reply to the original assignment DM.
-async function handleNoteButton(admin: ReturnType<typeof createAdminClient>, cq: {
-  id: string
-  from?: { id?: number }
-  message?: { chat?: { id?: number } }
-  data?: string
-}) {
-  const chatId = cq.from?.id ?? cq.message?.chat?.id
+async function handleNoteButton(admin: ReturnType<typeof createAdminClient>, cq: TelegramCallbackQuery) {
+  const { chatId } = chatAndMessageFrom(cq)
   const [, incidentId] = (cq.data ?? '').split('|')
   if (!chatId || !incidentId) { await answerCallbackQuery(cq.id); return }
 
@@ -337,14 +344,8 @@ async function handleNewReportStart(admin: ReturnType<typeof createAdminClient>,
 
 // Factory tapped (cross-factory accounts only) → save the pick, then
 // continue exactly like a single-factory /lapor from here on.
-async function handleNewReportFactoryPick(admin: ReturnType<typeof createAdminClient>, cq: {
-  id: string
-  from?: { id?: number }
-  message?: { chat?: { id?: number }; message_id?: number }
-  data?: string
-}) {
-  const chatId = cq.from?.id ?? cq.message?.chat?.id
-  const messageId = cq.message?.message_id
+async function handleNewReportFactoryPick(admin: ReturnType<typeof createAdminClient>, cq: TelegramCallbackQuery) {
+  const { chatId, messageId } = chatAndMessageFrom(cq)
   const factoryId = (cq.data ?? '').split('|')[1]
   if (!chatId || !factoryId) { await answerCallbackQuery(cq.id); return }
 
@@ -410,14 +411,8 @@ async function handleNewReportDescription(admin: ReturnType<typeof createAdminCl
 // trigger — fine here since this whole path only ever writes fields a
 // technician is already allowed to set (never due_date after creation,
 // never status other than 'reported').
-async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient>, cq: {
-  id: string
-  from?: { id?: number }
-  message?: { chat?: { id?: number }; message_id?: number }
-  data?: string
-}) {
-  const chatId = cq.from?.id ?? cq.message?.chat?.id
-  const messageId = cq.message?.message_id
+async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient>, cq: TelegramCallbackQuery) {
+  const { chatId, messageId } = chatAndMessageFrom(cq)
   const impact = (cq.data ?? '').split('|')[1] as 'A' | 'C' | 'D' | undefined
   if (!chatId || !impact) { await answerCallbackQuery(cq.id); return }
 
@@ -595,14 +590,8 @@ async function handleNewReportUrgency(admin: ReturnType<typeof createAdminClient
 // incident_relations — done directly here since this already runs with the
 // admin client server-side and there's no clean way to share a route handler
 // between a browser fetch and this webhook's own request shape.
-async function handleRepeatFailureConfirm(admin: ReturnType<typeof createAdminClient>, cq: {
-  id: string
-  from?: { id?: number }
-  message?: { chat?: { id?: number }; message_id?: number }
-  data?: string
-}) {
-  const chatId = cq.from?.id ?? cq.message?.chat?.id
-  const messageId = cq.message?.message_id
+async function handleRepeatFailureConfirm(admin: ReturnType<typeof createAdminClient>, cq: TelegramCallbackQuery) {
+  const { chatId, messageId } = chatAndMessageFrom(cq)
   const [, newIncidentId, priorIncidentId, decision] = (cq.data ?? '').split('|')
   if (!chatId || !newIncidentId || !priorIncidentId || (decision !== 'yes' && decision !== 'no')) {
     await answerCallbackQuery(cq.id)

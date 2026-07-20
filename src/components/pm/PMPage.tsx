@@ -18,6 +18,7 @@ import PMDueList from './PMDueList'
 import { useI18n } from '@/lib/i18n'
 import { loadFactories } from '@/lib/useFactories'
 import { PERMISSIONS } from '@/lib/permissions'
+import { PM_TYPE_LABELS, PM_TYPE_KEYS } from '@/lib/pm'
 import type { UserRole } from '@/types'
 
 interface Factory { id: string; name: string }
@@ -63,17 +64,6 @@ interface RecordRow {
     pm_type: string
     machine: { machine_name: string; machine_code: string | null } | null
   } | null
-}
-
-// zh fallbacks; rendered through t(pm.cad*) so labels follow app language.
-const PM_TYPE_LABELS: Record<string, string> = {
-  daily: '每日', weekly: '每週', monthly: '每月',
-  quarterly: '每季', half_yearly: '每半年', yearly: '每年', custom: '自訂天數',
-}
-const PM_TYPE_KEYS: Record<string, string> = {
-  daily: 'pm.cadDaily', weekly: 'pm.cadWeekly', monthly: 'pm.cadMonthly',
-  quarterly: 'pm.cadQuarterly', half_yearly: 'pm.cadHalfYearly',
-  yearly: 'pm.cadYearly', custom: 'pm.cadCustom',
 }
 
 export default function PMPage({ role = 'technician', defaultFactoryId }: { role?: UserRole; defaultFactoryId?: string | null }) {

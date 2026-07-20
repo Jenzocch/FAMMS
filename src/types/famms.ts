@@ -573,15 +573,6 @@ export const COMPLETION_TYPE_LABELS: Record<CompletionType, string> = {
   permanent_fix: '✅ Perbaikan Permanen — akar masalah terselesaikan',
 };
 
-export const PM_TYPE_LABELS: Record<PMType, string> = {
-  daily: 'Harian',
-  weekly: 'Mingguan',
-  monthly: 'Bulanan',
-  quarterly: 'Per 3 Bulan',
-  half_yearly: 'Per 6 Bulan',
-  yearly: 'Tahunan',
-  custom: 'Custom (per N hari)',
-};
 
 export const PM_DELAY_REASON_LABELS: Record<PMDelayReason, string> = {
   no_shutdown: 'Tidak Ada Shutdown',
