@@ -524,6 +524,7 @@
     "telegramSectionTitle": "Notifikasi Telegram",
     "telegramSectionDesc": "Konfigurasi token bot untuk menerima peringatan insiden",
     "noFactoryForAccount": "Pabrik untuk akun ini tidak ditemukan.",
+    "pickSection": "Pilih bagian di sebelah kiri untuk dikelola",
     "loading": "Memuat...",
     "name": "Nama",
     "code": "Kode",

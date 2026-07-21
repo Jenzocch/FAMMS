@@ -524,6 +524,7 @@
     "telegramSectionTitle": "Telegram 通知",
     "telegramSectionDesc": "設定機器人 token，接收工單警報",
     "noFactoryForAccount": "找不到此帳戶的工廠。",
+    "pickSection": "從左側選擇要管理的項目",
     "loading": "載入中...",
     "name": "名稱",
     "code": "代碼",

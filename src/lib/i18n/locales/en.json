@@ -524,6 +524,7 @@
     "telegramSectionTitle": "Telegram Notifications",
     "telegramSectionDesc": "Configure bot token to receive work order alerts",
     "noFactoryForAccount": "No factory found for this account.",
+    "pickSection": "Pick a section on the left to manage",
     "loading": "Loading...",
     "name": "Name",
     "code": "Code",
