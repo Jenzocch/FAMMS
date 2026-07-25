@@ -396,6 +396,7 @@ QC_API_SECRET=your_random_secret      # Bearer token for GET /api/external/machi
 GUDANG_SYNC_SECRET=your_random_secret # Bearer token for POST /api/external/parts-requests (Gudang One writes back status)
 GUDANG_WEBHOOK_URL=https://<gudang-project>.supabase.co/functions/v1/famms-request # line ①: push new parts requests to Gudang
 GUDANG_WEBHOOK_SECRET=same_secret_as_gudang_famms_request # sent as x-famms-secret header
+GUDANG_WAREHOUSE=HARDWARE # every factory's parts request goes to this one warehouse code — spare parts aren't split per-factory on the Gudang side; the requesting factory travels in the note instead
 ```
 
 ---
