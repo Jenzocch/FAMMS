@@ -253,7 +253,8 @@
     "hygieneTools": "工具清點無缺，無遺留現場",
     "hygieneLubricant": "潤滑油/化學品為食品級或已徹底清除",
     "hygieneCleanArea": "現場清潔完成，無金屬屑/異物殘留",
-    "hygieneRequired": "請完成復產衛生確認的三項勾選"
+    "hygieneRequired": "請完成復產衛生確認的三項勾選",
+    "needPartsHint": "要跟倉庫叫料嗎？點這裡開叫料單"
   },
   "rca": {
     "gateHeading": "需先完成根本原因分析（RCA）",

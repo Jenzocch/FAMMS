@@ -253,7 +253,8 @@
     "hygieneTools": "All tools accounted for, none left on site",
     "hygieneLubricant": "Lubricants/chemicals are food-grade or fully cleaned up",
     "hygieneCleanArea": "Area cleaned, no metal shavings/foreign debris left behind",
-    "hygieneRequired": "Please check all three hygiene confirmations before closing"
+    "hygieneRequired": "Please check all three hygiene confirmations before closing",
+    "needPartsHint": "Need to order parts? Tap here to open the request form"
   },
   "rca": {
     "gateHeading": "Root Cause Analysis (RCA) required before closing",

@@ -253,7 +253,8 @@
     "hygieneTools": "Semua alat sudah dihitung, tidak ada yang tertinggal",
     "hygieneLubricant": "Pelumas/kimia food-grade atau sudah dibersihkan",
     "hygieneCleanArea": "Area sudah dibersihkan, tanpa serpihan logam/benda asing",
-    "hygieneRequired": "Mohon centang ketiga konfirmasi higiene sebelum menutup kasus"
+    "hygieneRequired": "Mohon centang ketiga konfirmasi higiene sebelum menutup kasus",
+    "needPartsHint": "Perlu minta part ke gudang? Ketuk di sini untuk buka formulirnya"
   },
   "rca": {
     "gateHeading": "Perlu Analisis Akar Masalah (RCA) sebelum menutup",

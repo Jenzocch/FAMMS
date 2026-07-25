@@ -401,7 +401,11 @@ export default async function IncidentDetailPage({
       {!isClosed && user && PERMISSIONS.remindProgress(user.role) && (
         <RemindButton incidentId={id} />
       )}
-      {!isClosed && user && <GudangRequest incidentId={id} />}
+      {!isClosed && user && (
+        <div id="section-gudang">
+          <GudangRequest incidentId={id} />
+        </div>
+      )}
       <PartsRequestTracker requests={partsRequests ?? []} incidentClosed={isClosed} nowMs={renderedAtMs} />
     </div>
   )
