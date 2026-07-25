@@ -1077,6 +1077,7 @@
     "failed": "叫料失敗，稍後再試",
     "sent": "已送到倉庫（Gudang One），倉管會收到 Telegram 通知",
     "trackingHeading": "叫料狀態",
+    "staleHint": "已申請 {days} 天沒有更新 — 料可能已經到了但狀態沒傳回來，請直接開 Gudang App 確認",
     "status": {
       "requested": "待處理",
       "ordered": "已下單",

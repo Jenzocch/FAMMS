@@ -1077,6 +1077,7 @@
     "failed": "Permintaan gagal, coba lagi nanti",
     "sent": "Sudah dikirim ke gudang (Gudang One) — mereka akan dapat notifikasi Telegram",
     "trackingHeading": "Status Permintaan Part",
+    "staleHint": "Tidak ada update {days} hari — part mungkin sudah siap tapi statusnya tidak terkirim balik. Cek langsung di Gudang App.",
     "status": {
       "requested": "Diminta",
       "ordered": "Dipesan",

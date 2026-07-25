@@ -1077,6 +1077,7 @@
     "failed": "Request failed, please try again later",
     "sent": "Sent to warehouse (Gudang One) — they'll get a Telegram notification",
     "trackingHeading": "Parts Request Status",
+    "staleHint": "No update for {days} days — the parts may already be in but the status never came back. Open the Gudang App to check.",
     "status": {
       "requested": "Requested",
       "ordered": "Ordered",

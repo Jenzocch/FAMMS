@@ -23,6 +23,14 @@ const STATUS_STYLE: Record<TrackedRequest['status'], string> = {
   rejected: 'bg-gray-100 text-gray-500',
 }
 
+// Gudang One's status write-back is best-effort with no retry (confirmed by
+// their team): if that one webhook call fails, the update is lost forever and
+// the request sits at 'requested' indefinitely, with the technician still
+// waiting on a part that may already be on the shelf. FAMMS can't detect a
+// dropped webhook, but it CAN notice a request that has gone quiet too long
+// and tell the technician to check the warehouse app directly.
+const STALE_DAYS = 2
+
 // Read-only status list for parts/materials already sent to Gudang One via
 // GudangRequest. Gudang One writes status forward (requested -> ordered ->
 // received/rejected) via a server-to-server webhook the viewing technician
@@ -31,7 +39,18 @@ const STATUS_STYLE: Record<TrackedRequest['status'], string> = {
 // so a status change (e.g. an urgent part arriving) shows up without the
 // technician having to remember to reload the page. Stops once every
 // request is resolved. No submit form here (that lives in GudangRequest).
-export default function PartsRequestTracker({ requests, incidentClosed = false }: { requests: TrackedRequest[]; incidentClosed?: boolean }) {
+export default function PartsRequestTracker({
+  requests, incidentClosed = false, nowMs,
+}: {
+  requests: TrackedRequest[]
+  incidentClosed?: boolean
+  // Server-render timestamp, passed in rather than read via Date.now() here:
+  // this is a client component, so calling it during render would give the
+  // server and the client two different values and desync hydration. Staleness
+  // only changes on a day boundary, and the component already re-renders via
+  // router.refresh() polling, so a per-request-render timestamp is plenty.
+  nowMs: number
+}) {
   const { t } = useI18n()
   const router = useRouter()
   // Closed incidents stop polling even if a request is stuck un-resolved
@@ -67,24 +86,37 @@ export default function PartsRequestTracker({ requests, incidentClosed = false }
           </a>
         )}
       </div>
-      {requests.map(r => (
-        <div key={r.id} className="border rounded-lg p-2.5 flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-sm text-gray-800 truncate">
-              {r.items.map(it => `${it.name} ×${it.qty}${it.unit ? it.unit : ''}`).join('、')}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {format(new Date(r.requested_at), 'yyyy-MM-dd HH:mm')}
-              {r.urgency === 'urgent' && (
-                <span className="ml-1.5 text-red-600 font-medium">{t('gudang.urgent', '🔴 急件(停機)')}</span>
-              )}
-            </p>
+      {requests.map(r => {
+        const unresolved = r.status === 'requested' || r.status === 'ordered'
+        const daysWaiting = Math.floor((nowMs - new Date(r.requested_at).getTime()) / 86400000)
+        const isStale = unresolved && daysWaiting >= STALE_DAYS
+        return (
+          <div key={r.id} className="border rounded-lg p-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm text-gray-800 truncate">
+                  {r.items.map(it => `${it.name} ×${it.qty}${it.unit ? it.unit : ''}`).join('、')}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {format(new Date(r.requested_at), 'yyyy-MM-dd HH:mm')}
+                  {r.urgency === 'urgent' && (
+                    <span className="ml-1.5 text-red-600 font-medium">{t('gudang.urgent', '🔴 急件(停機)')}</span>
+                  )}
+                </p>
+              </div>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${STATUS_STYLE[r.status]}`}>
+                {t(`gudang.status.${r.status}`, r.status)}
+              </span>
+            </div>
+            {isStale && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                {t('gudang.staleHint', '已申請 {days} 天沒有更新 — 料可能已經到了但狀態沒傳回來，請直接開 Gudang App 確認')
+                  .replace('{days}', String(daysWaiting))}
+              </p>
+            )}
           </div>
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${STATUS_STYLE[r.status]}`}>
-            {t(`gudang.status.${r.status}`, r.status)}
-          </span>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
