@@ -10,17 +10,14 @@ import { NextResponse } from 'next/server'
 // env: GUDANG_WEBHOOK_URL    e.g. https://<project>.supabase.co/functions/v1/famms-request
 //      GUDANG_WEBHOOK_SECRET shared secret, same value configured on the Gudang side
 
-// FAMMS factory code → Gudang One warehouse code. A factory code NOT in this
-// map (factories created after this was written — e.g. LAB) falls back to
-// DEFAULT_WAREHOUSE instead of rejecting the request: blocking a technician's
-// parts request over a missing mapping row helps nobody, and the payload note
-// carries the real factory so warehouse staff can route it themselves.
-const FACTORY_TO_WAREHOUSE: Record<string, string> = {
-  DIN: 'DENIKIN',
-  SJA: 'SJA',
-  OLT: 'OLENTIA',
-}
-const DEFAULT_WAREHOUSE = process.env.GUDANG_DEFAULT_WAREHOUSE || 'DENIKIN'
+// Every factory's parts request goes to the SAME Gudang One warehouse — spare
+// parts aren't actually split into per-factory stock on the Gudang side, so
+// there's no "which warehouse does this factory belong to" question to
+// answer. (Previously routed DIN/SJA/OLT to three separate warehouse codes
+// and rejected any factory not in that map — wrong model: a technician's
+// request should never be blocked by a missing factory→warehouse mapping
+// row, and Gudang doesn't need the request split by factory to begin with.)
+const GUDANG_WAREHOUSE = process.env.GUDANG_WAREHOUSE || 'HARDWARE'
 
 type ItemInput = { name?: unknown; part_no?: unknown; qty?: unknown; unit?: unknown }
 
@@ -60,7 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Laporan terkait wajib diisi' }, { status: 400 })
   }
 
-  // Incident context: work-order number, machine, factory → target warehouse.
+  // Incident context: work-order number, machine, factory (for the note).
   const supabase = await createClient()
   const { data: incident, error } = await supabase
     .from('incidents')
@@ -74,14 +71,11 @@ export async function POST(req: Request) {
   // Supabase types to-one joins as arrays; at runtime .single() returns objects
   const factory = incident.factory as unknown as { code: string | null; name: string | null } | null
   const machine = incident.machine as unknown as { machine_code: string | null; machine_name: string | null } | null
-  const mappedWarehouse = FACTORY_TO_WAREHOUSE[factory?.code ?? ''] ?? null
-  const warehouse = mappedWarehouse ?? DEFAULT_WAREHOUSE
-  // Unmapped factory → the request still goes through (to the default
-  // warehouse), but the note tells warehouse staff which plant it's really
-  // for, so they can route/hand it over correctly.
-  const noteForGudang = mappedWarehouse
-    ? note
-    : [`[Pabrik: ${factory?.name || factory?.code || '?'}]`, note].filter(Boolean).join(' ')
+  // Every request lands in the one shared warehouse (see GUDANG_WAREHOUSE
+  // above) — the factory no longer determines routing, so it has to travel
+  // in the note instead, or warehouse staff would have no way to tell which
+  // plant a request is for.
+  const noteForGudang = [`[Pabrik: ${factory?.name || factory?.code || '?'}]`, note].filter(Boolean).join(' ')
 
   // Idempotency guard: a double-tap, or a retry after the network dropped
   // mid-response, must not create a second request (and a second Gudang push).
@@ -144,7 +138,7 @@ export async function POST(req: Request) {
     items,
     urgency,
     requester: user.full_name || 'FAMMS user',
-    warehouse,
+    warehouse: GUDANG_WAREHOUSE,
     note: noteForGudang,
   }
 
