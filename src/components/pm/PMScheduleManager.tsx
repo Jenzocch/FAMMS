@@ -3,112 +3,68 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Plus, Trash2, Edit2, Users, Check, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
-import type { UserRole } from '@/types'
-import { ROLE_ZH } from '@/lib/incident-display'
+import { PM_TYPE_KEYS, PM_TYPE_LABELS } from '@/lib/pm'
+import { type Account, accountName } from '@/lib/assignees'
 import { loadMyFactoryId } from '@/lib/useMyFactory'
 import { loadFactories } from '@/lib/useFactories'
+import {
+  type PMSchedule, type SchedulePayload,
+  loadActiveSchedules, createSchedule, updateSchedule, deactivateSchedule,
+  checklistToText, textToChecklist,
+} from '@/lib/pm-schedules'
+import PMScheduleFields, { EMPTY_SCHEDULE_FORM, type ScheduleFormState } from './PMScheduleFields'
+import PMScheduleList from './PMScheduleList'
 
-interface Factory { id: string; name: string }
-interface Area { id: string; factory_id: string; name: string }
-interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null; custom_role_key: string | null }
-interface Machine {
-  id: string
-  factory_id?: string
-  machine_name: string
-  machine_code: string | null
-  maintenance_cycle: number
-}
-// Raw pm_schedules row from loadSchedules()'s select below. `machines` is a
-// single embedded object (each schedule has exactly one machine) — the
-// untyped Supabase client just infers it as an array without a Database
-// type. assigned_user_ids/assigned_to are optional: the base-column retry
-// omits them when migration_pm_assignee.sql hasn't run yet.
-interface RawScheduleRow {
-  id: string
-  machine_id: string
-  pm_type: string
-  interval_days: number | null
-  description: string | null
-  checklist: string | null
-  is_active: boolean
-  assigned_user_ids?: string[]
-  assigned_to?: string | null
-  machines: { machine_name: string; machine_code: string | null } | null
-}
-interface PMSchedule {
-  id: string
-  machine_id: string
-  pm_type: string
-  interval_days: number | null
-  description: string | null
-  checklist: string | null
-  is_active: boolean
-  assigned_user_ids: string[]
-  assigned_to: string | null
-  machine_name?: string
-  machine_code?: string | null
-}
+// Owns the data for the PM schedule section of the PM page: reference lists
+// (factories → areas → machines, accounts), the schedule list, and the
+// create/edit submit. The form and the list render in PMScheduleFields /
+// PMScheduleList; the reads and writes live in lib/pm-schedules.
 
-const PM_TYPES = [
-  { value: 'daily', label: '每日', labelKey: 'pm.cadDaily' },
-  { value: 'weekly', label: '每週', labelKey: 'pm.cadWeekly' },
-  { value: 'monthly', label: '每月', labelKey: 'pm.cadMonthly' },
-  { value: 'quarterly', label: '每季', labelKey: 'pm.cadQuarterly' },
-  { value: 'half_yearly', label: '每半年', labelKey: 'pm.cadHalfYearly' },
-  { value: 'yearly', label: '每年', labelKey: 'pm.cadYearly' },
-  { value: 'custom', label: '自訂天數', labelKey: 'pm.cadCustom' },
-]
+interface Area { id: string; name: string }
+interface Machine { id: string; machine_name: string; machine_code: string | null }
 
 export default function PMScheduleManager() {
   const { t } = useI18n()
   const supabase = createClient()
 
   // Human label for a schedule's cadence, including custom "每 N 天".
-  const pmTypeLabel = (pmType: string, intervalDays?: number | null): string => {
+  const cadenceLabel = (pmType: string, intervalDays?: number | null): string => {
     if (pmType === 'custom') {
       return intervalDays
         ? t('pm.cadEveryNDays').replace('{days}', String(intervalDays))
         : t('pm.cadCustom')
     }
-    const pt = PM_TYPES.find(pt => pt.value === pmType)
-    return pt ? t(pt.labelKey, pt.label) : pmType
+    return PM_TYPE_KEYS[pmType] ? t(PM_TYPE_KEYS[pmType], PM_TYPE_LABELS[pmType]) : pmType
   }
 
-  const [factories, setFactories] = useState<Factory[]>([])
+  const [factories, setFactories] = useState<{ id: string; name: string }[]>([])
   const [areas, setAreas] = useState<Area[]>([])
   const [machines, setMachines] = useState<Machine[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [schedules, setSchedules] = useState<PMSchedule[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Factory/area sit outside the form state because they also drive the
+  // option loads below, and survive a form reset.
   const [factoryId, setFactoryId] = useState('')
   const [areaId, setAreaId] = useState('')
-  const [machineId, setMachineId] = useState('')
-  const [pmType, setPmType] = useState('monthly')
-  const [intervalDays, setIntervalDays] = useState('')
-  const [description, setDescription] = useState('')
-  // First due date — only meaningful when creating (the API generates the
-  // first pm_record off it); left blank it defaults to one interval from today.
-  const [firstDueDate, setFirstDueDate] = useState('')
-  // One checklist item per line; stored as a JSON array string on the schedule.
-  const [checklistText, setChecklistText] = useState('')
-  const [assignees, setAssignees] = useState<string[]>([])
+
+  const [form, setForm] = useState<ScheduleFormState>(EMPTY_SCHEDULE_FORM)
+  const patchForm = (patch: Partial<ScheduleFormState>) => setForm(prev => ({ ...prev, ...patch }))
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
+  async function refreshSchedules() {
+    const rows = await loadActiveSchedules(supabase)
+    setSchedules(rows)
+  }
+
   useEffect(() => {
-    Promise.all([
-      loadFactories(),
-      loadMyFactoryId(),
-    ]).then(([data, myFactoryId]) => {
+    Promise.all([loadFactories(), loadMyFactoryId()]).then(([data, myFactoryId]) => {
       setFactories(data ?? [])
       if (data && data.length > 0) {
         // Preselect the user's own factory so technicians see their machines.
@@ -117,30 +73,21 @@ export default function PMScheduleManager() {
       }
       setLoading(false)
     })
-    supabase.from('profiles').select('id, full_name, role, factory_id, custom_role_key').eq('is_active', true).order('full_name')
+    supabase.from('profiles')
+      .select('id, full_name, role, factory_id, custom_role_key')
+      .eq('is_active', true).order('full_name')
       .then(({ data }) => setAccounts((data ?? []) as Account[]))
-    loadSchedules()
-    // Mount-only load. `supabase`/`loadSchedules` are intentionally omitted:
-    // createClient() returns a new client instance every call (not
-    // memoized) and loadSchedules closes over it, so depending on either
-    // would re-run this effect on every render instead of once.
+    // Initial fetch, not a synchronous setState: refreshSchedules only sets
+    // state after awaiting the query. The rule can't see through the async
+    // boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshSchedules()
+    // Mount-only load. `supabase`/`refreshSchedules` are intentionally omitted:
+    // createClient() returns a new client instance every call (not memoized)
+    // and refreshSchedules closes over it, so depending on either would re-run
+    // this effect on every render instead of once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const accountName = (a: Account) => a.full_name || `(${ROLE_ZH[a.role] ?? a.role})`
-  const toggleAssignee = (id: string) =>
-    setAssignees(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  // Technicians in the selected schedule's factory (cross-factory accounts also
-  // qualify). Excludes accounts on a custom role (e.g. QC) even though they
-  // share the technician DB tier — see AssignForm.tsx for the same rule.
-  const factoryTechnicians = accounts.filter(
-    a => a.role === 'technician' && !a.custom_role_key && (!factoryId || !a.factory_id || a.factory_id === factoryId)
-  )
-  // Accounts selectable for this schedule's factory. Cross-factory accounts and
-  // anyone already assigned stay visible so they can still be de-selected.
-  const factoryAccounts = accounts.filter(
-    a => assignees.includes(a.id) || !factoryId || !a.factory_id || a.factory_id === factoryId
-  )
 
   useEffect(() => {
     // Intentional reset-before-refetch: clears the stale option list
@@ -148,159 +95,69 @@ export default function PMScheduleManager() {
     // areas while the new factory's areas are loading.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!factoryId) { setAreas([]); setAreaId(''); return }
-    supabase.from('areas').select('*').eq('factory_id', factoryId).order('name')
+    supabase.from('areas').select('id, name').eq('factory_id', factoryId).order('name')
       .then(({ data }) => setAreas(data ?? []))
     setAreaId('')
-    // `supabase` is intentionally omitted: createClient() returns a new
-    // client instance every call (not memoized), so adding it here would
-    // re-run this effect on every render instead of only when factoryId
-    // changes.
+    // `supabase` is intentionally omitted: createClient() returns a new client
+    // instance every call (not memoized), so adding it here would re-run this
+    // effect on every render instead of only when factoryId changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [factoryId])
 
   useEffect(() => {
     // Intentional reset-before-refetch (see areas effect above).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!areaId) { setMachines([]); setMachineId(''); return }
-    supabase.from('machines').select('id, factory_id, machine_name, machine_code, maintenance_cycle')
+    if (!areaId) { setMachines([]); patchForm({ machineId: '' }); return }
+    supabase.from('machines').select('id, machine_name, machine_code')
       .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
       .then(({ data }) => setMachines(data ?? []))
-    setMachineId('')
+    patchForm({ machineId: '' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId])
 
-  const checklistToText = (raw: string | null): string => {
-    if (!raw) return ''
-    try {
-      const v = JSON.parse(raw)
-      return Array.isArray(v) ? v.join('\n') : ''
-    } catch { return '' }
-  }
-  const textToChecklist = (text: string): string[] =>
-    text.split('\n').map(l => l.trim()).filter(Boolean)
-
-  async function loadSchedules() {
-    // assigned_user_ids / assigned_to only exist after migration_pm_assignee.sql.
-    // Retry without them if the column is missing, so the list still loads.
-    const withAssignee = `
-        id, machine_id, pm_type, interval_days, description, checklist, is_active,
-        assigned_user_ids, assigned_to,
-        machines:machines(machine_name, machine_code)
-      `
-    const baseCols = `
-        id, machine_id, pm_type, interval_days, description, checklist, is_active,
-        machines:machines(machine_name, machine_code)
-      `
-    const res = await supabase
-      .from('pm_schedules')
-      .select(withAssignee)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-    let rows: unknown = res.data
-    if (res.error) {
-      const retryRes = await supabase
-        .from('pm_schedules')
-        .select(baseCols)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-      rows = retryRes.data
-    }
-    const data = rows as unknown as RawScheduleRow[] | null
-
-    if (data) {
-      const mapped = data.map(s => ({
-        id: s.id,
-        machine_id: s.machine_id,
-        pm_type: s.pm_type,
-        interval_days: s.interval_days ?? null,
-        description: s.description,
-        checklist: s.checklist ?? null,
-        is_active: s.is_active,
-        assigned_user_ids: s.assigned_user_ids ?? [],
-        assigned_to: s.assigned_to ?? null,
-        machine_name: s.machines?.machine_name || '',
-        machine_code: s.machines?.machine_code || null,
-      }))
-      setSchedules(mapped)
-    }
+  function closeForm() {
+    setForm(EMPTY_SCHEDULE_FORM)
+    setShowForm(false)
+    setEditingId(null)
   }
 
   async function submit() {
-    if (!machineId) {
+    if (!form.machineId) {
       toast.error(t('pm.selectMachineErr'))
       return
     }
-
-    const days = parseInt(intervalDays, 10)
-    if (pmType === 'custom' && (!days || days < 1)) {
+    const days = parseInt(form.intervalDays, 10)
+    if (form.pmType === 'custom' && (!days || days < 1)) {
       toast.error(t('pm.customDaysRequired'))
       return
     }
-    const intervalValue = pmType === 'custom' ? days : null
 
-    // Display summary of assigned people (account names), kept in sync with ids.
-    const assignedTo = assignees
-      .map(id => accounts.find(a => a.id === id))
-      .filter(Boolean)
-      .map(a => accountName(a as Account))
-      .join(', ') || null
+    const payload: SchedulePayload = {
+      machineId: form.machineId,
+      pmType: form.pmType,
+      intervalDays: form.pmType === 'custom' ? days : null,
+      description: form.description,
+      checklist: textToChecklist(form.checklistText),
+      firstDueDate: form.firstDueDate,
+      assignedUserIds: form.assignees,
+      assignedTo: form.assignees
+        .map(id => accounts.find(a => a.id === id))
+        .filter((a): a is Account => !!a)
+        .map(accountName)
+        .join(', ') || null,
+    }
 
     setSubmitting(true)
     try {
       if (editingId) {
-        // Assignee columns are optional (migration_pm_assignee.sql). Try with
-        // them; if the column is missing, retry without so the edit still saves.
-        const items = textToChecklist(checklistText)
-        const base = {
-          pm_type: pmType,
-          interval_days: intervalValue,
-          description: description || null,
-          checklist: items.length ? JSON.stringify(items) : null,
-        }
-        let { error } = await supabase
-          .from('pm_schedules')
-          .update({ ...base, assigned_user_ids: assignees, assigned_to: assignedTo })
-          .eq('id', editingId)
-        if (error) {
-          ({ error } = await supabase.from('pm_schedules').update(base).eq('id', editingId))
-        }
-        if (error) throw error
+        await updateSchedule(supabase, editingId, payload)
         toast.success(t('pm.scheduleUpdated'))
       } else {
-        // Create through the API so the first pending pm_record is generated
-        // too — a schedule without records only ever shows projected calendar
-        // tasks. One code path for every creation source (the API derives
-        // factory_id from the machine, so the NOT NULL insert can't fail).
-        const res = await fetch('/api/pm/schedules', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            machine_id: machineId,
-            pm_type: pmType,
-            interval_days: intervalValue,
-            description: description || undefined,
-            checklist: textToChecklist(checklistText),
-            first_due_date: firstDueDate || undefined,
-            assigned_user_ids: assignees,
-            assigned_to: assignedTo,
-          }),
-        })
-        if (!res.ok) {
-          const j = await res.json().catch(() => null)
-          throw new Error(j?.error || t('pm.operationFailed'))
-        }
+        await createSchedule(payload, t('pm.operationFailed'))
         toast.success(t('pm.scheduleCreated'))
       }
-      setMachineId('')
-      setPmType('monthly')
-      setIntervalDays('')
-      setDescription('')
-      setFirstDueDate('')
-      setChecklistText('')
-      setAssignees([])
-      setShowForm(false)
-      setEditingId(null)
-      loadSchedules()
+      closeForm()
+      refreshSchedules()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('pm.operationFailed'))
     } finally {
@@ -311,37 +168,35 @@ export default function PMScheduleManager() {
   async function removeSchedule(id: string) {
     if (!confirm(t('pm.confirmDeactivate'))) return
     try {
-      const { error } = await supabase
-        .from('pm_schedules')
-        .update({ is_active: false })
-        .eq('id', id)
-      if (error) throw error
+      await deactivateSchedule(supabase, id)
       toast.success(t('pm.deactivated'))
-      loadSchedules()
+      refreshSchedules()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('pm.deleteFailed'))
     }
   }
 
-  if (loading) return <div className="text-center text-gray-500 text-sm py-4">{t('common.loading')}</div>
+  function startEdit(s: PMSchedule) {
+    setEditingId(s.id)
+    setForm({
+      machineId: s.machine_id,
+      pmType: s.pm_type,
+      intervalDays: s.interval_days ? String(s.interval_days) : '',
+      description: s.description || '',
+      firstDueDate: '',
+      checklistText: checklistToText(s.checklist),
+      assignees: s.assigned_user_ids ?? [],
+    })
+    setShowForm(true)
+  }
 
-  // value→label maps so Base UI <SelectValue> shows names, not raw IDs/codes
-  const factoryItems = Object.fromEntries(factories.map(f => [f.id, f.name]))
-  const areaItems = Object.fromEntries(areas.map(a => [a.id, a.name]))
-  const machineItems = Object.fromEntries(
-    machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
-  )
-  const pmTypeItems = Object.fromEntries(PM_TYPES.map(pt => [pt.value, t(pt.labelKey, pt.label)]))
+  if (loading) return <div className="text-center text-gray-500 text-sm py-4">{t('common.loading')}</div>
 
   return (
     <div className="space-y-4">
       {!showForm && (
         <Button
-          onClick={() => {
-            setEditingId(null); setMachineId(''); setPmType('monthly')
-            setIntervalDays(''); setDescription(''); setFirstDueDate(''); setChecklistText(''); setAssignees([])
-            setShowForm(true)
-          }}
+          onClick={() => { setEditingId(null); setForm(EMPTY_SCHEDULE_FORM); setShowForm(true) }}
           className="gap-2 w-full"
         >
           <Plus className="w-4 h-4" /> {t('pm.addSchedulePlan')}
@@ -349,216 +204,30 @@ export default function PMScheduleManager() {
       )}
 
       {showForm && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-medium text-blue-900">
-            {editingId ? t('pm.editSchedulePlan') : t('pm.addSchedulePlan')}
-          </p>
-
-          <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={factoryItems}>
-            <SelectTrigger><SelectValue placeholder={t('pm.selectFactoryPh')} /></SelectTrigger>
-            <SelectContent>
-              {factories.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-          {areas.length > 0 && (
-            <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={areaItems}>
-              <SelectTrigger><SelectValue placeholder={t('pm.selectAreaPh')} /></SelectTrigger>
-              <SelectContent>
-                {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
-
-          {machines.length > 0 && (
-            <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={machineItems}>
-              <SelectTrigger><SelectValue placeholder={t('pm.selectMachineStar')} /></SelectTrigger>
-              <SelectContent>
-                {machines.map(m => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          <div>
-            <Label>{t('pm.pmFrequency')}</Label>
-            <Select value={pmType} onValueChange={(v) => setPmType(v ?? 'monthly')} items={pmTypeItems}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {PM_TYPES.map(pt => <SelectItem key={pt.value} value={pt.value}>{t(pt.labelKey, pt.label)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {pmType === 'custom' && (
-            <div>
-              <Label>{t('pm.customDaysLabel')}</Label>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-sm text-gray-500">{t('pm.every')}</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={intervalDays}
-                  onChange={e => setIntervalDays(e.target.value)}
-                  placeholder={t('pm.customDaysPlaceholder')}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-                <span className="text-sm text-gray-500">{t('pm.days')}</span>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <Label>{t('pm.notesOptional')}</Label>
-            <input
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={t('pm.notesPlaceholder')}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-
-          {/* First due date — only meaningful on create; the API derives it
-              from today + interval when left blank, so editing doesn't need it. */}
-          {!editingId && (
-            <div>
-              <Label>{t('pmForm.firstDueDate', '首次預定日期')}</Label>
-              <input
-                type="date"
-                value={firstDueDate}
-                onChange={e => setFirstDueDate(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                {t('pmForm.firstDueDateHint', '留空則自動設為今天起一個週期後')}
-              </p>
-            </div>
-          )}
-
-          {/* Checklist — one item per line; ticked off when completing the task */}
-          <div>
-            <Label>{t('pm.checklistLabel', '檢查清單 Checklist（選填，一行一項）')}</Label>
-            <textarea
-              value={checklistText}
-              onChange={e => setChecklistText(e.target.value)}
-              placeholder={t('pm.checklistPlaceholder', '例如：\n檢查 bearing 潤滑\n清潔散熱片\n測量運轉溫度')}
-              rows={3}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-
-          {/* Responsible person(s) — who this maintenance is assigned to */}
-          <div>
-            <div className="flex items-center justify-between gap-2">
-              <Label>{t('pm.responsible', '負責人（可多選）')}</Label>
-              <div className="flex items-center gap-3">
-                {factoryTechnicians.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setAssignees(prev => Array.from(new Set([...prev, ...factoryTechnicians.map(a => a.id)])))}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
-                  >
-                    <Users className="w-3.5 h-3.5" /> {t('assign.allTechnicians', '指派給全部一般員工')} ({factoryTechnicians.length})
-                  </button>
-                )}
-                {assignees.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setAssignees([])}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-red-600"
-                  >
-                    <X className="w-3.5 h-3.5" /> {t('assign.clearAll', '取消全部')}
-                  </button>
-                )}
-              </div>
-            </div>
-            {factoryAccounts.length === 0 ? (
-              <p className="text-xs text-gray-400 mt-1">{t('assign.noAccounts', '尚無可指派的帳號')}</p>
-            ) : (
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {factoryAccounts.map(a => {
-                  const on = assignees.includes(a.id)
-                  return (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => toggleAssignee(a.id)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                      }`}
-                    >
-                      {on && <Check className="w-3 h-3" />}
-                      {accountName(a)}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button onClick={submit} disabled={submitting || !machineId}>
-              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingId ? t('pm.updatePlan') : t('pm.createPlan')}
-            </Button>
-            <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setAssignees([]) }}>{t('pm.cancelBtn')}</Button>
-          </div>
-        </div>
+        <PMScheduleFields
+          value={form}
+          onChange={patchForm}
+          editing={!!editingId}
+          submitting={submitting}
+          onSubmit={submit}
+          onCancel={closeForm}
+          factories={factories}
+          areas={areas}
+          machines={machines}
+          accounts={accounts}
+          factoryId={factoryId}
+          areaId={areaId}
+          onFactoryChange={setFactoryId}
+          onAreaChange={setAreaId}
+        />
       )}
 
-      <div className="space-y-2">
-        {schedules.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">{t('pm.noSchedules')}</p>
-        ) : (
-          schedules.map(s => (
-            <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
-              <div className="flex-1">
-                <p className="text-sm font-medium">
-                  {s.machine_code ? `[${s.machine_code}] ` : ''}{s.machine_name}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {pmTypeLabel(s.pm_type, s.interval_days)}
-                  {s.description && ` · ${s.description}`}
-                </p>
-                {s.assigned_to && (
-                  <p className="text-xs text-blue-600 mt-0.5 flex items-center gap-1">
-                    <Users className="w-3 h-3 shrink-0" /> {s.assigned_to}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditingId(s.id)
-                    setMachineId(s.machine_id)
-                    setPmType(s.pm_type)
-                    setIntervalDays(s.interval_days ? String(s.interval_days) : '')
-                    setDescription(s.description || '')
-                    setFirstDueDate('')
-                    setChecklistText(checklistToText(s.checklist))
-                    setAssignees(s.assigned_user_ids ?? [])
-                    setShowForm(true)
-                  }}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => removeSchedule(s.id)}
-                >
-                  <Trash2 className="w-4 h-4 text-red-600" />
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      <PMScheduleList
+        schedules={schedules}
+        cadenceLabel={cadenceLabel}
+        onEdit={startEdit}
+        onRemove={removeSchedule}
+      />
     </div>
   )
 }
