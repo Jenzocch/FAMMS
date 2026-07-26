@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, use, useState } from 'react'
 import Link from 'next/link'
 import { AlertCircle, ChevronRight, UserCheck, CalendarClock, Camera, Factory } from 'lucide-react'
 import NudgeCardButton from '@/components/incidents/NudgeCardButton'
@@ -54,10 +54,12 @@ interface IncidentBoardProps {
   // Overdue active PM schedules, scoped the same way the board rows are —
   // drives the "🗓️ 保養：N 件逾期" banner below. Not derived from `rows`
   // (PM schedules aren't incidents) — computed server-side and passed in.
-  pmOverdueCount?: number
+  // Streamed in after the board paints — see lib/pm-overdue.ts for why this
+  // one number is too expensive to block on.
+  pmOverdueCount?: Promise<number>
 }
 
-export default function IncidentBoard({ rows, userRole = 'technician', initialFilter, initialFactory, pmOverdueCount = 0 }: IncidentBoardProps) {
+export default function IncidentBoard({ rows, userRole = 'technician', initialFilter, initialFactory, pmOverdueCount }: IncidentBoardProps) {
   const { t, locale } = useI18n()
   const dateLocale = locale === 'en' ? enUS : locale === 'id' ? idLocale : zhTW
   const typeLabel = useIncidentTypeLabel()
@@ -142,13 +144,10 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
 
       {/* PM-overdue banner — only when there's something to act on; links to
           the PM page rather than duplicating its list here. */}
-      {pmOverdueCount > 0 && (
-        <Link
-          href="/pm"
-          className="block px-3.5 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium"
-        >
-          {t('board.pmOverdueBanner', '🗓️ 保養：{count} 件逾期 →').replace('{count}', String(pmOverdueCount))}
-        </Link>
+      {pmOverdueCount && (
+        <Suspense fallback={null}>
+          <PmOverdueBanner promise={pmOverdueCount} t={t} />
+        </Suspense>
       )}
 
       {/* Filter tabs */}
@@ -386,5 +385,23 @@ export default function IncidentBoard({ rows, userRole = 'technician', initialFi
         </div>
       )}
     </div>
+  )
+}
+
+// Renders nothing until the count arrives, and nothing at all when it's zero —
+// which is the common case, so the board usually never shifts.
+function PmOverdueBanner({ promise, t }: {
+  promise: Promise<number>
+  t: (key: string, fallback?: string) => string
+}) {
+  const count = use(promise)
+  if (count === 0) return null
+  return (
+    <Link
+      href="/pm"
+      className="block px-3.5 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium"
+    >
+      {t('board.pmOverdueBanner', '🗓️ 保養：{count} 件逾期 →').replace('{count}', String(count))}
+    </Link>
   )
 }

@@ -16,12 +16,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const userId = claims.sub
 
   const supabase = await createClient()
-  // Fetch profile, my-open-case count, and the resolved custom-role overlay
-  // (capabilities + display label) in parallel. getCurrentUser() is
-  // React-cache()'d per request, so this is free if a page below also calls
-  // it (dashboard/incidents pages already do).
-  const [{ data: profile }, { count: myOpenCount }, currentUser] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', userId).single(),
+  // My-open-case count + the profile/custom-role overlay in parallel.
+  // getCurrentUser() already reads the profile row (name, role, is_active) and
+  // is React-cache()'d per request, so the shell reuses whatever a page below
+  // also asks for instead of issuing its own `profiles` select — that
+  // duplicate query cost one extra Supabase round-trip on EVERY page load.
+  const [{ count: myOpenCount }, currentUser] = await Promise.all([
     supabase
       .from('incidents')
       .select('id', { count: 'exact', head: true })
@@ -31,12 +31,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ])
 
   // Admin-disabled accounts are blocked from the app entirely
-  if (profile && profile.is_active === false) {
+  if (currentUser && currentUser.is_active === false) {
     return <AccountDisabled />
   }
 
   const capabilities = currentUser?.capabilities ?? null
   const customRole = currentUser?.customRole ?? null
+  // Only the name + role reach the shell; see ShellUser in Sidebar.tsx.
+  const profile = currentUser
+    ? { full_name: currentUser.full_name, role: currentUser.role }
+    : null
 
   return (
     <div className="min-h-screen bg-gray-50 lg:flex">

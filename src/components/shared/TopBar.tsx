@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { signOutAndClearCaches } from '@/lib/sign-out'
-import { Profile } from '@/types'
+import type { ShellUser } from '@/components/shared/Sidebar'
 import { ROLE_ZH } from '@/lib/incident-display'
 import type { CustomRole } from '@/lib/roles'
 import { customRoleLabel } from '@/lib/roles'
@@ -15,7 +15,7 @@ import LanguageSwitcher from '@/components/shared/LanguageSwitcher'
 import { useI18n } from '@/lib/i18n'
 
 interface TopBarProps {
-  profile: Profile | null
+  profile: ShellUser | null
   customRole?: CustomRole | null
 }
 

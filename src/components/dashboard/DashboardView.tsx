@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense, use } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Clock, Factory, ChevronRight, CheckCircle2, Wrench, Inbox, BarChart3 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -10,6 +11,7 @@ import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import NextStepHint from '@/components/incidents/NextStepHint'
 import { PM_TYPE_KEYS } from '@/lib/pm'
+import type { OverdueMachine } from '@/lib/pm-overdue'
 
 // Same left-edge urgency bar treatment as the board (IncidentBoard.tsx) — kept
 // in sync there so a card reads the same "how urgent" signal everywhere in
@@ -33,13 +35,8 @@ export interface DashboardRow {
   factory: { name: string } | null
 }
 
-export interface OverdueRow {
-  machine_id: string
-  machine_name: string
-  machine_code: string | null
-  pm_type: string
-  days_overdue: number
-}
+export type OverdueRow = OverdueMachine
+export interface OverduePM { count: number; top: OverdueRow[] }
 
 interface DashboardViewProps {
   openCount: number
@@ -51,7 +48,11 @@ interface DashboardViewProps {
   byFactory: [string, number, (string | null)?][]
   urgent: DashboardRow[]
   stale: DashboardRow[]
-  overdue: OverdueRow[]
+  // A Promise, not a value: the overdue-PM read is the slow part of the page
+  // (see lib/pm-overdue.ts) and streams in after first paint. Both places that
+  // show it read it through use() inside Suspense. `count` is the full total;
+  // `top` is the trimmed list actually rendered.
+  overdue: Promise<OverduePM>
   userRole: UserRole
 }
 
@@ -87,7 +88,9 @@ export default function DashboardView({
           <SummaryCard label={t('dash.open')} value={openCount} color="text-blue-600" href="/incidents" />
           <SummaryCard label={t('dash.urgent')} value={urgentCount} color="text-red-600" href="#dash-urgent" />
           <SummaryCard label={t('dash.stale')} value={staleCount} color="text-amber-600" href="#dash-stale" />
-          <SummaryCard label={t('dash.overdueMachines')} value={overdue.length} color="text-red-600" href="/pm" />
+          <Suspense fallback={<SummaryCard label={t('dash.overdueMachines')} value={null} color="text-red-600" href="/pm" />}>
+            <OverdueCount promise={overdue} label={t('dash.overdueMachines')} />
+          </Suspense>
         </div>
 
         <div className="order-1 lg:order-2">
@@ -175,28 +178,9 @@ export default function DashboardView({
 
           {/* Overdue maintenance */}
           <Section icon={<Wrench className="w-4 h-4 text-red-500" />} title={t('dash.overdueMachines')}>
-            {overdue.length === 0 ? (
-              <Empty text={t('dash.noOverdue')} />
-            ) : (
-              // Grouped card, hairline rows. The red bold day-count is enough
-              // urgency signal here — the per-row red tint it used to sit in
-              // was redundant once the rows share one card.
-              <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
-                {overdue.map(m => (
-                  <div key={m.machine_id} className="flex items-center justify-between px-3 py-2.5">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
-                      </p>
-                      <p className="text-[13px] text-gray-500 mt-0.5">
-                        {t('pm.maintenanceFreq')}: {pmTypeLabel(m.pm_type)}
-                      </p>
-                    </div>
-                    <p className="text-sm font-bold text-red-600">{t('pm.overdueDays').replace('{count}', String(m.days_overdue))}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            <Suspense fallback={<OverdueSkeleton />}>
+              <OverdueList promise={overdue} t={t} pmTypeLabel={pmTypeLabel} />
+            </Suspense>
           </Section>
         </div>
       </div>
@@ -221,10 +205,63 @@ function InboxCard({ href, label, count, activeClass }: {
   )
 }
 
-function SummaryCard({ label, value, color, href }: { label: string; value: number; color: string; href?: string }) {
+// The two halves of the streamed overdue-PM widget. Both read the SAME
+// promise — React dedupes that, so this costs one server read, not two.
+function OverdueCount({ promise, label }: { promise: Promise<OverduePM>; label: string }) {
+  return <SummaryCard label={label} value={use(promise).count} color="text-red-600" href="/pm" />
+}
+
+function OverdueList({ promise, t, pmTypeLabel }: {
+  promise: Promise<OverduePM>
+  t: (key: string, fallback?: string) => string
+  pmTypeLabel: (pmType: string) => string
+}) {
+  const overdue = use(promise).top
+  if (overdue.length === 0) return <Empty text={t('dash.noOverdue')} />
+  // Grouped card, hairline rows. The red bold day-count is enough urgency
+  // signal here — the per-row red tint it used to sit in was redundant once
+  // the rows share one card.
+  return (
+    <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
+      {overdue.map(m => (
+        <div key={m.machine_id} className="flex items-center justify-between px-3 py-2.5">
+          <div>
+            <p className="text-sm font-medium text-gray-700">
+              {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+            </p>
+            <p className="text-[13px] text-gray-500 mt-0.5">
+              {t('pm.maintenanceFreq')}: {pmTypeLabel(m.pm_type)}
+            </p>
+          </div>
+          <p className="text-sm font-bold text-red-600">{t('pm.overdueDays').replace('{count}', String(m.days_overdue))}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Two grey rows the same height as real ones, so the section doesn't collapse
+// and shove the page around when the data lands.
+function OverdueSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100" aria-hidden>
+      {[0, 1].map(i => (
+        <div key={i} className="px-3 py-2.5 animate-pulse">
+          <div className="h-4 w-2/5 rounded bg-gray-100" />
+          <div className="h-3 w-1/4 rounded bg-gray-100 mt-2" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// value === null while the number is still loading (see OverdueCount).
+function SummaryCard({ label, value, color, href }: { label: string; value: number | null; color: string; href?: string }) {
   const body = (
     <>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+      <p className={`text-2xl font-bold ${color}`}>
+        {value === null ? <span className="inline-block h-6 w-6 align-middle rounded bg-gray-100 animate-pulse" /> : value}
+      </p>
       <p className="text-[13px] text-gray-500 mt-0.5">{label}</p>
     </>
   )
