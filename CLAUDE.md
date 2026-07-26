@@ -7,11 +7,13 @@
 
 ```bash
 npm install
-npm run dev              # http://localhost:3000
-npx tsc --noEmit        # Type check (should exit 0)
+npm run dev                       # http://localhost:3000
+npx tsc --noEmit                  # type check (must exit 0)
+npx eslint . --ext .ts,.tsx       # lint (must be clean)
+npm run build                     # production build
 ```
 
-**Project Location**: `/home/user/project`
+**Project location**: `/home/user/famms_system`
 
 ---
 
@@ -24,10 +26,13 @@ npx tsc --noEmit        # Type check (should exit 0)
 | Database | Supabase (PostgreSQL + Auth + RLS) |
 | Storage | Supabase Storage (photos, attachments) |
 | AI | Qwen (Alibaba Cloud DashScope, free tier) — knowledge base auto-summary at close |
-| Charts | Recharts (KPI dashboard) |
 | Notifications | Telegram Bot API |
+| Exports | `src/lib/csv-export.ts` — hand-rolled RFC 4180 + formula-injection defusing. There is deliberately no `xlsx` dependency (it was removed over a vulnerability) |
+| Charts | none — the dashboard and monthly report are cards, lists and tables. No charting library is installed; `BarChart3` in the code is a Lucide icon |
 | Date Utils | date-fns |
-| UI Components | Radix UI (via base-ui) + Lucide icons |
+| Animation | `motion` (BottomNav only), presets in `src/lib/motion.ts` |
+| UI Components | Base UI (`@base-ui/react`) + Lucide icons |
+| Offline | service worker (`public/sw.js`) + IndexedDB report queue |
 
 ### ⚠️ CRITICAL: Base UI, NOT Radix UI
 
@@ -295,74 +300,129 @@ All are dropdown selections — no manual input.
 
 ## File Map
 
+Generated from the tree, not aspirational — if this drifts from `find src`,
+the tree wins. `components/ui/` (shadcn/Base UI primitives) is omitted.
+
 ```
 src/
+├── proxy.ts                          auth guard + session refresh on every
+│                                     request (Next 16's renamed middleware)
 ├── app/
-│   ├── layout.tsx                    root layout (Sonner toaster, Inter font)
+│   ├── layout.tsx                    root layout (I18nProvider, Toaster, SW register)
 │   ├── page.tsx                      redirect → /dashboard
+│   ├── manifest.ts                   PWA manifest
 │   ├── login/page.tsx                auth (signup + login)
-│   ├── api/
-│   │   ├── incidents/route.ts        CRUD incidents
-│   │   ├── incidents/[id]/actions/route.ts  create incident_action
-│   │   ├── incidents/[id]/close/route.ts    close incident + RCA check
-│   │   ├── machines/route.ts         CRUD machines
-│   │   ├── machines/[id]/qr/route.ts generate QR code
-│   │   ├── pm/route.ts               CRUD PM schedules & records
-│   │   ├── notifications/telegram/route.ts  webhook for Telegram
-│   │   └── health-score/route.ts     recalculate equipment health
-│   └── (dashboard)/
-│       ├── layout.tsx                navbar, auth guard
-│       ├── dashboard/page.tsx        KPI overview, top failures, health scores
-│       ├── incidents/page.tsx        incidents list (filter by status, machine, date range)
-│       ├── incidents/[id]/page.tsx   incident detail + actions + comments + RCA
-│       ├── machines/page.tsx         machine master list + QR generation
-│       ├── machines/[id]/page.tsx    machine detail + history + health trend
-│       ├── pm/page.tsx               PM schedules + execution records
-│       ├── knowledge-base/page.tsx   searchable KB + full-text search
-│       ├── settings/page.tsx         factory, areas, failure codes, users
-│       └── profile/page.tsx          user profile (name, role, factory)
+│   ├── offline/page.tsx              service-worker offline fallback (no auth)
+│   ├── (dashboard)/
+│   │   ├── layout.tsx                app shell: Sidebar/TopBar/BottomNav, auth guard
+│   │   ├── loading.tsx               (also under incidents/, incidents/[id]/,
+│   │   │                             machines/[id]/, pm/, reports/)
+│   │   ├── dashboard/page.tsx        KPI tiles, action inbox, urgent/stale, overdue PM
+│   │   ├── incidents/page.tsx        board + search (open/closed capped separately)
+│   │   ├── incidents/new/page.tsx    report form
+│   │   ├── incidents/[id]/page.tsx   case detail
+│   │   ├── incidents/[id]/print/     printable work order
+│   │   ├── machines/                 list, new, [id], [id]/edit, [id]/qr
+│   │   ├── pm/page.tsx               PM calendar + due list + schedules
+│   │   ├── pm/schedules/new/
+│   │   ├── knowledge-base/           list, new, [id]
+│   │   ├── reports/page.tsx          monthly report (print + CSV)
+│   │   ├── settings/page.tsx         master-detail settings shell
+│   │   └── profile/page.tsx          own profile
+│   └── api/
+│       ├── incidents/notify          new-incident Telegram fan-out
+│       ├── incidents/[id]/close      close + RCA gate + KB capture
+│       ├── incidents/[id]/photos     delete a report photo (supervisor+)
+│       ├── incidents/[id]/relations  confirm a repeat-failure link
+│       ├── incidents/[id]/remind     nudge the assignee
+│       ├── incidents/[id]/notify-assign
+│       ├── pm/schedules              create schedule + first pm_record
+│       ├── pm/records, pm/records/[id], pm/calendar
+│       ├── rca                       file an RCA
+│       ├── knowledge-base            KB write
+│       ├── health-score              recalculate equipment health
+│       ├── admin/users, admin/users/[id]
+│       ├── gudang/request            push a parts request to Gudang One
+│       ├── external/machine-status   QC/FQMS pull (Bearer QC_API_SECRET)
+│       ├── external/parts-requests   Gudang One write-back (Bearer GUDANG_SYNC_SECRET)
+│       ├── cron/sla-check            SLA escalation (Bearer CRON_SECRET)
+│       ├── notifications/daily-summary, notifications/test
+│       └── notifications/telegram/   bot webhook — route.ts dispatches only:
+│           ├── route.ts              secret check + routing
+│           └── _lib/                 (private folder, never a route)
+│               ├── shared.ts         AdminClient, resolveProfile, callback types
+│               ├── incident-actions.ts  status buttons, note prompt, /tugas
+│               ├── new-report.ts     the /lapor flow
+│               └── repeat-failure.ts supervisor Ya/Bukan confirm
 ├── components/
-│   ├── shared/
-│   │   ├── Navbar.tsx                header with user avatar, logout
-│   │   ├── StatusBadge.tsx           colored badge for incident status
-│   │   ├── HealthScoreBadge.tsx      0-100 score visual (green/yellow/red/dark)
-│   │   ├── ImageGallery.tsx          before/during/after photos (react-photo-view)
-│   │   └── Breadcrumbs.tsx           navigation
+│   ├── shared/                       Sidebar, TopBar, BottomNav, PhotoPicker,
+│   │                                 AssigneeChip, StatusBadge, HealthScoreBadge,
+│   │                                 ImageViewer, PhotoUpload, SpeechMicButton,
+│   │                                 LanguageSwitcher, OfflineBanner,
+│   │                                 OfflineQueueFlusher, ServiceWorkerRegister,
+│   │                                 AccountDisabled
 │   ├── incidents/
-│   │   ├── IncidentForm.tsx          new incident (machine, failure code, downtime impact)
-│   │   ├── ActionForm.tsx            add action to incident
-│   │   ├── ActionList.tsx            timeline of all actions
-│   │   ├── CommentThread.tsx         incident comments (real-time via Supabase)
-│   │   ├── BlockingForm.tsx          block action (reason + required action)
-│   │   ├── RCAForm.tsx               RCA mandatory fields
-│   │   └── RepeatFailureConfirm.tsx  confirm if repeat or new
-│   ├── machines/
-│   │   ├── MachineForm.tsx           create/edit machine
-│   │   ├── QRDisplay.tsx             show + download QR code
-│   │   └── MachineHistory.tsx        incident timeline
-│   ├── pm/
-│   │   ├── PMScheduleForm.tsx        create/edit PM schedule
-│   │   ├── PMRecordForm.tsx          complete PM (findings, parts, cost)
-│   │   └── PMCalendar.tsx            month view of PM tasks
-│   ├── dashboard/
-│   │   ├── KPICards.tsx              response time, repair time, downtime, etc.
-│   │   ├── FailureChart.tsx          bar/pie chart of failure distribution
-│   │   ├── TopFailureMachines.tsx    ranked list
-│   │   ├── HealthScoreGrid.tsx       all machines with health color coding
-│   │   └── FactoryComparison.tsx     SJA vs DIN vs Olentia
-│   └── ui/                           shadcn components (button, input, card, dialog, etc.)
+│   │   ├── IncidentForm.tsx          report form (offline-queueing)
+│   │   ├── IncidentBoard.tsx         + IncidentsBoardWithSearch, IncidentSearch
+│   │   ├── IncidentDetailChrome.tsx  detail page layout
+│   │   ├── ProgressUpdate.tsx        status + note + photos
+│   │   ├── CloseFields.tsx           close-only: fix type, hygiene, costs, KB
+│   │   ├── ProgressTimeline.tsx      + WorkflowProgress, NextStepHint, StatusChip
+│   │   ├── IncidentActions.tsx       edit/delete bar
+│   │   ├── edit/IncidentEditForm.tsx the edit form + edit/ExistingPhotos.tsx
+│   │   ├── AssignForm.tsx            assignees + vendors + due date
+│   │   ├── RCAForm.tsx, RepeatFailureConfirm.tsx, AuditTrail.tsx
+│   │   ├── GudangRequest.tsx         + PartsRequestTracker.tsx
+│   │   ├── RemindButton.tsx, NudgeCardButton.tsx, PrintReport.tsx
+│   │   └── report/                   ReportLocationFields, PastRecordsPanel
+│   ├── pm/                           PMPage, PMDueList, PMFullCalendar,
+│   │                                 PMScheduleManager (+ PMScheduleFields,
+│   │                                 PMScheduleList), calendar/*
+│   ├── machines/                     MachinesList, MachineForm, QRDisplay,
+│   │                                 MachinePmStatus, MachineStatsStrip
+│   ├── knowledge-base/               KBForm, KBSearch
+│   ├── dashboard/DashboardView.tsx
+│   ├── reports/MonthlyReport.tsx
+│   └── settings/                     SettingsShell + Factory/Asset/User/Role/
+│                                     Vendor/IncidentType managers, TelegramSettings
 ├── lib/
-│   ├── utils.ts                      cn() helper
-│   ├── constants.ts                  SLA times, colors, labels
-│   ├── supabase/
-│   │   ├── client.ts                 browser client
-│   │   └── server.ts                 server client
-│   └── api-helpers.ts                common API logic (auth checks, etc.)
-├── types/
-│   ├── index.ts                      FAMMS types (see below)
-│   └── supabase.ts                   auto-generated Supabase types (optional)
-└── middleware.ts                     auth guard (unauthenticated → /login)
+│   ├── auth.ts                       getAuthClaims / getCurrentUser (React-cache'd)
+│   ├── permissions.ts, roles.ts      role gates + custom-role overlay
+│   ├── assignees.ts                  who can be assigned (shared rule)
+│   ├── incident-display.ts           labels, colours, board filters, SLA deadline
+│   ├── incident-workflow.ts          which status moves are legal (shared with
+│   │                                 the Telegram buttons)
+│   ├── incident-next-step.ts, incident-type-label.ts
+│   ├── incidents/submitIncidentReport.ts  one submit path (app + offline flush)
+│   ├── repeat-failure.ts, rca.ts     detection + RCA gate
+│   ├── pm.ts                         cadence labels, date math, checklist rules
+│   ├── pm-schedules.ts               schedule reads/writes (assignee-column fallback)
+│   ├── pm-overdue.ts                 the expensive overdue-PM read (streamed)
+│   ├── health-score.ts, audit.ts, csv-export.ts, qwen.ts
+│   ├── telegram.ts                   send/edit/buttons/notify helpers
+│   ├── offline-queue.ts              IndexedDB queue + offline-cache.ts
+│   ├── i18n/                         provider + locales/{zh,en,id}.json
+│   ├── hooks/                        usePhotoCapture, useReportLocation,
+│   │                                 useSpeechToText, usePastRecords, …
+│   ├── supabase/                     client.ts, server.ts, admin.ts
+│   └── useFactories / useMyFactory / useVendors / useIncidentTypes (module-cached)
+└── types/
+    ├── famms.ts                      domain types + user-facing label maps
+    └── index.ts                      re-exports
 ```
+
+---
+
+## Other Docs
+
+| File | What it's for |
+|---|---|
+| `FAMMS_FAULT_TREE.md` | the 100+ failure codes (seeded, but not wired into any report path — see the Repeat Failure section) |
+| `docs/LESSONS.md` | development lessons learned — read before repeating a past mistake |
+| `docs/E2E_CHECKLIST.md` | manual smoke-test paths |
+| `docs/GUDANG_INTEGRATION.md` | how parts requests reach Gudang One |
+| `docs/GUDANG_ONE_CONFIRM.md` | the agreed contract with the Gudang One side, incl. their answers |
+| `supabase/README.md` | which SQL to run and in what order (the RLS chain is mandatory) |
 
 ---
 
@@ -430,15 +490,25 @@ Before first run:
 
 ## Project Status
 
-- **TypeScript**: 0 errors (`npx tsc --noEmit` exits 0); production build passes
-- **Data Model**: ✅ Complete (14 tables)
-- **Fault Tree**: ✅ Standardized (100+ codes, 5 main categories) — `seed_fault_tree.sql`
-- **Incident Logic**: ✅ Repeat failure detection (API), RCA trigger (planned)
-- **Built (Phase 2)**: ✅ Incident list / report form (cascading fault tree) / detail + action timeline; `POST /api/incidents` (auto incident_no + repeat detection); `POST /api/incidents/[id]/actions`; Machines list; Indonesian UI throughout
+- **TypeScript**: 0 errors (`npx tsc --noEmit` exits 0); `npx eslint . --ext .ts,.tsx`
+  clean; production build passes
+- **i18n**: zh / en / id at equal key parity — check with a leaf count before
+  committing a locale change
+- **Data model**: complete; see `supabase/` and the Setup Checklist above.
+  `SYNC_SCHEMA_LATEST.sql` is the source of truth for "the DB has everything
+  the app expects"
+- **Fault tree**: seeded (100+ codes, 5 main categories) — but NOT wired into
+  any report path. Repeat-failure detection and the RCA trigger key off the
+  coarse `incident_type` instead; see the notes on those two sections above
+- **Built**: incident board + report form (offline-capable) + detail with
+  action timeline, assignment, RCA form, repeat-failure confirm; PM schedules
+  + calendar + completion with checklist; knowledge base; monthly report
+  (print + CSV); machine CRUD + QR; equipment health score; Telegram bot
+  (notifications, status buttons, `/lapor`, `/tugas`); Gudang One parts
+  requests; custom roles; audit trail
 - **Demo data**: `seed_demo.sql` (areas + 6 sample machines incl. DIN-HMG-001)
-- **Not Yet Built**: PM module, Knowledge Base, KPI charts, RCA forms, photo upload, Telegram, health score, QR codes, machine CRUD
-
----
+- **Deferred**: `QWEN_API_KEY` is unset — the KB auto-summary code ships but
+  falls back to the technician's raw close note (see `src/lib/qwen.ts`)
 
 ## Success Criteria (V1.0)
 
