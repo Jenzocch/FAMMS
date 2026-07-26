@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { loadMyFactoryId } from '@/lib/useMyFactory'
 import { loadFactories } from '@/lib/useFactories'
+import { cacheList, cacheKeys } from '@/lib/offline-cache'
 
 export interface ReportFactory { id: string; name: string; code: string }
 export interface ReportArea { id: string; factory_id: string; name: string; photo_url: string | null }
@@ -33,9 +34,13 @@ export function useReportLocation(presetMachineId?: string) {
     // Preselect the reporter's own factory so the form is one step shorter for
     // technicians. Skipped when a QR preset is present — otherwise the two
     // async setters can race and swallow the preset's area/machine restore.
-    Promise.all([loadFactories(), loadMyFactoryId()]).then(([data, myFactoryId]) => {
-      setFactories((data ?? []) as ReportFactory[])
-      if (!presetMachineId && myFactoryId && (data ?? []).some(f => f.id === myFactoryId)) {
+    Promise.all([loadFactories(), loadMyFactoryId()]).then(([fresh, myFactoryId]) => {
+      // Falls back to the last-known-good list when offline (see offline-cache)
+      // so the form is still fillable with no signal — the whole point of the
+      // offline queue is lost if the factory dropdown is empty.
+      const data = cacheList<ReportFactory>(cacheKeys.factories, fresh as ReportFactory[] | null)
+      setFactories(data)
+      if (!presetMachineId && myFactoryId && data.some(f => f.id === myFactoryId)) {
         setFactoryId(prev => prev || myFactoryId)
       }
     })
@@ -100,11 +105,12 @@ export function useReportLocation(presetMachineId?: string) {
     if (!factoryId) { setAreas([]); setAreaId(''); return }
     supabase.from('areas').select('*').eq('factory_id', factoryId).order('name')
       .then(({ data }) => {
-        setAreas(data ?? [])
+        const list = cacheList<ReportArea>(cacheKeys.areas(factoryId), data as ReportArea[] | null)
+        setAreas(list)
         // Apply the remembered area once, only while its options actually exist.
         const pending = restoredAreaRef.current
         restoredAreaRef.current = null
-        if (pending && (data ?? []).some(a => a.id === pending)) setAreaId(pending)
+        if (pending && list.some(a => a.id === pending)) setAreaId(pending)
       })
     setAreaId('')
     setAssetId('')
@@ -122,11 +128,12 @@ export function useReportLocation(presetMachineId?: string) {
     supabase.from('machines').select('id, area_id, machine_name, machine_code')
       .eq('area_id', areaId).neq('status', 'scrapped').order('machine_name')
       .then(({ data }) => {
-        setAssets(data ?? [])
+        const list = cacheList<ReportAsset>(cacheKeys.machines(areaId), data as ReportAsset[] | null)
+        setAssets(list)
         // Apply the QR-preset machine once, only while it actually exists here.
         const pending = restoredAssetRef.current
         restoredAssetRef.current = null
-        if (pending && (data ?? []).some(m => m.id === pending)) setAssetId(pending)
+        if (pending && list.some(m => m.id === pending)) setAssetId(pending)
       })
     setAssetId('')
     // eslint-disable-next-line react-hooks/exhaustive-deps

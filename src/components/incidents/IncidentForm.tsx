@@ -21,6 +21,7 @@ import { useReporterAccounts } from '@/lib/hooks/useReporterAccounts'
 import { usePhotoCapture } from '@/lib/hooks/usePhotoCapture'
 import { usePastRecords } from '@/lib/hooks/usePastRecords'
 import { submitIncidentReport } from '@/lib/incidents/submitIncidentReport'
+import { enqueueReport, isNetworkError } from '@/lib/offline-queue'
 import ReportLocationFields from './report/ReportLocationFields'
 import ReportPhotoPicker from './report/ReportPhotoPicker'
 import PastRecordsPanel from './report/PastRecordsPanel'
@@ -109,7 +110,45 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
     const computedDueDate = dueDate || deadlineFromUrgency(impactCode)
 
     setSubmitting(true)
+    // Save the report on this device instead of losing it. Called both when
+    // the device is already offline (don't even try) and when a submit dies
+    // mid-flight on a network error — the plant has dead-signal corners, and
+    // a technician standing at the broken machine must be able to finish and
+    // walk away. The queued copy keeps this form's clientRequestId, so the
+    // later auto-send can't create a duplicate (see offline-queue.ts).
+    async function queueOffline(userId: string | null): Promise<boolean> {
+      try {
+        await enqueueReport({
+          clientRequestId,
+          queuedAt: Date.now(),
+          factoryId: location.factoryId,
+          incidentType,
+          machineId: location.assetId || null,
+          title,
+          description,
+          reporterName: reporter.reporterName,
+          impactCode,
+          dueDate: computedDueDate,
+          locationNote,
+          userId,
+          photos: photoCapture.photos.map(f => ({ name: f.name, type: f.type, blob: f })),
+        })
+        location.rememberLocation()
+        toast.success(t('report.savedOffline', '已存在這台裝置 — 有訊號時會自動送出'), { duration: 6000 })
+        router.push('/incidents')
+        return true
+      } catch {
+        return false // IndexedDB unavailable (private mode) — fall through
+      }
+    }
+
     try {
+      // Already offline: skip the doomed round trip entirely.
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const { data: { user: offlineUser } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+        if (await queueOffline(offlineUser?.id ?? null)) return
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       const { incident_no, id, photoUploadFailed, potentialRepeatOf } = await submitIncidentReport(supabase, {
         factoryId: location.factoryId,
@@ -135,6 +174,10 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       // Navigation is never blocked on this either way.
       router.push(potentialRepeatOf ? `/incidents/${id}?repeatOf=${potentialRepeatOf.id}` : `/incidents/${id}`)
     } catch (err) {
+      // Signal dropped mid-submit — queue rather than making them retype.
+      // Only for network-shaped failures: a server REJECTION (validation, RLS)
+      // would just fail again on every flush, so those still surface as errors.
+      if (isNetworkError(err) && await queueOffline(null)) return
       // Supabase errors (PostgrestError / StorageError) are plain objects with
       // a `message`, NOT Error instances — extract it so the real cause shows.
       const msg =

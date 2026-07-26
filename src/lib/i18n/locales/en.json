@@ -97,7 +97,11 @@
     "sectionLocation": "Where",
     "sectionIssue": "What's Wrong",
     "sectionUrgency": "How Urgent",
-    "photoLimitDropped": "Up to {max} photos — {n} extra were skipped"
+    "photoLimitDropped": "Up to {max} photos — {n} extra were skipped",
+    "savedOffline": "Saved on this device — it will send automatically once you have signal",
+    "offlinePending": "{count} waiting to send",
+    "offlineSent": "Sent {count} offline report(s) automatically",
+    "offlineSendFailed": "An offline report failed to send and was removed from the queue — please file it again: "
   },
   "common": {
     "save": "Save",

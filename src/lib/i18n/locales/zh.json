@@ -97,7 +97,11 @@
     "sectionLocation": "在哪裡",
     "sectionIssue": "什麼問題",
     "sectionUrgency": "有多急",
-    "photoLimitDropped": "最多 {max} 張，已略過多出的 {n} 張"
+    "photoLimitDropped": "最多 {max} 張，已略過多出的 {n} 張",
+    "savedOffline": "已存在這台裝置 — 有訊號時會自動送出",
+    "offlinePending": "{count} 筆待送出",
+    "offlineSent": "已自動送出 {count} 筆離線回報",
+    "offlineSendFailed": "一筆離線回報送出失敗，已從佇列移除，請重新回報："
   },
   "common": {
     "save": "保存",

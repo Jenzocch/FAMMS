@@ -97,7 +97,11 @@
     "sectionLocation": "Di Mana",
     "sectionIssue": "Apa Masalahnya",
     "sectionUrgency": "Seberapa Mendesak",
-    "photoLimitDropped": "Maksimal {max} foto — {n} foto lebihnya dilewati"
+    "photoLimitDropped": "Maksimal {max} foto — {n} foto lebihnya dilewati",
+    "savedOffline": "Tersimpan di perangkat ini — akan terkirim otomatis saat ada sinyal",
+    "offlinePending": "{count} menunggu dikirim",
+    "offlineSent": "{count} laporan offline terkirim otomatis",
+    "offlineSendFailed": "Satu laporan offline gagal dikirim dan dihapus dari antrian — mohon laporkan ulang: "
   },
   "common": {
     "save": "Simpan",
