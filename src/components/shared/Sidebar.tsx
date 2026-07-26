@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOutAndClearCaches } from '@/lib/sign-out'
 import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Profile, UserRole } from '@/types'
+import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
 import { ROLE_ZH } from '@/lib/incident-display'
 import type { CustomRole, EffectiveCapabilities } from '@/lib/roles'
@@ -35,8 +35,17 @@ const NAV: NavItem[] = [
   { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r, c) => PERMISSIONS.viewSettings(r) || !!c?.manageUsers },
 ]
 
+// Everything the app shell actually renders from the profile. Deliberately
+// narrower than the full `Profile` row: the dashboard layout builds this from
+// the already-cached getCurrentUser() instead of running a second
+// `profiles.select('*')` just to feed the header.
+export interface ShellUser {
+  full_name: string | null
+  role: UserRole
+}
+
 interface SidebarProps {
-  profile: Profile | null
+  profile: ShellUser | null
   incidentBadge?: number
   capabilities?: EffectiveCapabilities | null
   customRole?: CustomRole | null

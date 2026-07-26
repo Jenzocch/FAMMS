@@ -12,7 +12,7 @@ interface IncidentsBoardWithSearchProps {
   userRole?: UserRole
   initialFilter?: string
   initialFactory?: string
-  pmOverdueCount?: number
+  pmOverdueCount?: Promise<number>
 }
 
 export default function IncidentsBoardWithSearch({
@@ -20,7 +20,7 @@ export default function IncidentsBoardWithSearch({
   userRole = 'technician',
   initialFilter,
   initialFactory,
-  pmOverdueCount = 0,
+  pmOverdueCount,
 }: IncidentsBoardWithSearchProps) {
   const { t } = useI18n()
   const [view, setView] = useState<'board' | 'search'>('board')
