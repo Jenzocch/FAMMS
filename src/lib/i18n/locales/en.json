@@ -97,7 +97,11 @@
     "sectionLocation": "Where",
     "sectionIssue": "What's Wrong",
     "sectionUrgency": "How Urgent",
-    "photoLimitDropped": "Up to {max} photos — {n} extra were skipped"
+    "photoLimitDropped": "Up to {max} photos — {n} extra were skipped",
+    "savedOffline": "Saved on this device — it will send automatically once you have signal",
+    "offlinePending": "{count} waiting to send",
+    "offlineSent": "Sent {count} offline report(s) automatically",
+    "offlineSendFailed": "An offline report failed to send and was removed from the queue — please file it again: "
   },
   "common": {
     "save": "Save",
@@ -253,7 +257,8 @@
     "hygieneTools": "All tools accounted for, none left on site",
     "hygieneLubricant": "Lubricants/chemicals are food-grade or fully cleaned up",
     "hygieneCleanArea": "Area cleaned, no metal shavings/foreign debris left behind",
-    "hygieneRequired": "Please check all three hygiene confirmations before closing"
+    "hygieneRequired": "Please check all three hygiene confirmations before closing",
+    "needPartsHint": "Need to order parts? Tap here to open the request form"
   },
   "rca": {
     "gateHeading": "Root Cause Analysis (RCA) required before closing",
@@ -1077,6 +1082,7 @@
     "failed": "Request failed, please try again later",
     "sent": "Sent to warehouse (Gudang One) — they'll get a Telegram notification",
     "trackingHeading": "Parts Request Status",
+    "staleHint": "No update for {days} days — the parts may already be in but the status never came back. Open the Gudang App to check.",
     "status": {
       "requested": "Requested",
       "ordered": "Ordered",

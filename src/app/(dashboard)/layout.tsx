@@ -3,6 +3,7 @@ import { getAuthClaims, getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import TopBar from '@/components/shared/TopBar'
 import BottomNav from '@/components/shared/BottomNav'
+import OfflineQueueFlusher from '@/components/shared/OfflineQueueFlusher'
 import Sidebar from '@/components/shared/Sidebar'
 import AccountDisabled from '@/components/shared/AccountDisabled'
 
@@ -53,6 +54,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </div>
 
       <BottomNav userRole={profile?.role} incidentBadge={myOpenCount ?? 0} capabilities={capabilities} />
+      {/* Sends reports filled in without signal, on every page — see
+          lib/offline-queue.ts. Renders nothing when the queue is empty. */}
+      <OfflineQueueFlusher />
     </div>
   )
 }

@@ -170,6 +170,12 @@ export default async function IncidentDetailPage({
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const updateRows = (updates ?? []) as UpdateRow[]
   const isClosed = status === 'closed'
+  // Server Component: runs once per request, not on a client re-render, so
+  // this isn't the hydration hazard the purity rule guards against. Passed to
+  // PartsRequestTracker (a client component) which must NOT read the clock
+  // itself — see its nowMs prop.
+  // eslint-disable-next-line react-hooks/purity
+  const renderedAtMs = Date.now()
 
   // "Your turn" emphasis (Part 6): highlight whichever section is THIS user's
   // actual next action right now, vs. the other still-relevant-but-not-urgent
@@ -395,8 +401,12 @@ export default async function IncidentDetailPage({
       {!isClosed && user && PERMISSIONS.remindProgress(user.role) && (
         <RemindButton incidentId={id} />
       )}
-      {!isClosed && user && <GudangRequest incidentId={id} />}
-      <PartsRequestTracker requests={partsRequests ?? []} incidentClosed={isClosed} />
+      {!isClosed && user && (
+        <div id="section-gudang">
+          <GudangRequest incidentId={id} />
+        </div>
+      )}
+      <PartsRequestTracker requests={partsRequests ?? []} incidentClosed={isClosed} nowMs={renderedAtMs} />
     </div>
   )
 

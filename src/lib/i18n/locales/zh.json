@@ -97,7 +97,11 @@
     "sectionLocation": "在哪裡",
     "sectionIssue": "什麼問題",
     "sectionUrgency": "有多急",
-    "photoLimitDropped": "最多 {max} 張，已略過多出的 {n} 張"
+    "photoLimitDropped": "最多 {max} 張，已略過多出的 {n} 張",
+    "savedOffline": "已存在這台裝置 — 有訊號時會自動送出",
+    "offlinePending": "{count} 筆待送出",
+    "offlineSent": "已自動送出 {count} 筆離線回報",
+    "offlineSendFailed": "一筆離線回報送出失敗，已從佇列移除，請重新回報："
   },
   "common": {
     "save": "保存",
@@ -253,7 +257,8 @@
     "hygieneTools": "工具清點無缺，無遺留現場",
     "hygieneLubricant": "潤滑油/化學品為食品級或已徹底清除",
     "hygieneCleanArea": "現場清潔完成，無金屬屑/異物殘留",
-    "hygieneRequired": "請完成復產衛生確認的三項勾選"
+    "hygieneRequired": "請完成復產衛生確認的三項勾選",
+    "needPartsHint": "要跟倉庫叫料嗎？點這裡開叫料單"
   },
   "rca": {
     "gateHeading": "需先完成根本原因分析（RCA）",
@@ -1077,6 +1082,7 @@
     "failed": "叫料失敗，稍後再試",
     "sent": "已送到倉庫（Gudang One），倉管會收到 Telegram 通知",
     "trackingHeading": "叫料狀態",
+    "staleHint": "已申請 {days} 天沒有更新 — 料可能已經到了但狀態沒傳回來，請直接開 Gudang App 確認",
     "status": {
       "requested": "待處理",
       "ordered": "已下單",

@@ -13,7 +13,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Camera, Images, X, ZoomIn } from 'lucide-react'
+import { Loader2, Camera, Images, X, ZoomIn, Package } from 'lucide-react'
+import { OPEN_GUDANG_REQUEST_EVENT } from '@/lib/constants'
 import type { IncidentStatus, UserRole } from '@/types'
 import { STATUS_ZH } from '@/lib/incident-display'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -316,6 +317,29 @@ export default function ProgressUpdate({
           <Input type="date" value={eta} onChange={e => setEta(e.target.value)} className="mt-1" />
           <p className="text-xs text-gray-400 mt-1">{t('progressUpdate.etaHint', '回報給主管參考，不會改動主管設定的截止日')}</p>
         </div>
+      )}
+
+      {/* Parking a case on "waiting for parts" IS the moment the technician
+          needs to order them — but the Gudang form lives in a different card
+          (the management rail), so without this they'd set the status, submit,
+          then have to go hunting for it. Jumps to + expands that form. */}
+      {newStatus === 'waiting_parts' && (
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new Event(OPEN_GUDANG_REQUEST_EVENT))
+            const el = document.getElementById('section-gudang')
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              el.classList.add('ring-2', 'ring-emerald-400', 'rounded-xl')
+              setTimeout(() => el.classList.remove('ring-2', 'ring-emerald-400', 'rounded-xl'), 1500)
+            }
+          }}
+          className="w-full flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-left text-sm text-emerald-800 hover:bg-emerald-100 transition-colors"
+        >
+          <Package className="w-4 h-4 shrink-0" />
+          <span>{t('progressUpdate.needPartsHint', '要跟倉庫叫料嗎？點這裡開叫料單')}</span>
+        </button>
       )}
 
       {/* Completion type — only when closing. Drives the first-fix / repeat KPI:

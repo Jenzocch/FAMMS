@@ -29,9 +29,10 @@ export const MAX_PHOTOS_PER_STAGE = 6
 export const MAX_FILE_SIZE_MB = 10
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-// Default warehouse per factory (factories.code) for the parts-request form.
-// Only confirmed mappings go here — unlisted factories fall back to a free-text
-// field so we never guess a warehouse name that hasn't been verified.
-export const WAREHOUSE_BY_FACTORY_CODE: Record<string, string> = {
-  DIN: 'HARDWARE',
-}
+// Opens the Gudang One parts-request form from elsewhere on the incident page
+// (ProgressUpdate prompts for it when a technician parks a case on "waiting
+// for parts" — that's the moment they need to order, and the form lives in a
+// different card). A DOM event rather than lifted state: the two components
+// sit in different branches of a Server Component tree, so there's no shared
+// client parent to hold the state.
+export const OPEN_GUDANG_REQUEST_EVENT = 'famms:open-gudang-request'

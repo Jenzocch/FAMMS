@@ -97,7 +97,11 @@
     "sectionLocation": "Di Mana",
     "sectionIssue": "Apa Masalahnya",
     "sectionUrgency": "Seberapa Mendesak",
-    "photoLimitDropped": "Maksimal {max} foto — {n} foto lebihnya dilewati"
+    "photoLimitDropped": "Maksimal {max} foto — {n} foto lebihnya dilewati",
+    "savedOffline": "Tersimpan di perangkat ini — akan terkirim otomatis saat ada sinyal",
+    "offlinePending": "{count} menunggu dikirim",
+    "offlineSent": "{count} laporan offline terkirim otomatis",
+    "offlineSendFailed": "Satu laporan offline gagal dikirim dan dihapus dari antrian — mohon laporkan ulang: "
   },
   "common": {
     "save": "Simpan",
@@ -253,7 +257,8 @@
     "hygieneTools": "Semua alat sudah dihitung, tidak ada yang tertinggal",
     "hygieneLubricant": "Pelumas/kimia food-grade atau sudah dibersihkan",
     "hygieneCleanArea": "Area sudah dibersihkan, tanpa serpihan logam/benda asing",
-    "hygieneRequired": "Mohon centang ketiga konfirmasi higiene sebelum menutup kasus"
+    "hygieneRequired": "Mohon centang ketiga konfirmasi higiene sebelum menutup kasus",
+    "needPartsHint": "Perlu minta part ke gudang? Ketuk di sini untuk buka formulirnya"
   },
   "rca": {
     "gateHeading": "Perlu Analisis Akar Masalah (RCA) sebelum menutup",
@@ -1077,6 +1082,7 @@
     "failed": "Permintaan gagal, coba lagi nanti",
     "sent": "Sudah dikirim ke gudang (Gudang One) — mereka akan dapat notifikasi Telegram",
     "trackingHeading": "Status Permintaan Part",
+    "staleHint": "Tidak ada update {days} hari — part mungkin sudah siap tapi statusnya tidak terkirim balik. Cek langsung di Gudang App.",
     "status": {
       "requested": "Diminta",
       "ordered": "Dipesan",

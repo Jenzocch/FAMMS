@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ExternalLink, Loader2, Package, Plus, Trash2, Warehouse } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '@/lib/i18n'
+import { OPEN_GUDANG_REQUEST_EVENT } from '@/lib/constants'
 
 type ItemRow = { name: string; part_no: string; qty: string; unit: string }
 const EMPTY_ROW: ItemRow = { name: '', part_no: '', qty: '', unit: 'pcs' }
@@ -22,6 +23,15 @@ export default function GudangRequest({ incidentId }: { incidentId: string }) {
   const [urgency, setUrgency] = useState<'low' | 'normal' | 'urgent'>('normal')
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
+
+  // ProgressUpdate fires this when the technician parks the case on "waiting
+  // for parts" — expand straight into the form instead of making them hunt
+  // for the collapsed button in another card.
+  useEffect(() => {
+    const openForm = () => setOpen(true)
+    window.addEventListener(OPEN_GUDANG_REQUEST_EVENT, openForm)
+    return () => window.removeEventListener(OPEN_GUDANG_REQUEST_EVENT, openForm)
+  }, [])
 
   function setRow(i: number, patch: Partial<ItemRow>) {
     setRows(rs => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)))
