@@ -4,22 +4,17 @@ import {
 } from '@/lib/telegram'
 import { logAuditEvent } from '@/lib/audit'
 import type { IncidentStatus } from '@/types'
+import { isForwardMove } from '@/lib/incident-workflow'
 import { type AdminClient, type TelegramCallbackQuery, chatAndMessageFrom, resolveProfile } from './shared'
 
 // Acting on an EXISTING case from Telegram: the status buttons on an
 // assignment/reminder DM, the "add a note" prompt, the reply that becomes a
 // progress note, and /tugas (pull my open cases back up).
 
-// Forward-only status line, same as ProgressUpdate's. Buttons may only move a
-// case forward; waiting side-states resume at 'analyzing'.
-const MAIN_ORDER: IncidentStatus[] = [
-  'reported', 'accepted', 'analyzing', 'repairing', 'testing', 'observation', 'closed',
-]
-const WAITING_STATES: IncidentStatus[] = [
-  'waiting_parts', 'waiting_approval', 'waiting_vendor', 'waiting_shutdown',
-]
 // The only statuses a Telegram button may set. Closing stays in-app: it's
-// supervisor-gated and runs the RCA check.
+// supervisor-gated and runs the RCA check. Which moves are legal comes from
+// lib/incident-workflow (shared with the in-app progress form, so the two
+// channels can't drift on what "forward" means).
 const BUTTON_TARGETS: IncidentStatus[] = ['repairing', 'testing']
 
 const STATUS_LABEL_ID: Record<string, string> = {
@@ -74,8 +69,7 @@ export async function handleStatusButton(admin: AdminClient, cq: TelegramCallbac
     await answerCallbackQuery(cq.id, 'Status sudah sama.')
     return
   }
-  const effective = WAITING_STATES.includes(current) ? 'analyzing' : current
-  if (MAIN_ORDER.indexOf(target as IncidentStatus) < MAIN_ORDER.indexOf(effective)) {
+  if (!isForwardMove(current, target as IncidentStatus)) {
     await answerCallbackQuery(cq.id, 'Status tidak bisa mundur — perbarui lewat aplikasi.')
     return
   }

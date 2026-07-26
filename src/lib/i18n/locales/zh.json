@@ -85,6 +85,7 @@
     "takePhoto": "拍照或選擇照片",
     "chooseFromGallery": "選擇相簿",
     "compressing": "壓縮中...",
+    "photoCount": "共 {count} 張（{mb} MB）",
     "submit": "送出回報",
     "fillRequired": "請填寫工廠、標題和問題描述",
     "specifyType": "請說明問題類型",

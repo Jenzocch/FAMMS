@@ -24,7 +24,7 @@ import { useIncidentTypes } from '@/lib/useIncidentTypes'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { useI18n } from '@/lib/i18n'
 import { usePhotoCapture } from '@/lib/hooks/usePhotoCapture'
-import ReportPhotoPicker from '@/components/incidents/report/ReportPhotoPicker'
+import PhotoPicker from '@/components/shared/PhotoPicker'
 
 // Fallback types used if the incident_types table is empty
 const FALLBACK_ISSUE_TYPES = [
@@ -481,7 +481,7 @@ export default function IncidentActions({
           wrong shot gets FIXED by adding a clearer one, not by deletion
           (which stays supervisor-only above). */}
       {canAddPhotos && (
-        <ReportPhotoPicker
+        <PhotoPicker
           photos={photoCapture.photos}
           photoPreviews={photoCapture.photoPreviews}
           compressing={photoCapture.compressing}

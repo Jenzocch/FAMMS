@@ -85,6 +85,7 @@
     "takePhoto": "Take or choose photos",
     "chooseFromGallery": "Choose from gallery",
     "compressing": "Compressing...",
+    "photoCount": "{count} photos ({mb} MB)",
     "submit": "Submit Report",
     "fillRequired": "Please fill in factory, title and description",
     "specifyType": "Please specify the issue type",
