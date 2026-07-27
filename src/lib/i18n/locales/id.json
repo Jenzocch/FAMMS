@@ -85,6 +85,7 @@
     "takePhoto": "Ambil atau pilih foto",
     "chooseFromGallery": "Pilih dari galeri",
     "compressing": "Mengompres...",
+    "photoCount": "{count} foto ({mb} MB)",
     "submit": "Kirim Laporan",
     "fillRequired": "Harap isi pabrik, judul dan deskripsi",
     "specifyType": "Harap jelaskan jenis masalah",
@@ -133,7 +134,8 @@
     "settings": "Pengaturan",
     "profile": "Profil",
     "logout": "Keluar",
-    "machines": "Mesin"
+    "machines": "Mesin",
+    "qc": "Cek QC"
   },
   "roles": {
     "technician": "Karyawan",
@@ -1157,5 +1159,17 @@
     "no": "Bukan, ini masalah baru",
     "confirmed": "Ditandai sebagai kerusakan berulang",
     "confirmFailed": "Gagal menandai — coba lagi"
+  },
+  "qc": {
+    "addMachine": "Tambah mesin →",
+    "issuesToday": "Masalah hari ini",
+    "noMachines": "Belum ada mesin terdaftar di pabrik ini",
+    "notChecked": "Belum dicek",
+    "orphanWarning": "{count} mesin areanya tidak terbaca — periksa data mesin",
+    "progress": "Hari ini",
+    "resultIssue": "Bermasalah",
+    "resultOk": "OK",
+    "sourceHint": "Dikirim oleh FQMS — halaman ini hanya baca",
+    "title": "Cek Harian QC"
   }
 }

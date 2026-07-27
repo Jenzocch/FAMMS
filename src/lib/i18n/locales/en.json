@@ -85,6 +85,7 @@
     "takePhoto": "Take or choose photos",
     "chooseFromGallery": "Choose from gallery",
     "compressing": "Compressing...",
+    "photoCount": "{count} photos ({mb} MB)",
     "submit": "Submit Report",
     "fillRequired": "Please fill in factory, title and description",
     "specifyType": "Please specify the issue type",
@@ -133,7 +134,8 @@
     "knowledgeBase": "Knowledge Base",
     "settings": "Settings",
     "profile": "Profile",
-    "logout": "Logout"
+    "logout": "Logout",
+    "qc": "QC Check"
   },
   "roles": {
     "technician": "General Staff",
@@ -1157,5 +1159,17 @@
     "no": "No, this is new",
     "confirmed": "Marked as a repeat failure",
     "confirmFailed": "Failed to confirm — try again"
+  },
+  "qc": {
+    "addMachine": "Add a machine →",
+    "issuesToday": "Issues today",
+    "noMachines": "No machines registered for this factory yet",
+    "notChecked": "Not checked",
+    "orphanWarning": "{count} machine(s) have an unreadable area — check the machine master",
+    "progress": "Today",
+    "resultIssue": "Problem",
+    "resultOk": "OK",
+    "sourceHint": "Posted by FQMS — read-only here",
+    "title": "Daily QC Check"
   }
 }

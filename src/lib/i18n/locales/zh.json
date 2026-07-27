@@ -85,6 +85,7 @@
     "takePhoto": "拍照或選擇照片",
     "chooseFromGallery": "選擇相簿",
     "compressing": "壓縮中...",
+    "photoCount": "共 {count} 張（{mb} MB）",
     "submit": "送出回報",
     "fillRequired": "請填寫工廠、標題和問題描述",
     "specifyType": "請說明問題類型",
@@ -133,7 +134,8 @@
     "settings": "設定",
     "profile": "個人資料",
     "logout": "登出",
-    "machines": "機器"
+    "machines": "機器",
+    "qc": "每日點檢"
   },
   "roles": {
     "technician": "一般員工",
@@ -1157,5 +1159,17 @@
     "no": "不是，這是新問題",
     "confirmed": "已標記為重複故障",
     "confirmFailed": "標記失敗，請稍後再試"
+  },
+  "qc": {
+    "addMachine": "新增機器 →",
+    "issuesToday": "今日異常",
+    "noMachines": "這個工廠還沒有登錄機器",
+    "notChecked": "未檢查",
+    "orphanWarning": "有 {count} 台機器的區域讀不到，請檢查機器主檔",
+    "progress": "今日進度",
+    "resultIssue": "有問題",
+    "resultOk": "正常",
+    "sourceHint": "由 FQMS 回傳，此頁唯讀",
+    "title": "每日點檢"
   }
 }

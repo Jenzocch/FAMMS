@@ -10,13 +10,13 @@ import { toast } from 'sonner'
 import { Loader2, UserCheck, Check, Users, X } from 'lucide-react'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ROLE_ZH } from '@/lib/incident-display'
 import { logAuditEvent } from '@/lib/audit'
 import { useI18n } from '@/lib/i18n'
 import { useVendors } from '@/lib/useVendors'
 import { customRoleLabel, type CustomRole } from '@/lib/roles'
+import { type Account, accountName, isFactoryTechnician } from '@/lib/assignees'
+import AssigneeChip from '@/components/shared/AssigneeChip'
 
-interface Account { id: string; full_name: string | null; role: UserRole; factory_id: string | null; custom_role_key: string | null }
 
 export default function AssignForm({
   incidentId, assignedTo, assignedDept, assignedUserIds, dueDate, factoryId, userRole = 'technician', userName,
@@ -83,14 +83,9 @@ export default function AssignForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incidentId, (assignedUserIds ?? []).join(','), assignedDept, dueDate])
 
-  // Technicians in this incident's factory (cross-factory accounts always
-  // qualify). Used by the "assign all technicians" shortcut. Excludes
-  // accounts on a custom role (e.g. QC) even though they share the
-  // technician DB tier — a custom role signals a distinct job function, not
-  // literally "on the repair team", so a bulk-assign shouldn't sweep them in.
-  const factoryTechnicians = accounts.filter(
-    a => a.role === 'technician' && !a.custom_role_key && (!factoryId || !a.factory_id || a.factory_id === factoryId)
-  )
+  // Used by the "assign all technicians" shortcut — see lib/assignees for why
+  // custom roles are excluded.
+  const factoryTechnicians = accounts.filter(a => isFactoryTechnician(a, factoryId))
 
   // Vendors scoped to this incident's factory, plus any that apply to every
   // factory (factory_id null).
@@ -150,8 +145,6 @@ export default function AssignForm({
     setSelectedVendorNames(leftovers.filter(n => vendorNames.has(n)))
     setExtraNames(leftovers.filter(n => !vendorNames.has(n)).join(', '))
   }, [accounts, vendors, assignedTo, assignedUserIds])
-
-  const accountName = (a: Account) => a.full_name || `(${ROLE_ZH[a.role] ?? a.role})`
 
   // With many users the chip list explodes — by default show only accounts
   // relevant to this incident (same factory / no factory / already selected).
@@ -311,19 +304,13 @@ export default function AssignForm({
               {visibleAccounts.map(a => {
                 const on = selectedIds.includes(a.id)
                 return (
-                  <button
+                  <AssigneeChip
                     key={a.id}
-                    type="button"
+                    label={accountName(a)}
+                    selected={on}
                     disabled={!canAssign}
-                    aria-pressed={on}
                     onClick={() => toggle(a.id)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                      on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                    }`}
-                  >
-                    {on && <Check className="w-3 h-3" />}
-                    {accountName(a)}
-                  </button>
+                  />
                 )
               })}
               {visibleAccounts.length === 0 && (

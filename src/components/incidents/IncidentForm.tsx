@@ -23,7 +23,7 @@ import { usePastRecords } from '@/lib/hooks/usePastRecords'
 import { submitIncidentReport } from '@/lib/incidents/submitIncidentReport'
 import { enqueueReport, isNetworkError } from '@/lib/offline-queue'
 import ReportLocationFields from './report/ReportLocationFields'
-import ReportPhotoPicker from './report/ReportPhotoPicker'
+import PhotoPicker from '@/components/shared/PhotoPicker'
 import PastRecordsPanel from './report/PastRecordsPanel'
 import SpeechMicButton from '@/components/shared/SpeechMicButton'
 
@@ -326,8 +326,8 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       {/* ---- Right column (desktop) / continues down the page (phone) ---- */}
       <div className="space-y-5">
 
-      {/* Photos — big obvious tap target, see ReportPhotoPicker */}
-      <ReportPhotoPicker
+      {/* Photos — big obvious tap target, see PhotoPicker's 'report' variant */}
+      <PhotoPicker
         photos={photoCapture.photos}
         photoPreviews={photoCapture.photoPreviews}
         compressing={photoCapture.compressing}
