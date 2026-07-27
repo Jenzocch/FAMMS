@@ -486,6 +486,7 @@ Before first run:
    - Two "quick fix" scripts that used to live in `supabase/` (`SETUP_RUN_ONCE.sql`, `fix_permissions_reset.sql`) did the opposite of all of the above — disabled RLS on every table and granted `anon` full access — and have been deleted. If you have either one saved locally from before, do not run it.
 5b. Run once, any order, all idempotent:
    - `supabase/migration_qc_daily_check.sql` — the `qc_daily_checks` table behind the daily QC sweep (`/qc`), with its RLS.
+   - `supabase/cleanup_sja_demo_data.sql` — **run ONCE, after the SJA seed.** Removes the pre-import leftovers: seed_demo's 6 fictional SJA machines, 3 hand-added test machines, the duplicate `PD10` (same tank as the imported `TPD10`), and the 15 abandoned areas. Aborts rather than proceeding if any of them has acquired a real incident.
    - `supabase/seed_sja_machines.sql` — SJA's 15 areas + 109 machines, transcribed from the factory's own SJA-FR-PRD-001-DAP Rev.02 form. Re-runnable; updates names/areas/remarks but never overwrites a machine's status.
    - `supabase/migration_areas_match_fqms.sql` — **template, edit before running.** Re-cuts FAMMS areas to FQMS's sub-area codes and moves each machine to its new area. Ships as a no-op; fill in the two marked sections first.
    - `supabase/migration_delete_protection.sql` — converts the machine/area/factory delete cascades to RESTRICT so deleting one no longer silently wipes every incident/PM/cost record under it.
