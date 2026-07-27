@@ -24,23 +24,26 @@
 -- FQMS must now map its `DIN - IPAL 污水處理清潔` zone to `IPAL`, not
 -- `DIN-IPAL` (docs/FQMS_AREA_CODES.md is updated to match).
 --
--- ── DIN-GUDANG: kept, deliberately ──
--- The suspicion is that DIN's `GBB` and `GPJ` mean Gudang Bahan Baku and
--- Gudang Produk Jadi, which would make DIN-GUDANG a third row over the same
--- floor. We cannot confirm that from the codebase, and two things argue
--- against acting on it:
---   1. The names live only in the live database. GBB/GPJ are plausible
---      initialisms, not verified ones — deleting a real area on a guess is
---      not recoverable from this repo.
---   2. Even if the guess is right the areas do not line up. DIN-GUDANG is
---      "Gudang Bahan Baku, Bahan Kemas, dan Produk Jadi" — three stocks in
---      one room, because that is how FQMS cleans it. GBB + GPJ covers raw
---      material and finished goods but leaves bahan kemas (packaging)
---      homeless. Dropping DIN-GUDANG would make packaging unlocatable.
--- The delete is therefore written out but left commented at the bottom of
--- section 2. Read the names GBB and GPJ actually carry (the SELECT there
--- prints them), decide where bahan kemas belongs, then uncomment if the
--- answer is that DIN-GUDANG is redundant.
+-- ── DIN-GUDANG: also a duplicate, confirmed against the live DB ──
+-- The names were read out of the live database and settle it:
+--   GBB = "Gudang Bahan Baku"   GPJ = "Gudang Produk Jadi"
+--   IPAL = "IPAL" (description: "Bak Pembuangan Limbah")
+-- So DIN-GUDANG is a third row over floor that GBB and GPJ already cover.
+--
+-- The reason to drop it is not just overlap, it is that DIN-GUDANG was never a
+-- place: it is the name of a FQMS *cleaning sheet* that happens to walk the
+-- whole warehouse in one pass ("Bahan Baku, Bahan Kemas, dan Produk Jadi").
+-- FAMMS models where equipment physically lives, and it already splits that
+-- floor into the two stores that matter for maintenance. A cleaning sheet does
+-- not need a FAMMS area — that is the same rule that kept 切割機潮墊清潔 and
+-- 濾網清潔 out of the import.
+--
+-- Bahan kemas genuinely has no area of its own, and that is left as is rather
+-- than fixed here. No machine or facility is filed under DIN-GUDANG today
+-- (the guard below enforces that), so nothing becomes unlocatable by removing
+-- it. If packaging ever needs equipment located in it, FAMMS creates the area
+-- in Settings and FQMS picks it up from inspection-targets — which is exactly
+-- how new areas are supposed to arrive from here on.
 --
 -- Safety: `areas` is referenced by machines.area_id and facilities.area_id,
 -- and by nothing else in the schema. machines.area_id is ON DELETE CASCADE in
@@ -68,30 +71,25 @@ WHERE a.code = 'DIN-IPAL'
   AND NOT EXISTS (SELECT 1 FROM machines   m WHERE m.area_id = a.id)
   AND NOT EXISTS (SELECT 1 FROM facilities f WHERE f.area_id = a.id);
 
--- ── 2. DIN-GUDANG — left in place pending confirmation ───────
--- What do GBB and GPJ actually say they are? Run this first:
---   SELECT f.code AS factory, a.code, a.name, a.description
---   FROM areas a JOIN factories f ON f.id = a.factory_id
---   WHERE a.code IN ('GBB', 'GPJ', 'DIN-GUDANG')
---   ORDER BY f.code, a.code;
---
--- If they are the raw-material and finished-goods warehouses AND bahan kemas
--- has somewhere to live, uncomment the statement below. Same guards: it only
--- fires when both replacements exist in the factory and nothing points at the
--- row being removed.
---
--- DELETE FROM areas a
--- WHERE a.code = 'DIN-GUDANG'
---   AND EXISTS (
---     SELECT 1 FROM areas keep
---     WHERE keep.factory_id = a.factory_id AND keep.code = 'GBB'
---   )
---   AND EXISTS (
---     SELECT 1 FROM areas keep
---     WHERE keep.factory_id = a.factory_id AND keep.code = 'GPJ'
---   )
---   AND NOT EXISTS (SELECT 1 FROM machines   m WHERE m.area_id = a.id)
---   AND NOT EXISTS (SELECT 1 FROM facilities f WHERE f.area_id = a.id);
+-- ── 2. DIN-GUDANG — duplicate of GBB + GPJ ───────────────────
+-- Only fires when BOTH replacements exist in the same factory. If either is
+-- missing this quietly does nothing rather than leaving the warehouse with no
+-- area at all.
+DELETE FROM areas a
+WHERE a.code = 'DIN-GUDANG'
+  AND EXISTS (
+    SELECT 1 FROM areas keep
+    WHERE keep.factory_id = a.factory_id AND keep.code = 'GBB'
+  )
+  AND EXISTS (
+    SELECT 1 FROM areas keep
+    WHERE keep.factory_id = a.factory_id AND keep.code = 'GPJ'
+  )
+  -- Never take anything down with it: machines.area_id and facilities.area_id
+  -- are ON DELETE CASCADE unless migration_delete_protection.sql has run, so a
+  -- bare DELETE would not error — it would silently remove them too.
+  AND NOT EXISTS (SELECT 1 FROM machines   m WHERE m.area_id = a.id)
+  AND NOT EXISTS (SELECT 1 FROM facilities f WHERE f.area_id = a.id);
 
 NOTIFY pgrst, 'reload schema';
 
