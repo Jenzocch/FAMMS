@@ -1162,21 +1162,14 @@
   },
   "qc": {
     "addMachine": "Add a machine →",
-    "fileIssue": "Submit and open a case",
-    "hasOpenCase": "Open case",
-    "issueFiled": "Case {no} created",
-    "machineStopped": "Machine has stopped (sets it to Repairing and marks the case Critical)",
-    "markIssue": "Problem",
-    "markOk": "OK",
-    "markedOk": "Marked OK",
+    "issuesToday": "Issues today",
     "noMachines": "No machines registered for this factory yet",
-    "notePlaceholder": "What did you see? e.g. bearing making noise",
+    "notChecked": "Not checked",
     "orphanWarning": "{count} machine(s) have an unreadable area — check the machine master",
     "progress": "Today",
     "resultIssue": "Problem",
     "resultOk": "OK",
-    "saveFailed": "Could not save",
-    "title": "Daily QC Check",
-    "viewCase": "View case"
+    "sourceHint": "Posted by FQMS — read-only here",
+    "title": "Daily QC Check"
   }
 }

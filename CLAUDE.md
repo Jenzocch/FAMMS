@@ -324,7 +324,7 @@ src/
 │   │   ├── incidents/[id]/print/     printable work order
 │   │   ├── machines/                 list, new, [id], [id]/edit, [id]/qr
 │   │   ├── pm/page.tsx               PM calendar + due list + schedules
-│   │   ├── qc/page.tsx               daily QC sweep, grouped by area
+│   │   ├── qc/page.tsx               today's QC round from FQMS (read-only)
 │   │   ├── pm/schedules/new/
 │   │   ├── knowledge-base/           list, new, [id]
 │   │   ├── reports/page.tsx          monthly report (print + CSV)
@@ -344,9 +344,10 @@ src/
 │       ├── health-score              recalculate equipment health
 │       ├── admin/users, admin/users/[id]
 │       ├── gudang/request            push a parts request to Gudang One
-│       ├── qc/checks                 daily QC tick (ok / issue → work order)
-│       ├── external/machine-status   FQMS pull (Bearer QC_API_SECRET)
-│       ├── external/qc-report        FQMS reports a fault (Bearer QC_API_SECRET)
+│       ├── external/machine-status       FQMS pulls PM/health status
+│       ├── external/inspection-targets   FQMS pulls factory→area→machine
+│       ├── external/qc-check             FQMS posts a QC round back
+│       │                                 (all three: Bearer QC_API_SECRET)
 │       ├── external/parts-requests   Gudang One write-back (Bearer GUDANG_SYNC_SECRET)
 │       ├── cron/sla-check            SLA escalation (Bearer CRON_SECRET)
 │       ├── notifications/daily-summary, notifications/test
@@ -378,7 +379,7 @@ src/
 │   │   ├── GudangRequest.tsx         + PartsRequestTracker.tsx
 │   │   ├── RemindButton.tsx, NudgeCardButton.tsx, PrintReport.tsx
 │   │   └── report/                   ReportLocationFields, PastRecordsPanel
-│   ├── qc/QCDailyCheck.tsx           the walk-round tick list
+│   ├── qc/QCDailyCheck.tsx           today's QC round, read-only
 │   ├── pm/                           PMPage, PMDueList, PMFullCalendar,
 │   │                                 PMScheduleManager (+ PMScheduleFields,
 │   │                                 PMScheduleList), calendar/*
@@ -427,7 +428,7 @@ src/
 | `FAMMS_FAULT_TREE.md` | the 100+ failure codes (seeded, but not wired into any report path — see the Repeat Failure section) |
 | `docs/LESSONS.md` | development lessons learned — read before repeating a past mistake |
 | `docs/E2E_CHECKLIST.md` | manual smoke-test paths |
-| `docs/FQMS_INTEGRATION.md` | the contract FQMS codes against to report machine faults |
+| `docs/FQMS_INTEGRATION.md` | who owns what between FAMMS and FQMS, and the two endpoints |
 | `docs/GUDANG_INTEGRATION.md` | how parts requests reach Gudang One |
 | `docs/GUDANG_ONE_CONFIRM.md` | the agreed contract with the Gudang One side, incl. their answers |
 | `supabase/README.md` | which SQL to run and in what order (the RLS chain is mandatory) |
@@ -460,7 +461,7 @@ TELEGRAM_WEBHOOK_SECRET=your_random_secret # required — the webhook rejects al
 NEXT_PUBLIC_APP_URL=http://localhost:3000 (or production URL)
 
 # External integrations (server-to-server)
-QC_API_SECRET=your_random_secret      # Bearer token for BOTH external QC routes: GET /api/external/machine-status (FQMS pulls PM/health status) and POST /api/external/qc-report (FQMS reports a machine fault → opens a work order). See docs/FQMS_INTEGRATION.md
+QC_API_SECRET=your_random_secret      # Bearer token for all three external QC routes: GET machine-status, GET inspection-targets (FQMS mirrors factory→area→machine), POST qc-check (FQMS posts a QC round back; an 'issue' opens a work order). See docs/FQMS_INTEGRATION.md
 GUDANG_SYNC_SECRET=your_random_secret # Bearer token for POST /api/external/parts-requests (Gudang One writes back status)
 GUDANG_WEBHOOK_URL=https://<gudang-project>.supabase.co/functions/v1/famms-request # line ①: push new parts requests to Gudang
 GUDANG_WEBHOOK_SECRET=same_secret_as_gudang_famms_request # sent as x-famms-secret header

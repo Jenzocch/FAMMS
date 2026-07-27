@@ -1162,21 +1162,14 @@
   },
   "qc": {
     "addMachine": "新增機器 →",
-    "fileIssue": "送出並開工單",
-    "hasOpenCase": "已有工單",
-    "issueFiled": "已開工單 {no}",
-    "machineStopped": "機器已停機（會轉成「維修中」並列為緊急）",
-    "markIssue": "有問題",
-    "markOk": "正常",
-    "markedOk": "已確認正常",
+    "issuesToday": "今日異常",
     "noMachines": "這個工廠還沒有登錄機器",
-    "notePlaceholder": "看到什麼問題？例如：bearing 有異音",
+    "notChecked": "未檢查",
     "orphanWarning": "有 {count} 台機器的區域讀不到，請檢查機器主檔",
     "progress": "今日進度",
     "resultIssue": "有問題",
     "resultOk": "正常",
-    "saveFailed": "儲存失敗",
-    "title": "每日點檢",
-    "viewCase": "查看工單"
+    "sourceHint": "由 FQMS 回傳，此頁唯讀",
+    "title": "每日點檢"
   }
 }

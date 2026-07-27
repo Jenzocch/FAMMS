@@ -7,8 +7,8 @@ import QCDailyCheck, { type QCArea, type QCMachine } from '@/components/qc/QCDai
 
 export const metadata = { title: 'QC Check | FAMMS' }
 
-// Daily QC sweep: every machine in the factory, grouped by the area it sits
-// in, ticked once a day. See lib/qc-check.ts for what a "not OK" tick does.
+// Today's QC round, as posted back by FQMS (POST /api/external/qc-check).
+// Read-only — QC does the ticking in FQMS; this is the maintenance view of it.
 export default async function QCPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
@@ -31,14 +31,14 @@ export default async function QCPage() {
       .order('machine_name'),
     supabase
       .from('qc_daily_checks')
-      .select('machine_id, result, note, machine_stopped, incident_id, checked_by_name')
+      .select('machine_id, result, note, incident_id, checked_by_name')
       .eq('check_date', today),
     // Machines that already have an open case — shown so QC doesn't file a
     // second report for a fault maintenance is already on. Covers cases from
     // every channel, including the ones FQMS opened.
     supabase
       .from('incidents')
-      .select('machine_id, incident_no')
+      .select('id, machine_id, incident_no')
       .in('status', OPEN_STATUSES)
       .not('machine_id', 'is', null)
       .limit(1000),
@@ -47,10 +47,10 @@ export default async function QCPage() {
   const checksByMachine = new Map(
     (checksRes.data ?? []).map(c => [c.machine_id as string, c])
   )
-  const openByMachine = new Map<string, string>()
+  const openByMachine = new Map<string, { id: string; no: string }>()
   for (const r of openRes.data ?? []) {
     const mid = r.machine_id as string
-    if (!openByMachine.has(mid)) openByMachine.set(mid, r.incident_no as string)
+    if (!openByMachine.has(mid)) openByMachine.set(mid, { id: r.id as string, no: r.incident_no as string })
   }
 
   const machines: QCMachine[] = (machinesRes.data ?? []).map(m => {
@@ -64,7 +64,8 @@ export default async function QCPage() {
       result: (check?.result as 'ok' | 'issue' | undefined) ?? null,
       note: check?.note ?? null,
       checkedBy: check?.checked_by_name ?? null,
-      openIncidentNo: openByMachine.get(m.id) ?? null,
+      openIncidentNo: openByMachine.get(m.id)?.no ?? null,
+      openIncidentId: openByMachine.get(m.id)?.id ?? null,
     }
   })
 
@@ -84,7 +85,6 @@ export default async function QCPage() {
       machines={machines}
       orphanCount={orphans.length}
       today={today}
-      userName={user.full_name}
     />
   )
 }

@@ -5,15 +5,13 @@ import { logAuditEvent } from '@/lib/audit'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
-// The daily QC sweep: one tick per machine per day, and what happens when a
-// tick says "not OK".
+// What happens when a QC tick says "not OK".
 //
-// Two entry points share reportMachineIssue() below:
-//   - the in-app QC page          → POST /api/qc/checks
-//   - FQMS, the external QC system → POST /api/external/qc-report
-// FQMS only reports problems; it never records an OK tick (see the note in
-// migration_qc_daily_check.sql for why mixing the two would break the daily
-// completion rate).
+// QC does the daily round in FQMS, which posts the whole thing back to
+// POST /api/external/qc-check — the only caller of reportMachineIssue()
+// below. FAMMS has no ticking UI on purpose: signing the same machine off in
+// both systems is double entry, and the two records would disagree the first
+// time someone only did one of them. FAMMS's /qc page is read-only.
 
 export type CheckResult = 'ok' | 'issue'
 

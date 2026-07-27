@@ -1162,21 +1162,14 @@
   },
   "qc": {
     "addMachine": "Tambah mesin →",
-    "fileIssue": "Kirim dan buat laporan",
-    "hasOpenCase": "Sudah ada laporan",
-    "issueFiled": "Laporan {no} dibuat",
-    "machineStopped": "Mesin berhenti (status jadi Perbaikan, laporan jadi Kritis)",
-    "markIssue": "Bermasalah",
-    "markOk": "OK",
-    "markedOk": "Ditandai OK",
+    "issuesToday": "Masalah hari ini",
     "noMachines": "Belum ada mesin terdaftar di pabrik ini",
-    "notePlaceholder": "Apa yang Anda lihat? mis. bearing bunyi kasar",
+    "notChecked": "Belum dicek",
     "orphanWarning": "{count} mesin areanya tidak terbaca — periksa data mesin",
     "progress": "Hari ini",
     "resultIssue": "Bermasalah",
     "resultOk": "OK",
-    "saveFailed": "Gagal menyimpan",
-    "title": "Cek Harian QC",
-    "viewCase": "Lihat laporan"
+    "sourceHint": "Dikirim oleh FQMS — halaman ini hanya baca",
+    "title": "Cek Harian QC"
   }
 }

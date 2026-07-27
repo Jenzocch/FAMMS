@@ -1,12 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { toast } from 'sonner'
-import { Check, AlertTriangle, Loader2, ClipboardCheck, ChevronRight } from 'lucide-react'
-import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
+import { Check, AlertTriangle, Circle, ClipboardCheck, ExternalLink } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { MACHINE_STATUS_LABELS, MACHINE_STATUS_COLORS } from '@/types'
 
@@ -22,66 +17,36 @@ export interface QCMachine {
   name: string
   code: string | null
   status: 'running' | 'repairing' | 'standby' | 'scrapped'
-  /** Today's tick, or null when this machine hasn't been checked yet. */
+  /** Today's tick from FQMS, or null when this machine hasn't been checked. */
   result: 'ok' | 'issue' | null
   note: string | null
   checkedBy: string | null
-  /** Set when maintenance already has an open case on this machine. */
+  /** Set when maintenance has an open case on this machine. */
   openIncidentNo: string | null
+  openIncidentId: string | null
 }
 
-// The daily walk-round. Deliberately a flat list per area with two big
-// buttons per machine, not a form: this is used one-handed on a tablet while
-// walking a production floor, often with gloves on.
+// READ-ONLY. The daily ticking happens in FQMS, which posts the round back to
+// /api/external/qc-check — this page shows what arrived.
+//
+// It deliberately has no tick buttons: QC signing off the same machine in both
+// systems is double entry, and the two records would disagree the first time
+// someone only did one of them. What FAMMS needs from this data is the
+// maintenance view — which machines got flagged today, and which never got
+// looked at — not a second place to record it.
 export default function QCDailyCheck({
-  areas, machines, orphanCount, today, userName,
+  areas, machines, orphanCount, today,
 }: {
   areas: QCArea[]
   machines: QCMachine[]
   orphanCount: number
   today: string
-  userName: string | null
 }) {
   const { t } = useI18n()
-  const router = useRouter()
-  // Which machine's "report a problem" panel is open.
-  const [reporting, setReporting] = useState<string | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
 
   const checked = machines.filter(m => m.result !== null).length
-
-  async function submitCheck(
-    machine: QCMachine,
-    result: 'ok' | 'issue',
-    note = '',
-    machineStopped = false,
-  ) {
-    setBusy(machine.id)
-    try {
-      const res = await fetch('/api/qc/checks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ machine_id: machine.id, result, note, machine_stopped: machineStopped }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json?.error || t('qc.saveFailed', '儲存失敗'))
-
-      if (result === 'ok') {
-        toast.success(t('qc.markedOk', '已確認正常'))
-      } else {
-        toast.success(
-          t('qc.issueFiled', '已開工單 {no}').replace('{no}', json.incident_no ?? ''),
-          { duration: 6000 },
-        )
-      }
-      setReporting(null)
-      router.refresh()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('qc.saveFailed', '儲存失敗'))
-    } finally {
-      setBusy(null)
-    }
-  }
+  const issues = machines.filter(m => m.result === 'issue').length
+  const complete = machines.length > 0 && checked === machines.length
 
   return (
     <div className="space-y-5">
@@ -91,23 +56,27 @@ export default function QCDailyCheck({
           {t('qc.title', '每日點檢')}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          {today} · {userName || ''}
+          {today} · {t('qc.sourceHint', '由 FQMS 回傳，此頁唯讀')}
         </p>
       </div>
 
-      {/* Overall progress — the one number a supervisor wants at a glance. */}
-      <div className="bg-white rounded-2xl shadow-sm p-4">
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium text-gray-700">{t('qc.progress', '今日進度')}</span>
-          <span className="text-sm font-bold text-gray-900">
-            {checked} / {machines.length}
-          </span>
+      {/* Progress + issue count — the two numbers a supervisor wants. */}
+      <div className="grid grid-cols-2 gap-2 lg:gap-3">
+        <div className="bg-white rounded-2xl shadow-sm p-4">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[13px] font-medium text-gray-500">{t('qc.progress', '今日進度')}</span>
+            <span className="text-sm font-bold text-gray-900">{checked} / {machines.length}</span>
+          </div>
+          <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${complete ? 'bg-green-500' : 'bg-blue-500'}`}
+              style={{ width: machines.length ? `${(checked / machines.length) * 100}%` : '0%' }}
+            />
+          </div>
         </div>
-        <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${checked === machines.length && machines.length > 0 ? 'bg-green-500' : 'bg-blue-500'}`}
-            style={{ width: machines.length ? `${(checked / machines.length) * 100}%` : '0%' }}
-          />
+        <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
+          <p className={`text-2xl font-bold ${issues > 0 ? 'text-red-600' : 'text-green-600'}`}>{issues}</p>
+          <p className="text-[13px] text-gray-500 mt-0.5">{t('qc.issuesToday', '今日異常')}</p>
         </div>
       </div>
 
@@ -132,19 +101,7 @@ export default function QCDailyCheck({
               </span>
             </h2>
             <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
-              {rows.map(m => (
-                <MachineRow
-                  key={m.id}
-                  machine={m}
-                  busy={busy === m.id}
-                  reporting={reporting === m.id}
-                  onOpenReport={() => setReporting(m.id)}
-                  onCancelReport={() => setReporting(null)}
-                  onOk={() => submitCheck(m, 'ok')}
-                  onIssue={(note, stopped) => submitCheck(m, 'issue', note, stopped)}
-                  t={t}
-                />
-              ))}
+              {rows.map(m => <MachineRow key={m.id} machine={m} t={t} />)}
             </div>
           </section>
         )
@@ -159,129 +116,57 @@ export default function QCDailyCheck({
   )
 }
 
-function MachineRow({
-  machine, busy, reporting, onOpenReport, onCancelReport, onOk, onIssue, t,
-}: {
+function MachineRow({ machine, t }: {
   machine: QCMachine
-  busy: boolean
-  reporting: boolean
-  onOpenReport: () => void
-  onCancelReport: () => void
-  onOk: () => void
-  onIssue: (note: string, machineStopped: boolean) => void
   t: (key: string, fallback?: string) => string
 }) {
-  const [note, setNote] = useState('')
-  const [stopped, setStopped] = useState(false)
-
   const label = `${machine.code ? `[${machine.code}] ` : ''}${machine.name}`
 
-  return (
-    <div className="p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${MACHINE_STATUS_COLORS[machine.status]}`}>
-              {MACHINE_STATUS_LABELS[machine.status]}
+  // Unchecked is a real state, not an absence — a machine nobody looked at is
+  // exactly what a supervisor is scanning this page for, so it gets its own
+  // marker rather than just being blank.
+  const mark = machine.result === 'ok'
+    ? { icon: <Check className="w-4 h-4" />, cls: 'bg-green-100 text-green-700', label: t('qc.resultOk', '正常') }
+    : machine.result === 'issue'
+      ? { icon: <AlertTriangle className="w-4 h-4" />, cls: 'bg-red-100 text-red-700', label: t('qc.resultIssue', '有問題') }
+      : { icon: <Circle className="w-4 h-4" />, cls: 'bg-gray-100 text-gray-400', label: t('qc.notChecked', '未檢查') }
+
+  const body = (
+    <>
+      <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${mark.cls}`} aria-hidden>
+        {mark.icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className="sr-only">{mark.label}</span>
+          <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${MACHINE_STATUS_COLORS[machine.status]}`}>
+            {MACHINE_STATUS_LABELS[machine.status]}
+          </span>
+          {machine.openIncidentNo && (
+            <span className="text-[11px] text-amber-700 inline-flex items-center gap-0.5">
+              {machine.openIncidentNo} <ExternalLink className="w-3 h-3" />
             </span>
-            {/* Already-open case: the reason not to file a duplicate. */}
-            {machine.openIncidentNo && (
-              <span className="text-[11px] text-amber-700">
-                {t('qc.hasOpenCase', '已有工單')} {machine.openIncidentNo}
-              </span>
-            )}
-          </div>
-          {machine.result !== null && (
-            <p className="text-xs text-gray-500 mt-1">
-              {machine.result === 'ok'
-                ? `✅ ${t('qc.resultOk', '正常')}`
-                : `⚠️ ${t('qc.resultIssue', '有問題')}`}
-              {machine.checkedBy ? ` · ${machine.checkedBy}` : ''}
-              {machine.note ? ` · ${machine.note}` : ''}
-            </p>
           )}
         </div>
-
-        {!reporting && (
-          <div className="flex gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={onOk}
-              disabled={busy}
-              aria-label={t('qc.markOk', '正常')}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-colors disabled:opacity-50 ${
-                machine.result === 'ok'
-                  ? 'bg-green-600 border-green-600 text-white'
-                  : 'bg-white border-gray-300 text-green-600 hover:border-green-400'
-              }`}
-            >
-              {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-            </button>
-            <button
-              type="button"
-              onClick={onOpenReport}
-              disabled={busy}
-              aria-label={t('qc.markIssue', '有問題')}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-colors disabled:opacity-50 ${
-                machine.result === 'issue'
-                  ? 'bg-red-600 border-red-600 text-white'
-                  : 'bg-white border-gray-300 text-red-600 hover:border-red-400'
-              }`}
-            >
-              <AlertTriangle className="w-5 h-5" />
-            </button>
-          </div>
+        {(machine.note || machine.checkedBy) && (
+          <p className="text-xs text-gray-500 mt-1 truncate">
+            {machine.note}
+            {machine.note && machine.checkedBy ? ' · ' : ''}
+            {machine.checkedBy}
+          </p>
         )}
       </div>
+    </>
+  )
 
-      {reporting && (
-        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 space-y-3">
-          <Textarea
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder={t('qc.notePlaceholder', '看到什麼問題？例如：bearing 有異音')}
-            rows={2}
-            autoFocus
-          />
-          {/* The one judgement call QC makes. Only this flips the machine to
-              維修中 — see lib/qc-check.ts for why a non-stopping fault
-              deliberately leaves the machine running. */}
-          <label className="flex items-start gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={stopped}
-              onChange={e => setStopped(e.target.checked)}
-              className="mt-0.5 w-4 h-4 accent-red-600 shrink-0"
-            />
-            <span className="text-sm text-gray-800">
-              {t('qc.machineStopped', '機器已停機（會轉成「維修中」並列為緊急）')}
-            </span>
-          </label>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => onIssue(note, stopped)}
-              disabled={busy}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {t('qc.fileIssue', '送出並開工單')}
-            </Button>
-            <Button variant="outline" onClick={onCancelReport} disabled={busy}>
-              {t('common.cancel', '取消')}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {machine.result === 'issue' && machine.openIncidentNo && !reporting && (
-        <Link
-          href="/incidents"
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600"
-        >
-          {t('qc.viewCase', '查看工單')} <ChevronRight className="w-3 h-3" />
-        </Link>
-      )}
-    </div>
+  // A flagged machine links straight to its work order — that's the whole
+  // reason maintenance opens this page.
+  return machine.openIncidentId ? (
+    <Link href={`/incidents/${machine.openIncidentId}`} className="flex items-start gap-3 p-3 active:bg-gray-50">
+      {body}
+    </Link>
+  ) : (
+    <div className="flex items-start gap-3 p-3">{body}</div>
   )
 }
