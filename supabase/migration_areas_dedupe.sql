@@ -50,46 +50,65 @@
 -- schema.sql and only becomes RESTRICT once migration_delete_protection.sql
 -- has run; facilities.area_id is CASCADE either way. On a database where the
 -- protection migration has not been applied a bare DELETE would therefore not
--- error — it would silently take the machines and facilities with it. Every
--- delete below is guarded by NOT EXISTS against both tables, so an area that
--- has acquired anything since the import is skipped, not emptied.
+-- error — it would silently take the machines and facilities with it. Both
+-- deletes below are guarded by NOT EXISTS, so an area that has acquired
+-- anything since the import is skipped, not emptied.
+--
+-- The facilities guard is applied only when that table exists. `facilities` is
+-- in schema.sql but is absent from databases built up migration-by-migration,
+-- and nothing in src/ queries it — referencing it unconditionally fails the
+-- whole file with 42P01 on exactly those databases.
 --
 -- Idempotent: re-running finds nothing left to delete and is a no-op.
 -- Rollback: see end of file.
 -- ============================================================
 
--- ── 1. DIN-IPAL — duplicate of the pre-existing IPAL ─────────
-DELETE FROM areas a
-WHERE a.code = 'DIN-IPAL'
-  -- Only where the area it duplicates really is present in the same factory.
-  AND EXISTS (
-    SELECT 1 FROM areas keep
-    WHERE keep.factory_id = a.factory_id
-      AND keep.code = 'IPAL'
-  )
-  -- Never take anything down with it.
-  AND NOT EXISTS (SELECT 1 FROM machines   m WHERE m.area_id = a.id)
-  AND NOT EXISTS (SELECT 1 FROM facilities f WHERE f.area_id = a.id);
+-- ── The deletes ──────────────────────────────────────────────
+-- Wrapped in a DO block because the facilities guard has to be conditional:
+-- `facilities` is declared in schema.sql but does not exist on databases that
+-- were built up migration-by-migration rather than from setup_all.sql, and no
+-- application code queries it. Referencing it unconditionally fails the whole
+-- file with 42P01 on exactly those databases. Where the table is absent there
+-- are no facilities to protect, so the guard is simply omitted.
+DO $dedupe$
+DECLARE
+  -- One fragment, interpolated into both deletes, so the two can never drift.
+  facility_guard TEXT := CASE
+    WHEN to_regclass('public.facilities') IS NULL THEN ''
+    ELSE ' AND NOT EXISTS (SELECT 1 FROM facilities f WHERE f.area_id = a.id)'
+  END;
+BEGIN
+  -- 1. DIN-IPAL — duplicate of the pre-existing IPAL.
+  --    Scoped to "an area coded IPAL exists in the SAME factory", so if that
+  --    assumption is ever untrue this quietly does nothing rather than
+  --    destroying the only record of the place.
+  EXECUTE '
+    DELETE FROM areas a
+    WHERE a.code = ''DIN-IPAL''
+      AND EXISTS (
+        SELECT 1 FROM areas keep
+        WHERE keep.factory_id = a.factory_id AND keep.code = ''IPAL''
+      )
+      AND NOT EXISTS (SELECT 1 FROM machines m WHERE m.area_id = a.id)' || facility_guard;
 
--- ── 2. DIN-GUDANG — duplicate of GBB + GPJ ───────────────────
--- Only fires when BOTH replacements exist in the same factory. If either is
--- missing this quietly does nothing rather than leaving the warehouse with no
--- area at all.
-DELETE FROM areas a
-WHERE a.code = 'DIN-GUDANG'
-  AND EXISTS (
-    SELECT 1 FROM areas keep
-    WHERE keep.factory_id = a.factory_id AND keep.code = 'GBB'
-  )
-  AND EXISTS (
-    SELECT 1 FROM areas keep
-    WHERE keep.factory_id = a.factory_id AND keep.code = 'GPJ'
-  )
-  -- Never take anything down with it: machines.area_id and facilities.area_id
-  -- are ON DELETE CASCADE unless migration_delete_protection.sql has run, so a
-  -- bare DELETE would not error — it would silently remove them too.
-  AND NOT EXISTS (SELECT 1 FROM machines   m WHERE m.area_id = a.id)
-  AND NOT EXISTS (SELECT 1 FROM facilities f WHERE f.area_id = a.id);
+  -- 2. DIN-GUDANG — duplicate of GBB + GPJ.
+  --    Only fires when BOTH replacements exist in the same factory; if either
+  --    is missing this does nothing rather than leaving the warehouse with no
+  --    area at all.
+  EXECUTE '
+    DELETE FROM areas a
+    WHERE a.code = ''DIN-GUDANG''
+      AND EXISTS (
+        SELECT 1 FROM areas keep
+        WHERE keep.factory_id = a.factory_id AND keep.code = ''GBB''
+      )
+      AND EXISTS (
+        SELECT 1 FROM areas keep
+        WHERE keep.factory_id = a.factory_id AND keep.code = ''GPJ''
+      )
+      AND NOT EXISTS (SELECT 1 FROM machines m WHERE m.area_id = a.id)' || facility_guard;
+END
+$dedupe$;
 
 NOTIFY pgrst, 'reload schema';
 
