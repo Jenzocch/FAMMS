@@ -13,10 +13,10 @@
 -- these machine_codes and stops carrying its own copy.
 --
 -- Areas: the DAP sheet records the room each machine sits in, so those rooms are
--- created as FAMMS areas rather than dumping all 40 machines into PROD. One
--- exception is called out inline: the vacuum sealers F1-F4 have no room recorded
--- in the DAP extract, so they land in PROD and are flagged in remarks for
--- confirmation on site.
+-- created as FAMMS areas rather than dumping all 40 machines into PROD, using the
+-- area codes agreed for the one-time FQMS area import. One exception is called
+-- out inline: the vacuum sealers F1-F4 have no room recorded in the DAP extract,
+-- so they land in PROD and are flagged in remarks for confirmation on site.
 --
 -- Idempotent: areas use ON CONFLICT (factory_id, code) DO NOTHING; machines use
 -- a NOT EXISTS guard on (factory_id, machine_code), matching seed_din_machines.
@@ -26,21 +26,24 @@
 -- Rollback: see end of file.
 -- ============================================================
 
--- ── 1. Areas from the DAP room column ────────────────────────
+-- ── 1. Areas ────────────────────────────────────────────────
+-- Codes come from the FQMS sub-area list agreed for the one-time area import
+-- (FQMS docs/FQMS_AREA_CODES_FOR_FAMMS.md). Seeding only the rooms this file
+-- puts machines into; the other DIN rooms come with that import.
 INSERT INTO areas (factory_id, name, code, description)
 SELECT f.id, a.name, a.code, a.description
 FROM factories f
 CROSS JOIN (VALUES
-  ('Ruang Pemotongan',            'POTONG',  'Mesin potong C1-C8'),
-  ('Ruang Ayak dan Potong Baru',  'POTONG2', 'Area baru, mesin potong C10-C14'),
-  ('Ruang Slice',                 'SLICE',   'Mesin slice A2-A5'),
-  ('Area Slice dan Catok',        'CATOK',   'Mesin slice kulit ari A1, dan A6-A9'),
-  ('Ruang Pasteurisasi',          'PASTEUR', 'Bak pasteurisasi D1-D8')
+  ('Ruang Pemotongan',           'DIN-POTONG',  'Mesin potong C1-C8'),
+  ('Ruang Ayak dan Potong Baru', 'DIN-AYAK',    'Area baru, mesin potong C10-C14'),
+  ('Ruang Slice',                'DIN-SLICE',   'Mesin slice A2-A5'),
+  ('Area Slice dan Catok',       'DIN-CATOK',   'Mesin slice kulit ari A1, dan A6-A9'),
+  ('Ruang Pasteurisasi',         'DIN-PASTEUR', 'Bak pasteurisasi D1-D8')
 ) AS a(name, code, description)
 WHERE f.code = 'DIN'
 ON CONFLICT (factory_id, code) DO NOTHING;
 
--- ── 2. Mesin potong (cutting) — C1-C8 in POTONG, C10-C14 in POTONG2 ──
+-- ── 2. Mesin potong (cutting) — C1-C8 in DIN-POTONG, C10-C14 in DIN-AYAK ──
 -- C9 exists in the DAP but is annotated "di garasi, tidak terpakai"
 -- (in the garage, not in use) and is deliberately not registered.
 INSERT INTO machines (factory_id, area_id, machine_code, machine_name, status)
@@ -50,19 +53,19 @@ SELECT f.id, ar.id, m.machine_code, m.machine_name, 'running'
 -- its left.
 FROM factories f
 CROSS JOIN (VALUES
-  ('C1',  'Mesin Potong C1',  'POTONG'),
-  ('C2',  'Mesin Potong C2',  'POTONG'),
-  ('C3',  'Mesin Potong C3',  'POTONG'),
-  ('C4',  'Mesin Potong C4',  'POTONG'),
-  ('C5',  'Mesin Potong C5',  'POTONG'),
-  ('C6',  'Mesin Potong C6',  'POTONG'),
-  ('C7',  'Mesin Potong C7',  'POTONG'),
-  ('C8',  'Mesin Potong C8',  'POTONG'),
-  ('C10', 'Mesin Potong C10', 'POTONG2'),
-  ('C11', 'Mesin Potong C11', 'POTONG2'),
-  ('C12', 'Mesin Potong C12', 'POTONG2'),
-  ('C13', 'Mesin Potong C13', 'POTONG2'),
-  ('C14', 'Mesin Potong C14', 'POTONG2')
+  ('C1',  'Mesin Potong C1',  'DIN-POTONG'),
+  ('C2',  'Mesin Potong C2',  'DIN-POTONG'),
+  ('C3',  'Mesin Potong C3',  'DIN-POTONG'),
+  ('C4',  'Mesin Potong C4',  'DIN-POTONG'),
+  ('C5',  'Mesin Potong C5',  'DIN-POTONG'),
+  ('C6',  'Mesin Potong C6',  'DIN-POTONG'),
+  ('C7',  'Mesin Potong C7',  'DIN-POTONG'),
+  ('C8',  'Mesin Potong C8',  'DIN-POTONG'),
+  ('C10', 'Mesin Potong C10', 'DIN-AYAK'),
+  ('C11', 'Mesin Potong C11', 'DIN-AYAK'),
+  ('C12', 'Mesin Potong C12', 'DIN-AYAK'),
+  ('C13', 'Mesin Potong C13', 'DIN-AYAK'),
+  ('C14', 'Mesin Potong C14', 'DIN-AYAK')
 ) AS m(machine_code, machine_name, area_code)
 JOIN areas ar ON ar.factory_id = f.id AND ar.code = m.area_code
 WHERE f.code = 'DIN'
@@ -70,26 +73,26 @@ WHERE f.code = 'DIN'
     SELECT 1 FROM machines x WHERE x.factory_id = f.id AND x.machine_code = m.machine_code
   );
 
--- ── 3. Mesin slice — A1A/A1B and A6-A9 in CATOK, A2-A5 in SLICE ──
+-- ── 3. Mesin slice — A1A/A1B and A6-A9 in DIN-CATOK, A2-A5 in DIN-SLICE ──
 INSERT INTO machines (factory_id, area_id, machine_code, machine_name, status)
 SELECT f.id, ar.id, m.machine_code, m.machine_name, 'running'
 FROM factories f
 CROSS JOIN (VALUES
-  ('A1A-KA', 'Mesin Slice Kulit Ari A1A-KA', 'CATOK'),
-  ('A1B-KA', 'Mesin Slice Kulit Ari A1B-KA', 'CATOK'),
-  ('A2A-03', 'Mesin Slice A2A-03',           'SLICE'),
-  ('A2B-03', 'Mesin Slice A2B-03',           'SLICE'),
-  ('A2C-03', 'Mesin Slice A2C-03',           'SLICE'),
-  ('A3A-06', 'Mesin Slice A3A-06',           'SLICE'),
-  ('A3B-06', 'Mesin Slice A3B-06',           'SLICE'),
-  ('A4A-03', 'Mesin Slice A4A-03',           'SLICE'),
-  ('A4B-03', 'Mesin Slice A4B-03',           'SLICE'),
-  ('A5A-03', 'Mesin Slice A5A-03',           'SLICE'),
-  ('A5B-03', 'Mesin Slice A5B-03',           'SLICE'),
-  ('A6-12',  'Mesin Slice A6-12',            'CATOK'),
-  ('A7-08',  'Mesin Slice A7-08',            'CATOK'),
-  ('A8-05',  'Mesin Slice A8-05',            'CATOK'),
-  ('A9-03',  'Mesin Slice A9-03',            'CATOK')
+  ('A1A-KA', 'Mesin Slice Kulit Ari A1A-KA', 'DIN-CATOK'),
+  ('A1B-KA', 'Mesin Slice Kulit Ari A1B-KA', 'DIN-CATOK'),
+  ('A2A-03', 'Mesin Slice A2A-03',           'DIN-SLICE'),
+  ('A2B-03', 'Mesin Slice A2B-03',           'DIN-SLICE'),
+  ('A2C-03', 'Mesin Slice A2C-03',           'DIN-SLICE'),
+  ('A3A-06', 'Mesin Slice A3A-06',           'DIN-SLICE'),
+  ('A3B-06', 'Mesin Slice A3B-06',           'DIN-SLICE'),
+  ('A4A-03', 'Mesin Slice A4A-03',           'DIN-SLICE'),
+  ('A4B-03', 'Mesin Slice A4B-03',           'DIN-SLICE'),
+  ('A5A-03', 'Mesin Slice A5A-03',           'DIN-SLICE'),
+  ('A5B-03', 'Mesin Slice A5B-03',           'DIN-SLICE'),
+  ('A6-12',  'Mesin Slice A6-12',            'DIN-CATOK'),
+  ('A7-08',  'Mesin Slice A7-08',            'DIN-CATOK'),
+  ('A8-05',  'Mesin Slice A8-05',            'DIN-CATOK'),
+  ('A9-03',  'Mesin Slice A9-03',            'DIN-CATOK')
 ) AS m(machine_code, machine_name, area_code)
 JOIN areas ar ON ar.factory_id = f.id AND ar.code = m.area_code
 WHERE f.code = 'DIN'
@@ -101,7 +104,7 @@ WHERE f.code = 'DIN'
 INSERT INTO machines (factory_id, area_id, machine_code, machine_name, status)
 SELECT f.id, ar.id, m.machine_code, m.machine_name, 'running'
 FROM factories f
-JOIN areas ar ON ar.factory_id = f.id AND ar.code = 'PASTEUR'
+JOIN areas ar ON ar.factory_id = f.id AND ar.code = 'DIN-PASTEUR'
 CROSS JOIN (VALUES
   ('D1', 'Bak Pasteurisasi D1'),
   ('D2', 'Bak Pasteurisasi D2'),
@@ -149,7 +152,7 @@ NOTIFY pgrst, 'reload schema';
 --   JOIN areas a ON a.id = m.area_id
 --   JOIN factories f ON f.id = m.factory_id
 --   WHERE f.code = 'DIN' GROUP BY a.code ORDER BY a.code;
---   -- expect CATOK 6, PASTEUR 8, POTONG 8, POTONG2 5, PROD 4+4(demo), SLICE 9
+--   -- expect DIN-CATOK 6, DIN-PASTEUR 8, DIN-POTONG 8, DIN-AYAK 5, DIN-SLICE 9, PROD 4+4(demo)
 --
 -- Rollback (removes only the machines this file adds; areas are left in place
 -- because other records may already reference them):
