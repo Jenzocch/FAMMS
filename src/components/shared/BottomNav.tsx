@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
-import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench } from 'lucide-react'
+import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, ClipboardCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus, primary: true },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
+  { href: '/qc', labelKey: 'navigation.qc', icon: ClipboardCheck },
   // An Account Admin custom role (manageUsers capability) needs the Settings
   // link too — see the matching comment in components/shared/Sidebar.tsx.
   { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r, c) => PERMISSIONS.viewSettings(r) || !!c?.manageUsers },

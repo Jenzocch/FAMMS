@@ -134,7 +134,8 @@
     "knowledgeBase": "Knowledge Base",
     "settings": "Settings",
     "profile": "Profile",
-    "logout": "Logout"
+    "logout": "Logout",
+    "qc": "QC Check"
   },
   "roles": {
     "technician": "General Staff",
@@ -1158,5 +1159,24 @@
     "no": "No, this is new",
     "confirmed": "Marked as a repeat failure",
     "confirmFailed": "Failed to confirm — try again"
+  },
+  "qc": {
+    "addMachine": "Add a machine →",
+    "fileIssue": "Submit and open a case",
+    "hasOpenCase": "Open case",
+    "issueFiled": "Case {no} created",
+    "machineStopped": "Machine has stopped (sets it to Repairing and marks the case Critical)",
+    "markIssue": "Problem",
+    "markOk": "OK",
+    "markedOk": "Marked OK",
+    "noMachines": "No machines registered for this factory yet",
+    "notePlaceholder": "What did you see? e.g. bearing making noise",
+    "orphanWarning": "{count} machine(s) have an unreadable area — check the machine master",
+    "progress": "Today",
+    "resultIssue": "Problem",
+    "resultOk": "OK",
+    "saveFailed": "Could not save",
+    "title": "Daily QC Check",
+    "viewCase": "View case"
   }
 }

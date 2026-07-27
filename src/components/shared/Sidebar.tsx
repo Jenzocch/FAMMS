@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOutAndClearCaches } from '@/lib/sign-out'
-import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, BookOpen } from 'lucide-react'
+import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, BookOpen, ClipboardCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
+  { href: '/qc', labelKey: 'navigation.qc', icon: ClipboardCheck },
   { href: '/knowledge-base', labelKey: 'navigation.knowledgeBase', icon: BookOpen },
   // An Account Admin custom role (manageUsers capability) needs the Settings
   // link too — the page itself only opens the user-management section for

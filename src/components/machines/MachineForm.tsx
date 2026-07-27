@@ -149,7 +149,14 @@ export default function MachineForm({ machine }: Props) {
       {/* Area Selection */}
       <div>
         <Label>{t('machineForm.area', '區域 / Area')} <span className="text-red-500">*</span></Label>
-        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} disabled={!!machine} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
+        {/* Editable on an existing machine too. It used to be locked, which
+            became a real blocker the moment the area taxonomy had to be
+            re-cut to match FQMS's finer sub-areas — every machine sitting in
+            a coarse area needs moving, and there was no way to do it from the
+            UI at all. Moving a machine is safe: incidents, PM schedules and
+            maintenance history all hang off machine_id, not area_id, so
+            nothing is orphaned. factory_id follows the new area (see submit). */}
+        <Select value={areaId} onValueChange={(v) => setAreaId(v ?? '')} items={Object.fromEntries(areas.map(a => [a.id, a.name]))}>
           <SelectTrigger className="mt-1"><SelectValue placeholder={t('machineForm.selectArea', '選擇區域')} /></SelectTrigger>
           <SelectContent>
             {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}

@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { checkRCARequirement } from '@/lib/rca'
 import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import { summarizeForKnowledgeBase } from '@/lib/qwen'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { restoreMachineAfterClose } from '@/lib/qc-check'
 
 // POST /api/incidents/[id]/close — close an incident.
 // Blocks closing when RCA is required (same failure_code >= 3x in 90d) but no
@@ -133,6 +135,19 @@ export async function POST(
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  }
+
+  // Put the machine back into production. Only ever moves 'repairing' →
+  // 'running' (see restoreMachineAfterClose), so it can't override a machine
+  // an engineer has since marked 'standby' or 'scrapped', and it's a no-op for
+  // a case that never stopped the line. Non-fatal: the close already
+  // succeeded, and a stale machine status is fixable from the machine page.
+  if (incident.machine_id) {
+    try {
+      await restoreMachineAfterClose(createAdminClient(), incident.machine_id)
+    } catch (err) {
+      console.error('Machine status restore failed after close:', err)
+    }
   }
 
   // Optional close-time costs (labor / parts). Non-fatal: a cost-insert

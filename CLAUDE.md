@@ -324,6 +324,7 @@ src/
 │   │   ├── incidents/[id]/print/     printable work order
 │   │   ├── machines/                 list, new, [id], [id]/edit, [id]/qr
 │   │   ├── pm/page.tsx               PM calendar + due list + schedules
+│   │   ├── qc/page.tsx               daily QC sweep, grouped by area
 │   │   ├── pm/schedules/new/
 │   │   ├── knowledge-base/           list, new, [id]
 │   │   ├── reports/page.tsx          monthly report (print + CSV)
@@ -343,7 +344,9 @@ src/
 │       ├── health-score              recalculate equipment health
 │       ├── admin/users, admin/users/[id]
 │       ├── gudang/request            push a parts request to Gudang One
-│       ├── external/machine-status   QC/FQMS pull (Bearer QC_API_SECRET)
+│       ├── qc/checks                 daily QC tick (ok / issue → work order)
+│       ├── external/machine-status   FQMS pull (Bearer QC_API_SECRET)
+│       ├── external/qc-report        FQMS reports a fault (Bearer QC_API_SECRET)
 │       ├── external/parts-requests   Gudang One write-back (Bearer GUDANG_SYNC_SECRET)
 │       ├── cron/sla-check            SLA escalation (Bearer CRON_SECRET)
 │       ├── notifications/daily-summary, notifications/test
@@ -375,6 +378,7 @@ src/
 │   │   ├── GudangRequest.tsx         + PartsRequestTracker.tsx
 │   │   ├── RemindButton.tsx, NudgeCardButton.tsx, PrintReport.tsx
 │   │   └── report/                   ReportLocationFields, PastRecordsPanel
+│   ├── qc/QCDailyCheck.tsx           the walk-round tick list
 │   ├── pm/                           PMPage, PMDueList, PMFullCalendar,
 │   │                                 PMScheduleManager (+ PMScheduleFields,
 │   │                                 PMScheduleList), calendar/*
@@ -398,6 +402,9 @@ src/
 │   ├── pm.ts                         cadence labels, date math, checklist rules
 │   ├── pm-schedules.ts               schedule reads/writes (assignee-column fallback)
 │   ├── pm-overdue.ts                 the expensive overdue-PM read (streamed)
+│   ├── qc-check.ts                   QC issue → incident + machine status
+│   ├── incidents/createIncidentServer.ts  server-side incident creation
+│   │                                 (shared: Telegram /lapor, QC, FQMS)
 │   ├── health-score.ts, audit.ts, csv-export.ts, qwen.ts
 │   ├── telegram.ts                   send/edit/buttons/notify helpers
 │   ├── offline-queue.ts              IndexedDB queue + offline-cache.ts
@@ -420,6 +427,7 @@ src/
 | `FAMMS_FAULT_TREE.md` | the 100+ failure codes (seeded, but not wired into any report path — see the Repeat Failure section) |
 | `docs/LESSONS.md` | development lessons learned — read before repeating a past mistake |
 | `docs/E2E_CHECKLIST.md` | manual smoke-test paths |
+| `docs/FQMS_INTEGRATION.md` | the contract FQMS codes against to report machine faults |
 | `docs/GUDANG_INTEGRATION.md` | how parts requests reach Gudang One |
 | `docs/GUDANG_ONE_CONFIRM.md` | the agreed contract with the Gudang One side, incl. their answers |
 | `supabase/README.md` | which SQL to run and in what order (the RLS chain is mandatory) |
@@ -452,7 +460,7 @@ TELEGRAM_WEBHOOK_SECRET=your_random_secret # required — the webhook rejects al
 NEXT_PUBLIC_APP_URL=http://localhost:3000 (or production URL)
 
 # External integrations (server-to-server)
-QC_API_SECRET=your_random_secret      # Bearer token for GET /api/external/machine-status (QC/FQMS pulls PM/health status)
+QC_API_SECRET=your_random_secret      # Bearer token for BOTH external QC routes: GET /api/external/machine-status (FQMS pulls PM/health status) and POST /api/external/qc-report (FQMS reports a machine fault → opens a work order). See docs/FQMS_INTEGRATION.md
 GUDANG_SYNC_SECRET=your_random_secret # Bearer token for POST /api/external/parts-requests (Gudang One writes back status)
 GUDANG_WEBHOOK_URL=https://<gudang-project>.supabase.co/functions/v1/famms-request # line ①: push new parts requests to Gudang
 GUDANG_WEBHOOK_SECRET=same_secret_as_gudang_famms_request # sent as x-famms-secret header
@@ -476,6 +484,8 @@ Before first run:
    - Re-running `SYNC_SCHEMA_LATEST.sql` after this is safe: it no longer touches `anon` grants or RLS state, so it won't undo this step.
    - Two "quick fix" scripts that used to live in `supabase/` (`SETUP_RUN_ONCE.sql`, `fix_permissions_reset.sql`) did the opposite of all of the above — disabled RLS on every table and granted `anon` full access — and have been deleted. If you have either one saved locally from before, do not run it.
 5b. Run once, any order, all idempotent:
+   - `supabase/migration_qc_daily_check.sql` — the `qc_daily_checks` table behind the daily QC sweep (`/qc`), with its RLS.
+   - `supabase/migration_areas_match_fqms.sql` — **template, edit before running.** Re-cuts FAMMS areas to FQMS's sub-area codes and moves each machine to its new area. Ships as a no-op; fill in the two marked sections first.
    - `supabase/migration_delete_protection.sql` — converts the machine/area/factory delete cascades to RESTRICT so deleting one no longer silently wipes every incident/PM/cost record under it.
    - `supabase/migration_pm_records_unique.sql` — de-dupes and then uniquely constrains `pm_records(pm_schedule_id, scheduled_date)` so two people completing the same projected task at once can't create duplicate rows.
    - `supabase/migration_custom_roles.sql` — adds the `custom_roles` / `role_capabilities` tables + `profiles.custom_role_key` that power Settings → 角色管理 (admin-defined roles like QC, without a code change per role). Seeds the built-in QC role and migrates any `profiles.role = 'qc'` row to `role='technician', custom_role_key='qc'`.

@@ -134,7 +134,8 @@
     "settings": "Pengaturan",
     "profile": "Profil",
     "logout": "Keluar",
-    "machines": "Mesin"
+    "machines": "Mesin",
+    "qc": "Cek QC"
   },
   "roles": {
     "technician": "Karyawan",
@@ -1158,5 +1159,24 @@
     "no": "Bukan, ini masalah baru",
     "confirmed": "Ditandai sebagai kerusakan berulang",
     "confirmFailed": "Gagal menandai — coba lagi"
+  },
+  "qc": {
+    "addMachine": "Tambah mesin →",
+    "fileIssue": "Kirim dan buat laporan",
+    "hasOpenCase": "Sudah ada laporan",
+    "issueFiled": "Laporan {no} dibuat",
+    "machineStopped": "Mesin berhenti (status jadi Perbaikan, laporan jadi Kritis)",
+    "markIssue": "Bermasalah",
+    "markOk": "OK",
+    "markedOk": "Ditandai OK",
+    "noMachines": "Belum ada mesin terdaftar di pabrik ini",
+    "notePlaceholder": "Apa yang Anda lihat? mis. bearing bunyi kasar",
+    "orphanWarning": "{count} mesin areanya tidak terbaca — periksa data mesin",
+    "progress": "Hari ini",
+    "resultIssue": "Bermasalah",
+    "resultOk": "OK",
+    "saveFailed": "Gagal menyimpan",
+    "title": "Cek Harian QC",
+    "viewCase": "Lihat laporan"
   }
 }
