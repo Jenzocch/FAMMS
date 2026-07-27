@@ -49,6 +49,9 @@ JOIN (VALUES
   ('DIN', 'DIN-PRESS',    'Ruang Press'),
   ('DIN', 'DIN-PACKNATA', 'Ruang Packing Nata Lokal dan Inspeksi Partikel Asing'),
   ('DIN', 'DIN-GUDANG',   'Gudang Bahan Baku, Bahan Kemas, dan Produk Jadi'),
+  -- DIN-IPAL duplicates an area DIN already had, coded IPAL. Left in the list
+  -- so this file still records what was actually run against the live DB;
+  -- migration_areas_dedupe.sql removes it again and must run after this.
   ('DIN', 'DIN-IPAL',     'IPAL (Instalasi Pengolahan Air Limbah)')
 ) AS a(factory_code, code, name) ON a.factory_code = f.code
 ON CONFLICT (factory_id, code) DO NOTHING;

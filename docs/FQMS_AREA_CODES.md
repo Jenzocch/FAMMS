@@ -53,7 +53,20 @@ plus IPAL.
 | `DIN-PRESS` | Ruang Press | — |
 | `DIN-PACKNATA` | Ruang Packing Nata Lokal dan Inspeksi Partikel Asing | — |
 | `DIN-GUDANG` | Gudang Bahan Baku, Bahan Kemas, dan Produk Jadi | — |
-| `DIN-IPAL` | IPAL (Instalasi Pengolahan Air Limbah) | — |
+| ~~`DIN-IPAL`~~ → **`IPAL`** | IPAL (Instalasi Pengolahan Air Limbah) | — |
+
+⚠️ **`DIN-IPAL` was withdrawn after the import — map to `IPAL` instead.** DIN
+already had an area coded `IPAL` for the same effluent plant, created by hand
+in FAMMS Settings long before this list existed. Two rows for one place is the
+problem this import exists to fix, so the newer one (ours) was removed by
+`supabase/migration_areas_dedupe.sql`. It is the only code on this page
+without a factory prefix.
+
+**`DIN-GUDANG` may follow.** DIN also has hand-made areas coded `GBB` and
+`GPJ`, which look like Gudang Bahan Baku and Gudang Produk Jadi — FAMMS would
+then already be splitting the warehouse that FQMS treats as one cleaning zone.
+Unverified, and `DIN-GUDANG` additionally covers *bahan kemas*, which neither
+of those two accounts for, so it stays for now. Don't assume it is permanent.
 
 **C9 is deliberately absent** — the DAP annotates it *"di garasi, tidak
 terpakai."*
@@ -65,7 +78,8 @@ they are and let us confirm on site** rather than assigning a room now.
 
 **Not areas** (FQMS zones that are recurring tasks, not places — do not
 import): `DIN - 切割機潮墊清潔`, `DIN - 濾網清潔`.
-`DIN - IPAL 污水處理清潔` maps to `DIN-IPAL` above.
+`DIN - IPAL 污水處理清潔` maps to `IPAL` (see the note under the table — not
+`DIN-IPAL`, which was withdrawn as a duplicate).
 
 ## SJA — 7 areas
 
@@ -142,7 +156,8 @@ JOIN (VALUES
   ('DIN', 'DIN-PRESS',    'Ruang Press'),
   ('DIN', 'DIN-PACKNATA', 'Ruang Packing Nata Lokal dan Inspeksi Partikel Asing'),
   ('DIN', 'DIN-GUDANG',   'Gudang Bahan Baku, Bahan Kemas, dan Produk Jadi'),
-  ('DIN', 'DIN-IPAL',     'IPAL (Instalasi Pengolahan Air Limbah)'),
+  -- DIN-IPAL is gone from this list on purpose: DIN's existing `IPAL` area is
+  -- the same place. Inserting it again just recreates the duplicate.
   ('SJA', 'SJA-SNJ',      'R. Sirup, Nata, Jelly'),
   ('SJA', 'SJA-FORMSIR',  'R. Formulasi Sirup'),
   ('SJA', 'SJA-FORMBAW',  'R. Formulasi Bawah'),
@@ -162,8 +177,9 @@ Everything above is already written as runnable SQL on the FAMMS branch
 | `supabase/migration_areas_match_fqms.sql` | creates the 20 areas **and relocates existing DIN machines** into them |
 | `supabase/seed_din_machines_real.sql` | the 40 DIN machines from `DIN-FR-PRD-001-DAP` |
 | `supabase/seed_sja_machines_real.sql` | the 109 SJA machines from `SJA-FR-PRD-001-DAP` |
+| `supabase/migration_areas_dedupe.sql` | drops `DIN-IPAL`, which collided with DIN's existing `IPAL` |
 
-All three verified against PostgreSQL 16: run twice, identical result, no
+All four verified against PostgreSQL 16: run twice, identical result, no
 duplicate machine codes, and machines pre-existing in the wrong area do get
 moved.
 
