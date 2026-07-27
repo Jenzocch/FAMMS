@@ -112,20 +112,39 @@ $dedupe$;
 
 NOTIFY pgrst, 'reload schema';
 
--- Verify: DIN should list IPAL but no DIN-IPAL, and DIN-GUDANG should still
--- be there. An unexpected surviving DIN-IPAL means something is attached to
--- it — the `machines` count says what.
+-- Verify: DIN should list IPAL, GBB and GPJ, and neither DIN-IPAL nor
+-- DIN-GUDANG. Exactly three rows.
+--
+-- A surviving DIN-IPAL / DIN-GUDANG is not a failed statement — it is a guard
+-- doing its job, and the `machines` count says which one. Note that count can
+-- be non-zero while FQMS's inspection-targets shows the area as empty: that
+-- endpoint filters out `scrapped` machines, the guard here does not. A
+-- decommissioned machine still filed under the area is enough to hold the
+-- delete back, and rightly so — deleting the area would take its only
+-- location record with it (machines.area_id is ON DELETE CASCADE until
+-- migration_delete_protection.sql has run).
+--
+-- `facilities` is deliberately not counted here. It is in schema.sql but
+-- absent from databases built up migration-by-migration — including this one,
+-- which is why the guard above is built conditionally. Selecting from it
+-- unconditionally fails the verify with 42P01 on exactly the databases that
+-- need to run this file.
 --   SELECT f.code AS factory, a.code, a.name,
---          (SELECT count(*) FROM machines   m WHERE m.area_id = a.id) AS machines,
---          (SELECT count(*) FROM facilities x WHERE x.area_id = a.id) AS facilities
+--          (SELECT count(*) FROM machines m WHERE m.area_id = a.id) AS machines
 --   FROM areas a JOIN factories f ON f.id = a.factory_id
 --   WHERE a.code IN ('IPAL', 'DIN-IPAL', 'GBB', 'GPJ', 'DIN-GUDANG')
 --   ORDER BY f.code, a.code;
 --
--- Rollback — recreate the removed area (it carried no machines, so there is
--- nothing else to restore). Only re-run this if you decide DIN wants its own
--- IPAL row after all:
+-- Rollback — recreate whichever area you want back. Neither carried machines
+-- or facilities (the guards enforced that before deleting), so the row itself
+-- is the whole of what was lost. Only run this if you decide DIN wants its
+-- own row after all:
 --   INSERT INTO areas (factory_id, code, name)
---   SELECT f.id, 'DIN-IPAL', 'IPAL (Instalasi Pengolahan Air Limbah)'
---   FROM factories f WHERE f.code = 'DIN'
+--   SELECT f.id, v.code, v.name
+--   FROM factories f
+--   CROSS JOIN (VALUES
+--     ('DIN-IPAL',   'IPAL (Instalasi Pengolahan Air Limbah)'),
+--     ('DIN-GUDANG', 'Gudang Bahan Baku, Bahan Kemas, dan Produk Jadi')
+--   ) AS v(code, name)
+--   WHERE f.code = 'DIN'
 --   ON CONFLICT (factory_id, code) DO NOTHING;
