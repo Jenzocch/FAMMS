@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import imageCompression from 'browser-image-compression'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,16 @@ export default function FactoryManager() {
 
   // Factory form (add at top, or edit in place)
   const [showFactoryForm, setShowFactoryForm] = useState(false)
+  // Both forms render at a fixed spot — the factory form above the factory
+  // list, the area form after the LAST area in whichever card is expanded —
+  // not at the row that was tapped. On SJA's 15 areas, editing area #3 opened
+  // the form past #15, off-screen below; editing a factory further down the
+  // page opened its form off-screen above. Either way indistinguishable from
+  // the button doing nothing.
+  const factoryFormRef = useRef<HTMLDivElement>(null)
+  const areaFormRef = useRef<HTMLDivElement>(null)
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) =>
+    requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   const [editingFactory, setEditingFactory] = useState<string | null>(null)
   const [factoryForm, setFactoryForm] = useState({ name: '', code: '' })
 
@@ -141,6 +151,7 @@ export default function FactoryManager() {
     setFactoryForm({ name: f.name, code: f.code })
     setEditingFactory(f.id)
     setShowFactoryForm(true)
+    scrollTo(factoryFormRef)
   }
 
   function resetFactoryForm() {
@@ -155,12 +166,14 @@ export default function FactoryManager() {
     setEditingArea(null)
     setAreaForm({ name: '', code: '', description: '', photo_url: null })
     setAreaFormFactoryId(factoryId)
+    scrollTo(areaFormRef)
   }
 
   function startEditArea(a: Area) {
     setEditingArea(a.id)
     setAreaForm({ name: a.name, code: a.code, description: a.description || '', photo_url: a.photo_url })
     setAreaFormFactoryId(a.factory_id)
+    scrollTo(areaFormRef)
   }
 
   function resetAreaForm() {
@@ -263,7 +276,7 @@ export default function FactoryManager() {
       )}
 
       {showFactoryForm && (
-        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+        <div ref={factoryFormRef} className="bg-gray-50 p-4 rounded-lg space-y-3 scroll-mt-16">
           <div>
             <Label>{t('settings.name')}</Label>
             <Input
@@ -385,7 +398,7 @@ export default function FactoryManager() {
                   ))}
 
                   {areaFormFactoryId === f.id ? (
-                    <div className="bg-white border rounded-lg p-3 space-y-3">
+                    <div ref={areaFormRef} className="bg-white border rounded-lg p-3 space-y-3 scroll-mt-16">
                       <div>
                         <Label>{t('settings.name')}</Label>
                         <Input

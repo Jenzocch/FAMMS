@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -42,6 +42,10 @@ export default function RoleManager() {
   const [submitting, setSubmitting] = useState(false)
 
   const [showForm, setShowForm] = useState(false)
+  // The form mounts above the role list, not at the tapped card — on a
+  // long list a tap on Edit opened it off-screen above the current scroll
+  // position, indistinguishable from the button doing nothing.
+  const formRef = useRef<HTMLDivElement>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [key, setKey] = useState('')
   const [labelZh, setLabelZh] = useState('')
@@ -96,6 +100,7 @@ export default function RoleManager() {
     setBaseRole('technician')
     setCaps({ dashboard: false, boardFull: false, viewMachines: true, manageUsers: false })
     setShowForm(true)
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   function startEdit(r: CustomRole) {
@@ -107,6 +112,7 @@ export default function RoleManager() {
     setBaseRole(r.base_role)
     setCaps({ ...(capsByRole[r.key] ?? { dashboard: false, boardFull: false, viewMachines: true, manageUsers: false }) })
     setShowForm(true)
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   function resetForm() {
@@ -187,7 +193,7 @@ export default function RoleManager() {
       )}
 
       {showForm && (
-        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+        <div ref={formRef} className="bg-gray-50 p-4 rounded-lg space-y-3 scroll-mt-16">
           <p className="text-sm font-medium text-gray-700">
             {editingKey ? t('settings.editRole', '編輯角色') : t('settings.addRole', '新增角色')}
           </p>

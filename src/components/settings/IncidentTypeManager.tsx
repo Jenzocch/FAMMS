@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -24,6 +24,12 @@ export default function IncidentTypeManager() {
   // the report/edit/search forms pick up changes without a reload.
   const { types, loading } = useIncidentTypes()
   const [showForm, setShowForm] = useState(false)
+  // The form mounts above the list, not at the tapped card — on a long list a
+  // tap on Edit opened it off-screen above the current scroll position,
+  // indistinguishable from the button doing nothing.
+  const formRef = useRef<HTMLDivElement>(null)
+  const scrollToForm = () =>
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   const [editingId, setEditingId] = useState<string | null>(null)
   const [zh, setZh] = useState('')
   const [en, setEn] = useState('')
@@ -34,6 +40,7 @@ export default function IncidentTypeManager() {
     setEditingId(null)
     setZh(''); setEn(''); setId('')
     setShowForm(true)
+    scrollToForm()
   }
 
   function startEdit(t: IncidentType) {
@@ -42,6 +49,7 @@ export default function IncidentTypeManager() {
     setEn(t.label_en ?? '')
     setId(t.label_id ?? t.label ?? '')
     setShowForm(true)
+    scrollToForm()
   }
 
   function closeForm() {
@@ -143,7 +151,7 @@ export default function IncidentTypeManager() {
       )}
 
       {showForm && (
-        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+        <div ref={formRef} className="bg-gray-50 p-4 rounded-lg space-y-3 scroll-mt-16">
           <p className="text-sm font-medium text-gray-700">
             {editingId ? tr('settings.editIncidentType') : tr('settings.addIncidentType')}
           </p>
