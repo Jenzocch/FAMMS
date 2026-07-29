@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -74,6 +74,11 @@ export default function UserManager({ currentUserId, canAssignAdmin = false }: {
   const [submitting, setSubmitting] = useState(false)
 
   const [showForm, setShowForm] = useState(false)
+  // The form mounts above the user list, not at the tapped card. On a long
+  // list a tap near the bottom (Edit or + Add) opened the form off-screen
+  // above the current scroll position — indistinguishable from the button
+  // doing nothing. Scrolled into view whenever the form opens.
+  const formRef = useRef<HTMLDivElement>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   // Whether the account being edited logs in with a real email (not the
   // synthetic name@famms.local scheme) — changes this field's meaning from
@@ -143,6 +148,9 @@ export default function UserManager({ currentUserId, canAssignAdmin = false }: {
     setTelegramChatId('')
     setIsSharedDevice(false)
     setShowForm(true)
+    // The button that opens this form for "add" always starts at the top of
+    // the list already, so nothing to scroll — but harmless to call anyway.
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   function startEdit(u: ManagedUser) {
@@ -157,6 +165,9 @@ export default function UserManager({ currentUserId, canAssignAdmin = false }: {
     setTelegramChatId(u.telegram_chat_id != null ? String(u.telegram_chat_id) : '')
     setIsSharedDevice(u.is_shared_device)
     setShowForm(true)
+    // See the formRef comment above — this is the tap that was landing on a
+    // form the user couldn't see, on any list longer than one screen.
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   function resetForm() {
@@ -271,7 +282,7 @@ export default function UserManager({ currentUserId, canAssignAdmin = false }: {
       )}
 
       {showForm && (
-        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+        <div ref={formRef} className="bg-gray-50 p-4 rounded-lg space-y-3 scroll-mt-16">
           <p className="text-sm font-medium text-gray-700">
             {editingId ? t('settings.editUser') : t('settings.addUser')}
           </p>

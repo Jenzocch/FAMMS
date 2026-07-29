@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -55,6 +55,12 @@ export default function PMScheduleManager() {
   const [form, setForm] = useState<ScheduleFormState>(EMPTY_SCHEDULE_FORM)
   const patchForm = (patch: Partial<ScheduleFormState>) => setForm(prev => ({ ...prev, ...patch }))
   const [showForm, setShowForm] = useState(false)
+  // The form mounts above the schedule list, not at the tapped card — on a
+  // long list a tap on Edit opened it off-screen above the current scroll
+  // position, indistinguishable from the button doing nothing.
+  const formRef = useRef<HTMLDivElement>(null)
+  const scrollToForm = () =>
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -188,6 +194,7 @@ export default function PMScheduleManager() {
       assignees: s.assigned_user_ids ?? [],
     })
     setShowForm(true)
+    scrollToForm()
   }
 
   if (loading) return <div className="text-center text-gray-500 text-sm py-4">{t('common.loading')}</div>
@@ -204,22 +211,24 @@ export default function PMScheduleManager() {
       )}
 
       {showForm && (
-        <PMScheduleFields
-          value={form}
-          onChange={patchForm}
-          editing={!!editingId}
-          submitting={submitting}
-          onSubmit={submit}
-          onCancel={closeForm}
-          factories={factories}
-          areas={areas}
-          machines={machines}
-          accounts={accounts}
-          factoryId={factoryId}
-          areaId={areaId}
-          onFactoryChange={setFactoryId}
-          onAreaChange={setAreaId}
-        />
+        <div ref={formRef} className="scroll-mt-16">
+          <PMScheduleFields
+            value={form}
+            onChange={patchForm}
+            editing={!!editingId}
+            submitting={submitting}
+            onSubmit={submit}
+            onCancel={closeForm}
+            factories={factories}
+            areas={areas}
+            machines={machines}
+            accounts={accounts}
+            factoryId={factoryId}
+            areaId={areaId}
+            onFactoryChange={setFactoryId}
+            onAreaChange={setAreaId}
+          />
+        </div>
       )}
 
       <PMScheduleList

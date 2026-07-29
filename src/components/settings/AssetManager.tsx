@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -46,6 +46,12 @@ export default function AssetManager() {
   const [factoryId, setFactoryId] = useState('')
   const [areaId, setAreaId] = useState('')
   const [showForm, setShowForm] = useState(false)
+  // The form mounts above the list, not at the tapped card — on a long list a
+  // tap on Edit opened it off-screen above the current scroll position,
+  // indistinguishable from the button doing nothing.
+  const formRef = useRef<HTMLDivElement>(null)
+  const scrollToForm = () =>
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [category, setCategory] = useState('machine')
@@ -127,6 +133,7 @@ export default function AssetManager() {
     setCode('')
     setCategory('machine')
     setShowForm(true)
+    scrollToForm()
   }
 
   function startEdit(a: Asset) {
@@ -135,6 +142,7 @@ export default function AssetManager() {
     setCode(a.machine_code || '')
     setCategory(a.asset_category || 'machine')
     setShowForm(true)
+    scrollToForm()
   }
 
   function resetForm() {
@@ -261,7 +269,7 @@ export default function AssetManager() {
       )}
 
       {showForm && (
-        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+        <div ref={formRef} className="bg-gray-50 p-4 rounded-lg space-y-3 scroll-mt-16">
           <p className="text-sm font-medium text-gray-700">{editingId ? t('settings.editAsset') : t('settings.addAsset')}</p>
           <div>
             <Label>{t('settings.assetCategory')}</Label>
