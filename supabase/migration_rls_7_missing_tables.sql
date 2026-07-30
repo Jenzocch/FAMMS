@@ -19,6 +19,11 @@
 -- is toggling RLS off has no business existing on a locked-down production
 -- DB. Re-running migration_rls_3 recreates it if ever needed again.
 --
+-- Also sweeps any leftover `authenticated_all` policy (see the block near the
+-- bottom) — the blanket "any logged-in user, any factory" policy from the
+-- old, now-deleted migration_rls_phase1.sql/phase2.sql design. Deleting those
+-- files doesn't undo what they already applied to a database that ran them.
+--
 -- Safe to run more than once. Test after: 叫料 (parts request) from an
 -- incident, vendor list in AssignForm, vendor management in Settings, and a
 -- /lapor Telegram report all still work.
@@ -82,10 +87,38 @@ CREATE POLICY parts_requests_delete ON parts_requests FOR DELETE TO authenticate
 -- ── drop the rollout helper ─────────────────────────────────────────────────
 DROP FUNCTION IF EXISTS rls_set(TEXT[], BOOLEAN);
 
--- ── sanity check — both rows should say ✅ ──────────────────────────────────
+-- ── drop any leftover blanket policy from the old (deleted) two-phase rollout
+-- ─────────────────────────────────────────────────────────────────────────────
+-- migration_rls_phase1.sql / migration_rls_phase2.sql — an earlier, superseded
+-- RLS design — created a policy named `authenticated_all` (USING true, WITH
+-- CHECK true) on every table, and deliberately left it in place on
+-- machines/areas/factories/spare_parts/knowledge_base/telegram_*/pm_records/…
+-- "reference data all roles legitimately need". RLS OR's multiple permissive
+-- policies together, so on any database that ever ran those two files, this
+-- blanket policy is still silently granting every authenticated user
+-- cross-factory read/write on those tables — regardless of the fine-grained
+-- policies migration_rls_2/3/4/6/7 added since. Deleting the SQL files from
+-- the repo does not undo what they already applied to a live database; this
+-- sweep does. Harmless no-op on a database that never ran them.
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS authenticated_all ON public.%I', r.tablename);
+  END LOOP;
+END $$;
+
+-- ── sanity check — all rows should say ✅ ───────────────────────────────────
 SELECT '1. RLS 未開啟的表' AS check,
   COALESCE(string_agg(tablename, ', '), '✅ 全部已開啟') AS result
 FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity
 UNION ALL
 SELECT '2. rls_set 函式',
-  CASE WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname='rls_set') THEN '❌ 仍存在' ELSE '✅ 已移除' END;
+  CASE WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname='rls_set') THEN '❌ 仍存在' ELSE '✅ 已移除' END
+UNION ALL
+SELECT '3. 舊版 authenticated_all 政策（應為 0）',
+  COALESCE((SELECT COUNT(*)::TEXT || ' 個表仍有'
+            FROM pg_policies WHERE schemaname='public' AND policyname='authenticated_all'),
+           '0') ||
+  CASE WHEN EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND policyname='authenticated_all')
+       THEN '' ELSE ' ✅ 已清除' END;
