@@ -58,7 +58,14 @@ export async function loadActiveSchedules(supabase: SupabaseClient): Promise<PMS
     .order('created_at', { ascending: false })
 
   const res = await query(WITH_ASSIGNEE)
-  const rows = (res.error ? (await query(BASE_COLS)).data : res.data) as unknown as RawScheduleRow[] | null
+  // Only retry without the assignee columns on an actual missing-column error
+  // (a DB that hasn't run migration_pm_assignee.sql yet) — same 42703/PGRST204
+  // check used elsewhere (see submitIncidentReport.ts / close/route.ts). Any
+  // OTHER error retried here would silently render every schedule's
+  // assigned_user_ids as [], and startEdit() would then save that empty list
+  // back, wiping real assignees on a fully-migrated DB.
+  const missingColumn = res.error && (res.error.code === '42703' || res.error.code === 'PGRST204')
+  const rows = (missingColumn ? (await query(BASE_COLS)).data : res.data) as unknown as RawScheduleRow[] | null
 
   return (rows ?? []).map(s => ({
     id: s.id,
