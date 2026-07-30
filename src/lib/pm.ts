@@ -93,6 +93,15 @@ export function wibTodayStr(now: Date = new Date()): string {
   return new Date(now.getTime() + 7 * 3_600_000).toISOString().split('T')[0]
 }
 
+// UTC instant of today's WIB midnight (start of the current factory-local
+// day), for "since midnight" queries — e.g. incident_no's per-day sequence
+// count. WIB midnight is UTC 17:00 the previous day (UTC+7), regardless of
+// the server's own TZ. Pairs with wibTodayStr, which gives the matching
+// 'YYYY-MM-DD' label for the same day.
+export function wibMidnightUtcIso(now: Date = new Date()): string {
+  return new Date(parseDateStr(wibTodayStr(now)).getTime() - 7 * 3_600_000).toISOString()
+}
+
 const DAY_MS = 86_400_000
 
 // Whole days between two 'YYYY-MM-DD' strings (UTC midnight to UTC midnight).

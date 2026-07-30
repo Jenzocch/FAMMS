@@ -1,6 +1,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit'
 import { deadlineFromUrgency } from '@/lib/incident-display'
+import { wibTodayStr, wibMidnightUtcIso } from '@/lib/pm'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -8,11 +9,11 @@ type AdminClient = ReturnType<typeof createAdminClient>
 // counterpart to submitIncidentReport.ts, which does the same job from the
 // browser under the user's own session.
 //
-// Two callers today: the Telegram /lapor flow and the QC daily check (both
-// the in-app page and FQMS's external report). Each of those used to carry
-// its own copy of the incident_no generation + collision retry below, which
-// is precisely the code you do not want three subtly different versions of —
-// a numbering bug would show up on one channel and not the others.
+// Callers today: the Telegram /lapor flow and the QC daily check (FQMS's
+// external report). Each of those used to carry its own copy of the
+// incident_no generation + collision retry below — precisely the code you do
+// not want multiple subtly different versions of, and the reason a WIB
+// timezone fix once had to be applied in three places instead of one.
 //
 // Runs as service_role, so it does NOT pass through the incidents RLS
 // field-guard trigger. That is only safe because every caller here writes the
@@ -43,12 +44,14 @@ export async function createIncidentServer(
   input: CreateIncidentInput,
 ): Promise<CreatedIncident> {
   const now = new Date()
-  const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  // Factory-local (WIB) day, not the server's — an incident reported between
+  // 00:00-07:00 WIB must not be numbered/counted against the previous UTC day.
+  const ymd = wibTodayStr(now).replace(/-/g, '')
 
   const { count } = await admin
     .from('incidents')
     .select('id', { count: 'exact', head: true })
-    .gte('created_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
+    .gte('created_at', wibMidnightUtcIso(now))
 
   const base = {
     factory_id: input.factoryId,

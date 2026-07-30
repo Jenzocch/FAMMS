@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { logAuditEvent } from '@/lib/audit'
 import { checkPotentialRepeatFailure, type PotentialRepeat } from '@/lib/repeat-failure'
+import { wibTodayStr, wibMidnightUtcIso } from '@/lib/pm'
 
 type SupabaseClient = ReturnType<typeof createClient>
 
@@ -72,11 +73,14 @@ export async function submitIncidentReport(
   }
 
   const now = new Date()
-  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  // Factory-local (WIB) day, not the reporting device's own clock/TZ — an
+  // incident reported between 00:00-07:00 WIB must not be numbered/counted
+  // against the previous day.
+  const ym = wibTodayStr(now).replace(/-/g, '')
   const { count } = await supabase
     .from('incidents')
     .select('id', { count: 'exact', head: true })
-    .gte('created_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
+    .gte('created_at', wibMidnightUtcIso(now))
 
   const insertPayload: Record<string, unknown> = {
     factory_id: input.factoryId,
