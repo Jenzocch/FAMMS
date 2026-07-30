@@ -12,7 +12,7 @@ import PartsRequestTracker from '@/components/incidents/PartsRequestTracker'
 import PastRecordsPanel from '@/components/incidents/report/PastRecordsPanel'
 import type { PastIncident, KBMatch } from '@/lib/hooks/usePastRecords'
 import StatusChip from '@/components/incidents/StatusChip'
-import { BackLink, UrgencyChip, DueDateChip, ClosedBanner, CollapsibleSection, PrintReportLink, YourTurnBadge } from '@/components/incidents/IncidentDetailChrome'
+import { BackLink, UrgencyChip, DueDateChip, EtaChip, ClosedBanner, CollapsibleSection, PrintReportLink, YourTurnBadge } from '@/components/incidents/IncidentDetailChrome'
 import AssignForm from '@/components/incidents/AssignForm'
 import IncidentActions from '@/components/incidents/IncidentActions'
 import AuditTrail from '@/components/incidents/AuditTrail'
@@ -262,12 +262,8 @@ export default async function IncidentDetailPage({
           {incident.due_date && (
             <DueDateChip dueDate={incident.due_date} isClosed={isClosed} />
           )}
-          {/* Assignee-reported ETA — distinct from the supervisor-set due date */}
           {!isClosed && incident.estimated_completion_date && (
-            <span className="inline-flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-full">
-              <Clock className="w-3.5 h-3.5" />
-              技師預計 {format(new Date(incident.estimated_completion_date), 'MM/dd')}
-            </span>
+            <EtaChip date={incident.estimated_completion_date} />
           )}
         </div>
       )}
