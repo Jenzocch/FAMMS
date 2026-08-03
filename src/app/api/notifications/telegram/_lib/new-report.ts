@@ -4,9 +4,8 @@ import {
   newReportFactoryButtons, newReportFactoryButtonAfter, repeatFailureButtons,
   notifyFactory, notifyAssignees, esc,
 } from '@/lib/telegram'
-import { logAuditEvent } from '@/lib/audit'
-import { deadlineFromUrgency } from '@/lib/incident-display'
 import { checkPotentialRepeatFailure } from '@/lib/repeat-failure'
+import { createIncidentServer } from '@/lib/incidents/createIncidentServer'
 import { type AdminClient, type TelegramCallbackQuery, chatAndMessageFrom, resolveProfile, NEW_REPORT_PROMPT_PREFIX } from './shared'
 
 // /lapor — filing a brand-new incident without opening the app.
@@ -178,13 +177,6 @@ export async function handleNewReportUrgency(admin: AdminClient, cq: TelegramCal
     machineId = machine?.id ?? null
   }
 
-  const now = new Date()
-  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-  const { count } = await admin
-    .from('incidents')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
-
   const title = draft.description.length > 60 ? `${draft.description.slice(0, 57)}...` : draft.description
   // A matched machine code means this is a machine issue — typing it 'other'
   // (as this used to unconditionally) broke type stats AND cross-channel
@@ -192,33 +184,24 @@ export async function handleNewReportUrgency(admin: AdminClient, cq: TelegramCal
   // detection keys on same machine + same incident_type, so a Telegram report
   // could never match a web report of the identical fault.
   const incidentType = machineId ? 'machine' : 'other'
-  const basePayload = {
-    factory_id: draft.factory_id,
-    machine_id: machineId,
-    incident_type: incidentType,
-    title,
-    description: draft.description,
-    reporter_name: profile.full_name || null,
-    downtime_impact: impact,
-    due_date: deadlineFromUrgency(impact),
-    status: 'reported' as const,
-    reported_by_id: profile.id,
-  }
 
-  let incident: { id: string; incident_no: string } | null = null
-  let seq = (count ?? 0) + 1
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const incident_no = `FIT-${ym}-${String(seq).padStart(3, '0')}`
-    const { data, error } = await admin
-      .from('incidents')
-      .insert({ ...basePayload, incident_no })
-      .select('id, incident_no')
-      .single()
-    if (!error) { incident = data; break }
-    if (error.code === '23505') { seq++; continue }
-    break
-  }
-  if (!incident) {
+  // incident_no generation + collision retry + audit log all live in
+  // createIncidentServer now, shared with the QC/FQMS path — see that file's
+  // own comment for why three independent copies of this used to exist.
+  let incident: { id: string; incident_no: string }
+  try {
+    incident = await createIncidentServer(admin, {
+      factoryId: draft.factory_id,
+      machineId,
+      incidentType,
+      title,
+      description: draft.description,
+      reporterName: profile.full_name || null,
+      reportedById: profile.id,
+      impact,
+      via: 'via Telegram',
+    })
+  } catch {
     await sendTelegramMessage(chatId, 'Gagal membuat laporan — coba lagi lewat /lapor, atau lewat aplikasi.')
     return
   }
@@ -240,17 +223,6 @@ export async function handleNewReportUrgency(admin: AdminClient, cq: TelegramCal
       }
     } catch { /* photo is best-effort — the incident itself is already saved */ }
   }
-
-  await logAuditEvent(admin, {
-    userId: profile.id,
-    userName: profile.full_name || null,
-    actionType: 'create',
-    resourceType: 'incident',
-    resourceId: incident.id,
-    newValue: { incident_no: incident.incident_no, title, incident_type: incidentType },
-    changeSummary: `工單已建立：${incident.incident_no}（via Telegram）`,
-    factoryId: draft.factory_id,
-  })
 
   await admin.from('telegram_report_drafts').delete().eq('chat_id', chatId)
 

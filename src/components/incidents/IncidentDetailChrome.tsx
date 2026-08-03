@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { ChevronLeft, CalendarClock, Printer } from 'lucide-react'
+import { ChevronLeft, CalendarClock, Clock, Printer } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 
 // Small localized bits of the (server-rendered) incident detail page. Kept as
@@ -55,6 +55,18 @@ export function DueDateChip({ dueDate, isClosed }: { dueDate: string; isClosed: 
       <CalendarClock className="w-3.5 h-3.5" />
       {t('incidentDetail.expected')} {format(new Date(dueDate), 'yyyy-MM-dd')}
       {overdue ? ` (${t('incidentDetail.overdue')})` : ''}
+    </span>
+  )
+}
+
+// Assignee-reported ETA — distinct from the supervisor-set due date
+// (DueDateChip above).
+export function EtaChip({ date }: { date: string }) {
+  const { t } = useI18n()
+  return (
+    <span className="inline-flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-full">
+      <Clock className="w-3.5 h-3.5" />
+      {t('incidentDetail.technicianEta')} {format(new Date(date), 'MM/dd')}
     </span>
   )
 }

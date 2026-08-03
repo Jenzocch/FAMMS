@@ -98,6 +98,12 @@ export default function ProgressUpdate({
       return
     }
     setSubmitting(true)
+    // Set once the close API call itself succeeds. If anything AFTER that
+    // point throws (timeline insert, ETA patch, audit log), the incident is
+    // already closed server-side — the catch block below must not report a
+    // generic failure, which would read as "did not close" and send the user
+    // into a confusing retry that then hits "already closed".
+    let closedSuccessfully = false
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -144,6 +150,7 @@ export default function ProgressUpdate({
           }
           throw new Error(json?.error || t('progressUpdate.closeFailed'))
         }
+        closedSuccessfully = true
       }
 
       // Log the update row (timeline)
@@ -204,7 +211,15 @@ export default function ProgressUpdate({
       resetPhotos()
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('progressUpdate.updateFailed'))
+      if (closedSuccessfully) {
+        // The close itself already committed — this is a downstream step
+        // (timeline note, ETA patch, audit log) failing afterward, not the
+        // close. Say so, and still refresh so the board reflects 'closed'.
+        toast.error(t('progressUpdate.closedButNoteFailed'))
+        router.refresh()
+      } else {
+        toast.error(err instanceof Error ? err.message : t('progressUpdate.updateFailed'))
+      }
     } finally {
       setSubmitting(false)
     }

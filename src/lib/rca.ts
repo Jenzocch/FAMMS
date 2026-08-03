@@ -58,12 +58,20 @@ export async function checkRCARequirement(
     // factory_id is kept as the scoping key for consistency with the rest
     // of the app's RCA plumbing and with legacy rows that predate these
     // columns).
+    //
+    // Also scoped to the SAME 90-day window as the occurrence count
+    // (created_at >= windowStart), not "ever filed" — otherwise one RCA
+    // satisfies the gate for that machine/type pair permanently: a fresh
+    // cluster of 3+ failures a year later would find the old row and never
+    // re-trigger, defeating the recurring-failure discipline this gate
+    // exists for.
     const { data: existing } = await supabase
       .from('rca_records')
       .select('id')
       .eq('machine_id', machineId)
       .eq('incident_type', incidentType)
       .eq('factory_id', factoryId)
+      .gte('created_at', windowStart)
       .limit(1)
       .maybeSingle()
     satisfied = !!existing

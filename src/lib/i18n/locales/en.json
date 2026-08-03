@@ -242,6 +242,7 @@
     "closeFailed": "Close failed",
     "updated": "Progress updated",
     "updateFailed": "Update failed",
+    "closedButNoteFailed": "Case was closed, but the note/photos may not have saved — no need to close it again",
     "allowRollback": "Allow moving status back (e.g. test failed)",
     "completionType": "Fix Type",
     "completionRequired": "Select fix type (temporary / permanent) before closing",
@@ -881,6 +882,7 @@
     "progressLog": "Progress log",
     "noRecords": "No progress records yet",
     "maintenanceStaff": "Maintenance staff",
+    "technicianEta": "Technician ETA",
     "expected": "Due",
     "overdue": "overdue",
     "closed": "This case is closed",
@@ -1150,7 +1152,9 @@
     "fixWas": "Fix used"
   },
   "offline": {
-    "banner": "No connection — showing offline view; submits need signal back"
+    "banner": "No connection — showing offline view; submits need signal back",
+    "pageTitle": "No connection right now",
+    "pageBody": "There's no offline copy of this page yet. Refresh once your signal is back."
   },
   "repeatFailure": {
     "title": "⚠️ Possible Repeat Failure",

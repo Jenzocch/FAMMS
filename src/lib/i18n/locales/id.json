@@ -242,6 +242,7 @@
     "closeFailed": "Gagal menutup",
     "updated": "Kemajuan diperbarui",
     "updateFailed": "Gagal memperbarui",
+    "closedButNoteFailed": "Kasus sudah ditutup, tapi catatan/foto mungkin belum tersimpan sepenuhnya — tidak perlu menutup ulang",
     "allowRollback": "Izinkan mundurkan status (mis. uji gagal)",
     "completionType": "Tipe Perbaikan",
     "completionRequired": "Pilih tipe perbaikan (sementara / permanen) sebelum menutup",
@@ -881,6 +882,7 @@
     "progressLog": "Catatan penanganan",
     "noRecords": "Belum ada catatan penanganan",
     "maintenanceStaff": "Petugas",
+    "technicianEta": "Perkiraan teknisi",
     "expected": "Tenggat",
     "overdue": "Terlambat",
     "closed": "Kasus ini sudah ditutup",
@@ -1150,7 +1152,9 @@
     "fixWas": "Cara perbaikan saat itu"
   },
   "offline": {
-    "banner": "Tidak ada koneksi — tampilan offline, kirim data setelah sinyal kembali"
+    "banner": "Tidak ada koneksi — tampilan offline, kirim data setelah sinyal kembali",
+    "pageTitle": "Tidak ada koneksi saat ini",
+    "pageBody": "Belum ada salinan offline untuk halaman ini. Muat ulang setelah sinyal kembali."
   },
   "repeatFailure": {
     "title": "⚠️ Kemungkinan Kerusakan Berulang",

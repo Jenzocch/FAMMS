@@ -168,10 +168,15 @@ export async function POST(req: Request) {
       // UNIQUE constraint for the app's own offline retries — namespaced so an
       // FQMS reference can never collide with a browser one.
       if (clientRequestId) {
+        // factory_id scoped too, in addition to the UNIQUE constraint on
+        // client_request_id itself: defense in depth so a same-day
+        // external_ref reused across two factories by FQMS can't match this
+        // round's incident to a different factory's case.
         const { data: existing } = await admin
           .from('incidents')
           .select('id, incident_no')
           .eq('client_request_id', clientRequestId)
+          .eq('factory_id', factory.id)
           .maybeSingle()
         if (existing) {
           incidentId = existing.id
@@ -220,7 +225,14 @@ export async function POST(req: Request) {
       result,
       note: note || null,
       machine_stopped: machineStopped,
-      ...(incidentId ? { incident_id: incidentId } : {}),
+      // Always explicit (never omitted): a bulk upsert of rows with
+      // different key sets builds ONE insert statement for the whole batch,
+      // so whether an omitted column is left alone or forced to NULL on the
+      // ON CONFLICT DO UPDATE is not something to rely on. Explicit null
+      // when this entry has no incident is also the correct value — this
+      // column only means something for result='issue' (see the table's own
+      // comment).
+      incident_id: incidentId,
       checked_by_id: null,
       checked_by_name: checkedBy,
     })

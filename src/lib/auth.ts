@@ -1,7 +1,7 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/types'
-import { baseCapabilityDefaults, type CustomRole, type EffectiveCapabilities, CAPABILITY_KEYS } from '@/lib/roles'
+import { baseCapabilityDefaults, resolveCapabilities, type CustomRole, type EffectiveCapabilities } from '@/lib/roles'
 export { PERMISSIONS } from '@/lib/permissions'
 
 export type CurrentUser = {
@@ -35,12 +35,12 @@ const resolveRoleOverlay = cache(async function resolveRoleOverlay(
   ])
   if (!cr) return { capabilities: baseCapabilityDefaults(role), customRole: null }
 
-  const capabilities = baseCapabilityDefaults(cr.base_role as UserRole)
-  for (const row of caps ?? []) {
-    if ((CAPABILITY_KEYS as readonly string[]).includes(row.capability)) {
-      (capabilities as Record<string, boolean>)[row.capability] = row.allowed
-    }
-  }
+  // Merge through the one shared function (lib/roles.ts) rather than
+  // repeating the override loop here — this used to hand-roll the same
+  // merge inline, which is exactly the kind of "shared helper exists, gets
+  // bypassed anyway" drift this codebase has been bitten by before.
+  const overrides = Object.fromEntries((caps ?? []).map(r => [r.capability, r.allowed]))
+  const capabilities = resolveCapabilities(cr.base_role as UserRole, overrides)
   return { capabilities, customRole: cr as CustomRole }
 })
 

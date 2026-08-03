@@ -3,13 +3,16 @@
 // fix available upstream). CSV opens natively in Excel/Numbers/Sheets and
 // needs no parsing library on either side of this app.
 
-// A cell starting with =, +, -, @, tab, or CR is how a CSV/Excel formula
-// injection payload (e.g. `=cmd|'/c calc'!A1`, sourced from a user-entered
-// field like reporter_name or a machine note) gets executed the moment
-// someone opens the exported file in Excel. Prefixing with a single quote
-// defuses it — Excel/Sheets render the quote-prefixed text literally — without
-// changing what a human reading the cell sees.
-const FORMULA_TRIGGER = /^[=+\-@\t\r]/
+// A cell starting with (optionally after leading whitespace) =, +, -, @, tab,
+// or CR is how a CSV/Excel formula injection payload (e.g.
+// `=cmd|'/c calc'!A1`, sourced from a user-entered field like reporter_name or
+// a machine note) gets executed the moment someone opens the exported file in
+// Excel. Excel/Sheets still evaluate a formula prefixed by whitespace (a
+// known filter-bypass technique), so the leading-space case must be caught
+// too, not just a bare trigger character at position 0. Prefixing with a
+// single quote defuses it — Excel/Sheets render the quote-prefixed text
+// literally — without changing what a human reading the cell sees.
+const FORMULA_TRIGGER = /^\s*[=+\-@\t\r]/
 
 function escapeCell(value: unknown): string {
   let s = value === null || value === undefined ? '' : String(value)
@@ -52,5 +55,9 @@ export function downloadCsv(filename: string, csv: string) {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  // Safari/iOS reads the blob asynchronously after the click — revoking the
+  // URL in the same tick can make the download fail or come out empty.
+  // Deferred to the next macrotask so the browser has already started
+  // reading it; harmless on every other browser, which reads it eagerly.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }

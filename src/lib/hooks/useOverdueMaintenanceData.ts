@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { addDays, addWeeks, addMonths } from 'date-fns'
+import { nextDueFromLast } from '@/lib/pm'
 
 export interface OverdueMachine {
   machine_id: string
@@ -12,20 +12,6 @@ export interface OverdueMachine {
   last_maintained_at: string | null
   due_date: Date
   days_overdue: number
-}
-
-function getNextDueDate(lastMaintained: string | null, pmType: string, intervalDays?: number | null): Date {
-  const base = lastMaintained ? new Date(lastMaintained) : new Date()
-  switch (pmType) {
-    case 'daily': return addDays(base, 1)
-    case 'weekly': return addWeeks(base, 1)
-    case 'monthly': return addMonths(base, 1)
-    case 'quarterly': return addMonths(base, 3)
-    case 'half_yearly': return addMonths(base, 6)
-    case 'yearly': return addMonths(base, 12)
-    case 'custom': return addDays(base, intervalDays && intervalDays > 0 ? intervalDays : 30)
-    default: return addMonths(base, 1)
-  }
 }
 
 // Raw pm_schedules row from the select below. `machines` is a single
@@ -86,7 +72,7 @@ export function useOverdueMaintenanceData() {
         .filter(s => s.machines)
         .map(s => {
           const lastMaintained = lastByMachine[s.machine_id] ?? null
-          const dueDate = getNextDueDate(lastMaintained, s.pm_type, s.interval_days)
+          const dueDate = nextDueFromLast(lastMaintained, s.pm_type, s.interval_days)
           const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / 86400000)
           return {
             machine_id: s.machine_id,

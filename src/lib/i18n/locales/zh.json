@@ -242,6 +242,7 @@
     "closeFailed": "結案失敗",
     "updated": "進度已更新",
     "updateFailed": "更新失敗",
+    "closedButNoteFailed": "案件已結案，但備註/照片紀錄可能未完整儲存 — 不需要重新結案",
     "allowRollback": "需要退回狀態（測試失敗、複發等）",
     "completionType": "修復類型",
     "completionRequired": "結案前請選擇修復類型（臨時 / 永久）",
@@ -881,6 +882,7 @@
     "progressLog": "處理紀錄",
     "noRecords": "尚無處理紀錄",
     "maintenanceStaff": "維修人員",
+    "technicianEta": "技師預計",
     "expected": "預計",
     "overdue": "逾期",
     "closed": "此工單已結案",
@@ -1150,7 +1152,9 @@
     "fixWas": "當時修法"
   },
   "offline": {
-    "banner": "沒有網路連線 — 顯示的是離線畫面，送出動作要等訊號恢復"
+    "banner": "沒有網路連線 — 顯示的是離線畫面，送出動作要等訊號恢復",
+    "pageTitle": "目前沒有網路連線",
+    "pageBody": "這個頁面還沒有離線備份可以顯示。訊號恢復後重新整理即可。"
   },
   "repeatFailure": {
     "title": "⚠️ 可能是重複故障",

@@ -26,7 +26,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ServiceWorkerRegister />
           <OfflineBanner />
           {children}
-          <Toaster richColors position="top-right" />
+          {/* 5s default (Sonner's own default is ~4s): 149 toast.success/error
+              call sites share this one Toaster, and only one of them set its
+              own longer duration — this is the single point of control for
+              all the rest, rather than editing each call site. */}
+          <Toaster richColors position="top-right" duration={5000} />
         </I18nProvider>
       </body>
     </html>

@@ -62,7 +62,18 @@ $$;
 
 -- ----------------------------------------------------------------------------
 -- Tighten the phase-2 profile trigger: non-admins also may not change factory_id
--- (factory is now the tenant boundary). Name change still allowed.
+-- (factory is now the tenant boundary) or custom_role_key (custom roles carry
+-- their own capabilities — see migration_custom_roles.sql — so letting a
+-- non-admin set it themselves is the same self-escalation hole this trigger
+-- exists to close). Name change still allowed.
+--
+-- custom_role_key is read via to_jsonb(...)->>'custom_role_key' rather than
+-- NEW.custom_role_key directly: this function runs before
+-- migration_custom_roles.sql adds that column on a fresh setup (see the Setup
+-- Checklist order in CLAUDE.md), and a direct field reference on the RECORD-
+-- typed NEW/OLD would throw "record has no field" on every profile update
+-- until that later migration runs. The jsonb form simply reads NULL when the
+-- column doesn't exist yet.
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION prevent_profile_privilege_escalation()
 RETURNS TRIGGER
@@ -88,10 +99,11 @@ BEGIN
     RAISE EXCEPTION 'Not allowed to modify another user''s profile';
   END IF;
 
-  IF NEW.role       IS DISTINCT FROM OLD.role
-     OR NEW.is_active   IS DISTINCT FROM OLD.is_active
-     OR NEW.factory_id  IS DISTINCT FROM OLD.factory_id THEN
-    RAISE EXCEPTION 'Not allowed to change role, active status, or factory';
+  IF NEW.role         IS DISTINCT FROM OLD.role
+     OR NEW.is_active  IS DISTINCT FROM OLD.is_active
+     OR NEW.factory_id IS DISTINCT FROM OLD.factory_id
+     OR (to_jsonb(NEW)->>'custom_role_key') IS DISTINCT FROM (to_jsonb(OLD)->>'custom_role_key') THEN
+    RAISE EXCEPTION 'Not allowed to change role, active status, factory, or custom role';
   END IF;
 
   RETURN NEW;
