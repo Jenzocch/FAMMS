@@ -15,9 +15,6 @@ export const SLA_LABELS: Record<DowntimeImpact, string> = {
   D: 'Low (24 jam)',
 }
 
-// Observation periods (days) after repair before closing
-export const OBSERVATION_PERIODS = [3, 7, 30] as const
-
 // Repeat failure detection window (days)
 export const REPEAT_FAILURE_WINDOW_DAYS = 30
 

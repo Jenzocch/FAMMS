@@ -6,7 +6,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { DOWNTIME_IMPACT_LABELS, NotificationType, DowntimeImpact } from '@/types'
-import { SLA_LABELS } from '@/lib/constants'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const API_BASE = TOKEN ? `https://api.telegram.org/bot${TOKEN}` : ''
@@ -230,26 +229,6 @@ export async function downloadTelegramFile(fileId: string): Promise<{ bytes: Arr
 // Message formatters (Bahasa Indonesia + English technical terms)
 // ----------------------------------------------------------------------------
 
-export function formatNewIncident(args: {
-  incidentNo: string
-  machineLabel: string
-  failureName: string
-  impact: DowntimeImpact
-  appUrl?: string
-  incidentId?: string
-}): string {
-  const lines = [
-    `🚨 <b>Insiden Baru</b> — ${esc(args.incidentNo)}`,
-    `🏭 Mesin: ${esc(args.machineLabel)}`,
-    `🔧 Kode Kerusakan: ${esc(args.failureName)}`,
-    `📉 Dampak: ${esc(DOWNTIME_IMPACT_LABELS[args.impact])} (SLA ${esc(SLA_LABELS[args.impact])})`,
-  ]
-  if (args.appUrl && args.incidentId) {
-    lines.push(`🔗 ${args.appUrl}/incidents/${args.incidentId}`)
-  }
-  return lines.join('\n')
-}
-
 // Personal "you've been assigned" message. Recipients are Indonesian field
 // technicians → Bahasa Indonesia per the project language convention.
 export function formatAssignment(args: {
@@ -272,13 +251,6 @@ export function formatAssignment(args: {
     lines.push(`🔗 ${args.appUrl}/incidents/${args.incidentId}`)
   }
   return lines.join('\n')
-}
-
-export function formatBlocking(args: { incidentNo: string; reason: string }): string {
-  return [
-    `🛑 <b>Kasus Terblokir</b> — ${esc(args.incidentNo)}`,
-    `Alasan: ${esc(args.reason)}`,
-  ].join('\n')
 }
 
 const PARTS_STATUS_LABEL: Record<'ordered' | 'received' | 'rejected', string> = {
