@@ -148,6 +148,12 @@ export async function POST(req: Request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-famms-secret': secret },
       body: JSON.stringify(payload),
+      // Cap the wait: a stalled Gudang Edge Function (cold start, locked DB,
+      // dead but socket still open) would otherwise leave the operator's
+      // "叫料" spinning until the platform function timeout. On abort this
+      // throws into the catch below — the same ambiguous-delivery path as any
+      // other network drop, which keeps the local row and warns to re-check.
+      signal: AbortSignal.timeout(8000),
     })
   } catch {
     // AMBIGUOUS: the request may have died before reaching Gudang, or the

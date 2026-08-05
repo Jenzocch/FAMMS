@@ -11,6 +11,19 @@ import { SLA_LABELS } from '@/lib/constants'
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const API_BASE = TOKEN ? `https://api.telegram.org/bot${TOKEN}` : ''
 
+// Every Telegram call is triggered by something the user is waiting on (an
+// incident save, a webhook button tap) and a notify fan-out issues several in
+// a row. A stalled connection to api.telegram.org (open socket, no response)
+// would otherwise block until the platform's function timeout — and a fan-out
+// to several chats would stack those stalls. AbortSignal.timeout caps each
+// call so it fails fast into the SAME error handling every caller already has
+// (best-effort try/catch / .catch). Default suits the small JSON sends;
+// binary file downloads pass a longer one.
+const TG_TIMEOUT_MS = 8000
+function tgFetch(url: string, init?: RequestInit, timeoutMs: number = TG_TIMEOUT_MS): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) })
+}
+
 export function isTelegramConfigured(): boolean {
   return !!TOKEN
 }
@@ -51,7 +64,7 @@ export async function sendTelegramMessage(
 ): Promise<SendResult> {
   if (!TOKEN) return { ok: false, error: 'TELEGRAM_BOT_TOKEN belum dikonfigurasi' }
   try {
-    const res = await fetch(`${API_BASE}/sendMessage`, {
+    const res = await tgFetch(`${API_BASE}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -145,7 +158,7 @@ export function repeatFailureButtonsAfter(confirmed: boolean): InlineKeyboard {
 // shows as a small toast in Telegram.
 export async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
   if (!TOKEN) return
-  await fetch(`${API_BASE}/answerCallbackQuery`, {
+  await tgFetch(`${API_BASE}/answerCallbackQuery`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ callback_query_id: callbackQueryId, ...(text ? { text } : {}) }),
@@ -164,7 +177,7 @@ export async function editMessageKeyboard(
   keyboard: InlineKeyboard
 ): Promise<void> {
   if (!TOKEN) return
-  await fetch(`${API_BASE}/editMessageReplyMarkup`, {
+  await tgFetch(`${API_BASE}/editMessageReplyMarkup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: keyboard }),
@@ -199,10 +212,12 @@ export function incidentActionButtonsAfter(incidentId: string, target: 'repairin
 export async function downloadTelegramFile(fileId: string): Promise<{ bytes: ArrayBuffer; ext: string } | null> {
   if (!TOKEN) return null
   try {
-    const meta = await fetch(`${API_BASE}/getFile?file_id=${encodeURIComponent(fileId)}`).then(r => r.json())
+    const meta = await tgFetch(`${API_BASE}/getFile?file_id=${encodeURIComponent(fileId)}`).then(r => r.json())
     const filePath: string | undefined = meta?.result?.file_path
     if (!meta?.ok || !filePath) return null
-    const res = await fetch(`https://api.telegram.org/file/bot${TOKEN}/${filePath}`)
+    // Binary download: a larger ceiling than the JSON sends, since a photo on
+    // a slow shop-floor connection legitimately takes longer than a text send.
+    const res = await tgFetch(`https://api.telegram.org/file/bot${TOKEN}/${filePath}`, undefined, 20000)
     if (!res.ok) return null
     const ext = filePath.includes('.') ? filePath.split('.').pop()! : 'jpg'
     return { bytes: await res.arrayBuffer(), ext }
