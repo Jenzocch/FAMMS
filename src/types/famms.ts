@@ -540,12 +540,16 @@ export const DOWNTIME_IMPACT_LABELS: Record<DowntimeImpact, string> = {
   D: 'Tidak Berpengaruh',    // No Impact
 };
 
+// Indonesian role names — kept in sync with the canonical i18n `roles.*` (id)
+// source, which is what actually renders (this map is only the fallback arg to
+// t('roles.X') where t() is available). Consolidated wording per the owner's
+// choice: Supervisor / Direktur / Admin.
 export const ROLE_LABELS: Record<UserRole, string> = {
   technician: 'Karyawan',
-  supervisor: 'Pengawas',
+  supervisor: 'Supervisor',
   manager: 'Manajer',
-  director: 'Kepala Pabrik',
-  admin: 'Admin Sistem',
+  director: 'Direktur',
+  admin: 'Admin',
 };
 
 // Extended descriptions for admin/settings pages where context helps.

@@ -17,13 +17,6 @@ import {
 } from '@/lib/roles'
 import { useI18n } from '@/lib/i18n'
 
-const BASE_ROLE_LABEL: Record<UserRole, string> = {
-  technician: '一般員工 (technician)',
-  supervisor: '主管 (supervisor)',
-  manager: '經理 (manager)',
-  director: '廠長 (director)',
-  admin: '系統管理員 (admin)',
-}
 
 type CapMap = Record<CapabilityKey, boolean>
 
@@ -34,6 +27,11 @@ type CapMap = Record<CapabilityKey, boolean>
 // migration_custom_roles.sql for the full design rationale.
 export default function RoleManager() {
   const { t } = useI18n()
+  // Base-tier label: the localized role name plus its technical key in parens
+  // (e.g. "Karyawan (technician)"), so an admin configuring a custom role sees
+  // both the friendly name and the actual role identifier it inherits from.
+  // Derived from the i18n roles.* source rather than a hardcoded table.
+  const baseRoleLabel = (r: UserRole) => `${t(`roles.${r}`)} (${r})`
   const supabase = createClient()
   const [roles, setRoles] = useState<CustomRole[]>([])
   const [capsByRole, setCapsByRole] = useState<Record<string, CapMap>>({})
@@ -229,10 +227,10 @@ export default function RoleManager() {
 
           <div>
             <Label>{t('settings.roleBaseTier', '底層權限級別')}</Label>
-            <Select value={baseRole} onValueChange={(v) => setBaseRole((v ?? 'technician') as UserRole)} items={Object.fromEntries(CUSTOM_ROLE_BASE_OPTIONS.map(r => [r, BASE_ROLE_LABEL[r]]))}>
+            <Select value={baseRole} onValueChange={(v) => setBaseRole((v ?? 'technician') as UserRole)} items={Object.fromEntries(CUSTOM_ROLE_BASE_OPTIONS.map(r => [r, baseRoleLabel(r)]))}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {CUSTOM_ROLE_BASE_OPTIONS.map(r => <SelectItem key={r} value={r}>{BASE_ROLE_LABEL[r]}</SelectItem>)}
+                {CUSTOM_ROLE_BASE_OPTIONS.map(r => <SelectItem key={r} value={r}>{baseRoleLabel(r)}</SelectItem>)}
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-400 mt-1">
@@ -282,7 +280,7 @@ export default function RoleManager() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {t('settings.roleBaseTierShort', '底層')}: {BASE_ROLE_LABEL[r.base_role]}
+                  {t('settings.roleBaseTierShort', '底層')}: {baseRoleLabel(r.base_role)}
                   {' · '}
                   {CAPABILITY_KEYS.filter(ck => capsByRole[r.key]?.[ck]).map(ck => CAPABILITY_LABELS[ck].zh).join('、') || t('settings.noExtraCapabilities', '無額外可見度')}
                 </p>
