@@ -637,3 +637,44 @@ export function getHealthScoreBadge(score: number): {
   if (score >= 40) return { label: 'Risiko Tinggi', color: 'bg-orange-500' }; // High Risk
   return { label: 'Kritis', color: 'bg-red-500' };                            // Critical
 }
+
+// ============================================================================
+// Tasks (meeting action items + personal to-dos) — see supabase/migration_tasks.sql
+// ============================================================================
+
+export type TaskStatus = 'todo' | 'doing' | 'verifying' | 'done';
+export type TaskPriority = 'low' | 'normal' | 'high';
+
+export interface Task {
+  id: string;
+  factory_id: string | null;
+  title: string;
+  note: string | null;
+  assigned_to_id: string | null;
+  created_by_id: string | null;
+  due_date: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  needs_verification: boolean;
+  source: string | null;
+  completed_at: string | null;
+  verified_by_id: string | null;
+  verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// zh fallbacks; the UI renders these through t('tasks.status.*') so labels
+// follow the active language (see the locale files).
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  todo: '待辦',
+  doing: '進行中',
+  verifying: '待驗收',
+  done: '完成',
+};
+
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  low: '低',
+  normal: '中',
+  high: '高',
+};

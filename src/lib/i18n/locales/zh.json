@@ -135,7 +135,8 @@
     "profile": "個人資料",
     "logout": "登出",
     "machines": "機器",
-    "qc": "每日點檢"
+    "qc": "每日點檢",
+    "tasks": "任務"
   },
   "roles": {
     "technician": "一般員工",
@@ -1175,5 +1176,48 @@
     "resultOk": "正常",
     "sourceHint": "由 FQMS 回傳，此頁唯讀",
     "title": "每日點檢"
+  },
+  "tasks": {
+    "title": "任務",
+    "subtitle": "會議行動項與待辦 — 打字或貼上會議紀錄，指派給人",
+    "quickPlaceholder": "輸入任務，按 Enter 新增…",
+    "add": "新增",
+    "added": "任務已新增",
+    "addedN": "已新增 {n} 個任務",
+    "addFailed": "新增失敗",
+    "updateFailed": "更新失敗",
+    "deleteFailed": "刪除失敗",
+    "confirmDelete": "確定刪除這個任務？",
+    "assignSelf": "指派給我",
+    "unassigned": "未指派",
+    "unnamed": "(未命名)",
+    "more": "更多",
+    "due": "期限",
+    "priority": "優先",
+    "priorityLow": "低",
+    "priorityNormal": "中",
+    "priorityHigh": "高",
+    "needsVerify": "需驗收",
+    "pasteMeeting": "貼上會議紀錄",
+    "pasteHint": "一行一個任務，會自動切開",
+    "pastePlaceholder": "- 跟供應商談封口膜交期\n- 採購 3 台推車\n- 下週五前交安全訓練文件",
+    "willCreate": "將建立 {n} 筆",
+    "createAll": "全部新增",
+    "filterOpen": "未完成",
+    "filterDone": "已完成",
+    "filterAll": "全部",
+    "filterMine": "只看我的",
+    "empty": "目前沒有任務",
+    "overdue": "逾期",
+    "start": "開始",
+    "markDone": "完成",
+    "verify": "驗收通過",
+    "reopen": "重開",
+    "status": {
+      "todo": "待辦",
+      "doing": "進行中",
+      "verifying": "待驗收",
+      "done": "完成"
+    }
   }
 }

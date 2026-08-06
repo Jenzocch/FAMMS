@@ -47,6 +47,12 @@ export const PERMISSIONS = {
   remindProgress: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
   editIncident: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
   deleteIncident: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
+  // --- Tasks ---
+  // A task flagged "needs verification" can only be signed off (verifying ->
+  // done) by a supervisor+; the assignee moving their own task to done would
+  // defeat the whole point. Mirrors the DB verify-gate trigger in
+  // supabase/migration_tasks.sql (app_is_supervisor_plus).
+  verifyTask: (role: UserRole) => ['supervisor', 'manager', 'director', 'admin'].includes(role),
   // --- Preventive maintenance ---
   // Technicians execute PM tasks; managers + admins also manage PM schedules.
   viewPM: (_role: UserRole) => true,
