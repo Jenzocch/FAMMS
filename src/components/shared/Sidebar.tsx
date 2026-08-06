@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOutAndClearCaches } from '@/lib/sign-out'
-import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, BookOpen, ClipboardCheck } from 'lucide-react'
+import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, BookOpen, ClipboardCheck, ListTodo } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -25,6 +25,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard', labelKey: 'navigation.dashboard', icon: LayoutDashboard, requiredRole: (r, c) => c?.dashboard ?? PERMISSIONS.dashboard(r) },
   { href: '/incidents', labelKey: 'navigation.incidents', icon: ClipboardList },
   { href: '/incidents/new', labelKey: 'navigation.newIncident', icon: Plus },
+  { href: '/tasks', labelKey: 'navigation.tasks', icon: ListTodo },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
   { href: '/qc', labelKey: 'navigation.qc', icon: ClipboardCheck },
   { href: '/knowledge-base', labelKey: 'navigation.knowledgeBase', icon: BookOpen },

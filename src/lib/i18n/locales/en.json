@@ -135,7 +135,8 @@
     "settings": "Settings",
     "profile": "Profile",
     "logout": "Logout",
-    "qc": "QC Check"
+    "qc": "QC Check",
+    "tasks": "Tasks"
   },
   "roles": {
     "technician": "General Staff",
@@ -1175,5 +1176,48 @@
     "resultOk": "OK",
     "sourceHint": "Posted by FQMS — read-only here",
     "title": "Daily QC Check"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "subtitle": "Meeting action items & to-dos — type or paste a meeting note, assign to people",
+    "quickPlaceholder": "Type a task, press Enter to add…",
+    "add": "Add",
+    "added": "Task added",
+    "addedN": "Added {n} tasks",
+    "addFailed": "Failed to add",
+    "updateFailed": "Update failed",
+    "deleteFailed": "Delete failed",
+    "confirmDelete": "Delete this task?",
+    "assignSelf": "Assign to me",
+    "unassigned": "Unassigned",
+    "unnamed": "(no name)",
+    "more": "More",
+    "due": "Due",
+    "priority": "Priority",
+    "priorityLow": "Low",
+    "priorityNormal": "Normal",
+    "priorityHigh": "High",
+    "needsVerify": "Needs verification",
+    "pasteMeeting": "Paste meeting note",
+    "pasteHint": "One task per line, split automatically",
+    "pastePlaceholder": "- Chase supplier on sealing-film lead time\n- Buy 3 trolleys\n- Submit safety training docs by Friday",
+    "willCreate": "Will create {n}",
+    "createAll": "Add all",
+    "filterOpen": "Open",
+    "filterDone": "Done",
+    "filterAll": "All",
+    "filterMine": "Mine only",
+    "empty": "No tasks yet",
+    "overdue": "overdue",
+    "start": "Start",
+    "markDone": "Done",
+    "verify": "Verify",
+    "reopen": "Reopen",
+    "status": {
+      "todo": "To do",
+      "doing": "In progress",
+      "verifying": "Awaiting verify",
+      "done": "Done"
+    }
   }
 }

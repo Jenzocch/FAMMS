@@ -325,6 +325,7 @@ src/
 │   │   ├── machines/                 list, new, [id], [id]/edit, [id]/qr
 │   │   ├── pm/page.tsx               PM calendar + due list + schedules
 │   │   ├── qc/page.tsx               today's QC round from FQMS (read-only)
+│   │   ├── tasks/page.tsx            tasks board (meeting action items + to-dos)
 │   │   ├── pm/schedules/new/
 │   │   ├── knowledge-base/           list, new, [id]
 │   │   ├── reports/page.tsx          monthly report (print + CSV)
@@ -332,6 +333,7 @@ src/
 │   │   └── profile/page.tsx          own profile
 │   └── api/
 │       ├── incidents/notify          new-incident Telegram fan-out
+│       ├── tasks                     create task(s) (batch; notifies assignees)
 │       ├── incidents/[id]/close      close + RCA gate + KB capture
 │       ├── incidents/[id]/photos     delete a report photo (supervisor+)
 │       ├── incidents/[id]/relations  confirm a repeat-failure link
@@ -380,6 +382,8 @@ src/
 │   │   ├── RemindButton.tsx, NudgeCardButton.tsx, PrintReport.tsx
 │   │   └── report/                   ReportLocationFields, PastRecordsPanel
 │   ├── qc/QCDailyCheck.tsx           today's QC round, read-only
+│   ├── tasks/                        TasksView + QuickAddTask (quick-fill,
+│   │                                 voice, paste-meeting → batch)
 │   ├── pm/                           PMPage, PMDueList, PMFullCalendar,
 │   │                                 PMScheduleManager (+ PMScheduleFields,
 │   │                                 PMScheduleList), calendar/*
@@ -486,6 +490,7 @@ Before first run:
    - Two "quick fix" scripts that used to live in `supabase/` (`SETUP_RUN_ONCE.sql`, `fix_permissions_reset.sql`) did the opposite of all of the above — disabled RLS on every table and granted `anon` full access — and have been deleted. If you have either one saved locally from before, do not run it.
 5b. Run once, any order, all idempotent:
    - `supabase/migration_qc_daily_check.sql` — the `qc_daily_checks` table behind the daily QC sweep (`/qc`), with its RLS.
+   - `supabase/migration_tasks.sql` — the `tasks` table behind the tasks board (`/tasks`): meeting action items + personal to-dos. RLS limits a plain worker to their own created/assigned tasks (supervisors+ see the whole factory), and a verify-gate trigger stops a technician self-signing-off a task flagged "needs verification" (only supervisor+ can move `verifying`→`done`).
    - `supabase/cleanup_sja_demo_data.sql` — **run ONCE, after the SJA seed.** Removes the pre-import leftovers: seed_demo's 6 fictional SJA machines, 3 hand-added test machines, the duplicate `PD10` (same tank as the imported `TPD10`), and the 15 abandoned areas. Aborts rather than proceeding if any of them has acquired a real incident.
    - `supabase/seed_sja_machines.sql` — SJA's 15 areas + 109 machines, transcribed from the factory's own SJA-FR-PRD-001-DAP Rev.02 form. Re-runnable; updates names/areas/remarks but never overwrites a machine's status.
    - `supabase/migration_areas_match_fqms.sql` — **template, edit before running.** Re-cuts FAMMS areas to FQMS's sub-area codes and moves each machine to its new area. Ships as a no-op; fill in the two marked sections first.

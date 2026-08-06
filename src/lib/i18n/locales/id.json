@@ -135,7 +135,8 @@
     "profile": "Profil",
     "logout": "Keluar",
     "machines": "Mesin",
-    "qc": "Cek QC"
+    "qc": "Cek QC",
+    "tasks": "Tugas"
   },
   "roles": {
     "technician": "Karyawan",
@@ -1175,5 +1176,48 @@
     "resultOk": "OK",
     "sourceHint": "Dikirim oleh FQMS — halaman ini hanya baca",
     "title": "Cek Harian QC"
+  },
+  "tasks": {
+    "title": "Tugas",
+    "subtitle": "Item tindakan rapat & to-do — ketik atau tempel catatan rapat, tugaskan ke orang",
+    "quickPlaceholder": "Ketik tugas, tekan Enter untuk menambah…",
+    "add": "Tambah",
+    "added": "Tugas ditambahkan",
+    "addedN": "{n} tugas ditambahkan",
+    "addFailed": "Gagal menambah",
+    "updateFailed": "Gagal memperbarui",
+    "deleteFailed": "Gagal menghapus",
+    "confirmDelete": "Hapus tugas ini?",
+    "assignSelf": "Tugaskan ke saya",
+    "unassigned": "Belum ditugaskan",
+    "unnamed": "(tanpa nama)",
+    "more": "Lainnya",
+    "due": "Tenggat",
+    "priority": "Prioritas",
+    "priorityLow": "Rendah",
+    "priorityNormal": "Sedang",
+    "priorityHigh": "Tinggi",
+    "needsVerify": "Perlu verifikasi",
+    "pasteMeeting": "Tempel catatan rapat",
+    "pasteHint": "Satu tugas per baris, dipisah otomatis",
+    "pastePlaceholder": "- Tanya supplier soal lead time seal film\n- Beli 3 troli\n- Kumpulkan dokumen training K3 sebelum Jumat",
+    "willCreate": "Akan membuat {n}",
+    "createAll": "Tambah semua",
+    "filterOpen": "Belum selesai",
+    "filterDone": "Selesai",
+    "filterAll": "Semua",
+    "filterMine": "Punya saya",
+    "empty": "Belum ada tugas",
+    "overdue": "terlambat",
+    "start": "Mulai",
+    "markDone": "Selesai",
+    "verify": "Verifikasi",
+    "reopen": "Buka lagi",
+    "status": {
+      "todo": "Belum",
+      "doing": "Berjalan",
+      "verifying": "Menunggu verifikasi",
+      "done": "Selesai"
+    }
   }
 }

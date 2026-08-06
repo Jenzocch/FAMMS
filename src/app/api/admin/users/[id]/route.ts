@@ -130,6 +130,23 @@ export async function PATCH(
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
+  // Deactivating has to be a REAL lockout, not just a UI flag. The is_active
+  // flag alone only makes the dashboard layout refuse to render — a departed
+  // employee's existing session token stays valid until it expires (~1h) and
+  // could still hit the REST API directly, and they could even sign in again.
+  // Banning the auth user revokes their sessions immediately AND blocks
+  // re-login, while leaving the profile row and all their history (reported/
+  // performed incidents, audit trail) intact — the right trade for
+  // offboarding: you take away the login, not the record of who did what.
+  // Reactivating lifts the ban. (Guarded above: an Account Admin can't reach
+  // a true admin's account at all.)
+  if (body.is_active !== undefined) {
+    const { error: banErr } = await admin.auth.admin.updateUserById(id, {
+      ban_duration: body.is_active ? 'none' : '876000h', // ~100 years = permanent
+    })
+    if (banErr) return NextResponse.json({ error: banErr.message }, { status: 400 })
+  }
+
   // Optional: set/update the personal Telegram chat_id from the same edit
   // form. An empty value is a no-op (never auto-removes — deletion stays a
   // deliberate action in Settings → Telegram). factory_id may be NULL for
