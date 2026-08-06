@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation'
 import { signOutAndClearCaches } from '@/lib/sign-out'
 import type { ShellUser } from '@/components/shared/Sidebar'
-import { ROLE_ZH } from '@/lib/incident-display'
 import type { CustomRole } from '@/lib/roles'
 import { customRoleLabel } from '@/lib/roles'
 import { Wrench, LogOut, User } from 'lucide-react'
@@ -22,7 +21,7 @@ interface TopBarProps {
 export default function TopBar({ profile, customRole = null }: TopBarProps) {
   const router = useRouter()
   const { t, locale } = useI18n()
-  const roleDisplay = customRole ? customRoleLabel(customRole, locale) : (profile?.role ? ROLE_ZH[profile.role] : null)
+  const roleDisplay = customRole ? customRoleLabel(customRole, locale) : (profile?.role ? t(`roles.${profile.role}`) : null)
 
   async function signOut() {
     await signOutAndClearCaches()

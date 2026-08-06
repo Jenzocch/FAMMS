@@ -7,7 +7,6 @@ import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, LogOut, User, B
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ROLE_ZH } from '@/lib/incident-display'
 import type { CustomRole, EffectiveCapabilities } from '@/lib/roles'
 import { customRoleLabel } from '@/lib/roles'
 import { useI18n } from '@/lib/i18n'
@@ -60,7 +59,7 @@ export default function Sidebar({ profile, incidentBadge = 0, capabilities = nul
   const userRole = (profile?.role ?? 'technician') as UserRole
 
   const visibleNav = NAV.filter(item => !item.requiredRole || item.requiredRole(userRole, capabilities))
-  const roleDisplay = customRole ? customRoleLabel(customRole, locale) : (profile?.role ? ROLE_ZH[profile.role] : null)
+  const roleDisplay = customRole ? customRoleLabel(customRole, locale) : (profile?.role ? t(`roles.${profile.role}`) : null)
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
