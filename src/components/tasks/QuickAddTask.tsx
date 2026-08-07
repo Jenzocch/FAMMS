@@ -309,7 +309,11 @@ function PasteMeetingDialog({
 
   return (
     <Dialog open onOpenChange={o => { if (!o) onClose() }}>
-      <DialogContent className="max-w-lg">
+      {/* Wider in preview mode: a stacked-card layout at the paste-mode width
+          only fit 1-2 draft rows before scrolling, and a supervisor reviewing
+          several meeting action items at once needs to see them together, not
+          hunt-and-scroll one at a time (real desktop usage caught this). */}
+      <DialogContent className={drafts ? 'max-w-3xl' : 'max-w-lg'}>
         <DialogHeader>
           <DialogTitle>
             {drafts ? t('tasks.aiPreviewTitle', 'AI 抓到的任務（可修改）') : t('tasks.pasteMeeting', '貼上會議紀錄')}
@@ -346,28 +350,37 @@ function PasteMeetingDialog({
         ) : (
           <>
             <p className="text-xs text-gray-500">{t('tasks.aiPreviewHint', '確認每筆的負責人與期限，按建立才會真的新增')}</p>
-            <div className="max-h-72 overflow-y-auto space-y-2 pr-0.5">
+            {/* max-h in viewport units (not a fixed rem) so more rows are
+                visible on a tall desktop window, while still capping the
+                dialog's height on a short screen. Each row lays out inline
+                on sm+ (title | assignee | date | priority | delete) instead
+                of stacking, so several tasks are readable at once without
+                scrolling past every single one. */}
+            <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-0.5">
               {drafts.map((d, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 p-2 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={d.title}
-                      onChange={e => updateDraft(i, { title: e.target.value })}
-                      className="flex-1 min-w-0 h-9 px-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeDraft(i)}
-                      className="h-9 w-9 shrink-0 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap text-sm">
+                <div key={i} className="rounded-lg border border-gray-200 p-2 flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-2">
+                  {/* Auto-growing textarea, not a single-line input: meeting
+                      titles are sentences, and an <input> silently truncates
+                      them — the reviewer must SEE the full text to judge the
+                      task. Height tracks content via scrollHeight (works in
+                      every browser, no field-sizing dependency). */}
+                  <textarea
+                    value={d.title}
+                    rows={1}
+                    onChange={e => updateDraft(i, { title: e.target.value })}
+                    ref={el => {
+                      if (el) {
+                        el.style.height = 'auto'
+                        el.style.height = `${el.scrollHeight}px`
+                      }
+                    }}
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-gray-200 text-sm leading-snug resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap text-sm">
                     <select
                       value={d.assignedTo}
                       onChange={e => updateDraft(i, { assignedTo: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700"
+                      className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700 sm:w-36"
                     >
                       {assigneeOptions}
                     </select>
@@ -375,17 +388,26 @@ function PasteMeetingDialog({
                       type="date"
                       value={d.dueDate}
                       onChange={e => updateDraft(i, { dueDate: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200"
+                      className="h-9 px-2 rounded-lg border border-gray-200 sm:w-36"
                     />
                     <select
                       value={d.priority}
                       onChange={e => updateDraft(i, { priority: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200"
+                      className="h-9 px-2 rounded-lg border border-gray-200 sm:w-16"
                     >
                       <option value="low">{t('tasks.priorityLow', '低')}</option>
                       <option value="normal">{t('tasks.priorityNormal', '中')}</option>
                       <option value="high">{t('tasks.priorityHigh', '高')}</option>
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => removeDraft(i)}
+                      title={t('common.delete', '刪除')}
+                      aria-label={t('common.delete', '刪除')}
+                      className="h-9 w-9 shrink-0 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
