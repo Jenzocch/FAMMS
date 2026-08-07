@@ -182,6 +182,10 @@ interface AiDraft {
   assignedTo: string
   dueDate: string
   priority: string
+  // Per-row, not batch-wide: one meeting produces a mix — "buy trolleys"
+  // needs no sign-off while "fix the wiring" does, so verification is a
+  // per-task decision made in the preview.
+  needsVerification: boolean
 }
 
 // Paste a whole meeting note → one task per line (default), or hand it to the
@@ -293,6 +297,8 @@ function PasteMeetingDialog({
         assignedTo: d.assigned_to_id || '',
         dueDate: d.due_date || '',
         priority: d.priority || 'normal',
+        // Seed each row from the paste-mode checkbox, then edit per row.
+        needsVerification,
       })))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('tasks.aiFallback', 'AI 暫時無法使用，改用逐行切分'))
@@ -320,7 +326,7 @@ function PasteMeetingDialog({
         assigned_to_id: d.assignedTo || undefined,
         due_date: d.dueDate || undefined,
         priority: d.priority,
-        needs_verification: needsVerification,
+        needs_verification: d.needsVerification,
         source: 'meeting',
       })))
       toast.success(t('tasks.addedN', '已新增 {n} 個任務').replace('{n}', String(created.length)))
@@ -342,7 +348,7 @@ function PasteMeetingDialog({
           classes don't conflict in tailwind-merge, and the media-query rule
           wins in CSS). An earlier unprefixed attempt silently shipped a
           still-narrow dialog because of exactly this. */}
-      <DialogContent className={drafts ? 'sm:max-w-4xl' : 'sm:max-w-2xl'}>
+      <DialogContent className={drafts ? 'sm:max-w-6xl' : 'sm:max-w-3xl'}>
         <DialogHeader>
           <DialogTitle>
             {drafts ? t('tasks.aiPreviewTitle', 'AI 抓到的任務（可修改）') : t('tasks.pasteMeeting', '貼上會議紀錄')}
@@ -372,7 +378,7 @@ function PasteMeetingDialog({
               autoFocus
               disabled={analyzing || extracting}
               placeholder={t('tasks.pastePlaceholder', '- 跟供應商談封口膜交期\n- 採購 3 台推車\n- 下週五前交安全訓練文件')}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-base sm:min-h-[16rem] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             />
             <div className="flex items-center gap-3 flex-wrap text-sm">
               <select
@@ -398,15 +404,30 @@ function PasteMeetingDialog({
                 on sm+ (title | assignee | date | priority | delete) instead
                 of stacking, so several tasks are readable at once without
                 scrolling past every single one. */}
+            {/* Column headers (md+ only): a bare date box reading 年/月/日
+                answers nothing — every control gets a named column so its
+                purpose is stated, not guessed. Widths mirror the row's
+                control widths below so the headers line up. */}
+            <div className="hidden md:flex md:items-center md:gap-2 px-2 text-xs text-gray-500">
+              <div className="flex-1">{t('tasks.colTitle', '任務內容')}</div>
+              <div className="flex items-center md:gap-2 shrink-0">
+                <div className="w-36">{t('tasks.assignee', '負責人')}</div>
+                <div className="w-36">{t('tasks.due', '期限')}</div>
+                <div className="w-16">{t('tasks.priority', '優先')}</div>
+                <div className="w-14 text-center">{t('tasks.verifyShort', '驗收')}</div>
+                <div className="w-9" />
+              </div>
+            </div>
             <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-0.5">
               {drafts.map((d, i) => (
-                // Inline row only at md+ where the sm:max-w-4xl dialog
-                // guarantees room for title + controls side by side. At sm the
-                // fixed-width controls (~400px) would crush a flexed title to
-                // a few characters wide — which, combined with the auto-grow,
-                // once rendered titles as a one-character-per-line vertical
-                // strip. Below md everything stacks; the title always keeps
-                // the full row width.
+                // Inline row only at md+ where the wide dialog guarantees room
+                // for title + controls side by side. At sm the fixed-width
+                // controls (~450px) would crush a flexed title to a few
+                // characters wide — which, combined with the auto-grow, once
+                // rendered titles as a one-character-per-line vertical strip.
+                // Below md everything stacks; the title always keeps the full
+                // row width, and each control shows its own small label since
+                // the header row is hidden there.
                 <div key={i} className="rounded-lg border border-gray-200 p-2 flex flex-col md:flex-row md:items-start gap-1.5 md:gap-2">
                   {/* Auto-growing textarea, not a single-line input: meeting
                       titles are sentences, and an <input> silently truncates
@@ -423,31 +444,52 @@ function PasteMeetingDialog({
                         el.style.height = `${el.scrollHeight}px`
                       }
                     }}
-                    className="w-full md:flex-1 md:min-w-[16rem] px-2 py-1.5 rounded-lg border border-gray-200 text-sm leading-snug resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full md:flex-1 md:min-w-[16rem] px-2.5 py-1.5 rounded-lg border border-gray-200 text-base leading-snug resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="flex items-center gap-1.5 md:gap-2 flex-wrap md:flex-nowrap md:shrink-0 text-sm">
-                    <select
-                      value={d.assignedTo}
-                      onChange={e => updateDraft(i, { assignedTo: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700 md:w-36"
-                    >
-                      {assigneeOptions}
-                    </select>
-                    <input
-                      type="date"
-                      value={d.dueDate}
-                      onChange={e => updateDraft(i, { dueDate: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 md:w-36"
-                    />
-                    <select
-                      value={d.priority}
-                      onChange={e => updateDraft(i, { priority: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 md:w-16"
-                    >
-                      <option value="low">{t('tasks.priorityLow', '低')}</option>
-                      <option value="normal">{t('tasks.priorityNormal', '中')}</option>
-                      <option value="high">{t('tasks.priorityHigh', '高')}</option>
-                    </select>
+                    <label className="flex items-center gap-1">
+                      <span className="md:hidden text-xs text-gray-500">{t('tasks.assignee', '負責人')}</span>
+                      <select
+                        value={d.assignedTo}
+                        onChange={e => updateDraft(i, { assignedTo: e.target.value })}
+                        className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700 md:w-36"
+                      >
+                        {assigneeOptions}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1">
+                      <span className="md:hidden text-xs text-gray-500">{t('tasks.due', '期限')}</span>
+                      <input
+                        type="date"
+                        value={d.dueDate}
+                        onChange={e => updateDraft(i, { dueDate: e.target.value })}
+                        title={t('tasks.due', '期限')}
+                        className="h-9 px-2 rounded-lg border border-gray-200 md:w-36"
+                      />
+                    </label>
+                    <label className="flex items-center gap-1">
+                      <span className="md:hidden text-xs text-gray-500">{t('tasks.priority', '優先')}</span>
+                      <select
+                        value={d.priority}
+                        onChange={e => updateDraft(i, { priority: e.target.value })}
+                        className="h-9 px-2 rounded-lg border border-gray-200 md:w-16"
+                      >
+                        <option value="low">{t('tasks.priorityLow', '低')}</option>
+                        <option value="normal">{t('tasks.priorityNormal', '中')}</option>
+                        <option value="high">{t('tasks.priorityHigh', '高')}</option>
+                      </select>
+                    </label>
+                    {/* Per-row verify: one meeting mixes tasks that need a
+                        supervisor sign-off with ones that don't. */}
+                    <label className="flex items-center gap-1.5 cursor-pointer md:w-14 md:justify-center" title={t('tasks.needsVerify', '需驗收')}>
+                      <span className="md:hidden text-xs text-gray-500">{t('tasks.needsVerify', '需驗收')}</span>
+                      <input
+                        type="checkbox"
+                        checked={d.needsVerification}
+                        onChange={e => updateDraft(i, { needsVerification: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                    </label>
                     <button
                       type="button"
                       onClick={() => removeDraft(i)}
@@ -461,10 +503,6 @@ function PasteMeetingDialog({
                 </div>
               ))}
             </div>
-            <label className="inline-flex items-center gap-1.5 text-gray-600 cursor-pointer text-sm">
-              <input type="checkbox" checked={needsVerification} onChange={e => setNeedsVerification(e.target.checked)} className="w-4 h-4" />
-              {t('tasks.needsVerify', '需驗收')}
-            </label>
           </>
         )}
 

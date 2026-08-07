@@ -1230,6 +1230,9 @@
     "pdfExtracting": "讀取 PDF 中…",
     "pdfExtracted": "已讀入 PDF 文字（{n} 頁）",
     "pdfNoText": "這個 PDF 沒有可讀文字（可能是掃描圖檔），請直接貼上文字",
-    "pdfFailed": "PDF 讀取失敗，請直接貼上文字"
+    "pdfFailed": "PDF 讀取失敗，請直接貼上文字",
+    "colTitle": "任務內容",
+    "assignee": "負責人",
+    "verifyShort": "驗收"
   }
 }

@@ -1230,6 +1230,9 @@
     "pdfExtracting": "Reading PDF…",
     "pdfExtracted": "PDF text loaded ({n} pages)",
     "pdfNoText": "This PDF has no readable text (likely a scan) — please paste the text instead",
-    "pdfFailed": "Could not read the PDF — please paste the text instead"
+    "pdfFailed": "Could not read the PDF — please paste the text instead",
+    "colTitle": "Task",
+    "assignee": "Assignee",
+    "verifyShort": "Verify"
   }
 }
