@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '@/lib/i18n'
 import type { Task } from '@/types'
-import { Plus, ChevronDown, ChevronUp, ClipboardList, Loader2, Sparkles, X } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, ClipboardList, Loader2, Sparkles, X, FileUp } from 'lucide-react'
 import SpeechMicButton from '@/components/shared/SpeechMicButton'
 import { Button } from '@/components/ui/button'
 import {
@@ -202,7 +202,34 @@ function PasteMeetingDialog({
   const [needsVerification, setNeedsVerification] = useState(false)
   const [saving, setSaving] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [extracting, setExtracting] = useState(false)
   const [drafts, setDrafts] = useState<AiDraft[] | null>(null) // non-null = preview mode
+
+  // Meeting minutes usually arrive as a PDF — read its text right here in the
+  // browser (the file never leaves the device) and drop it into the paste box,
+  // then the normal AI-analyze / line-split flow takes over. pdf-text.ts (and
+  // pdfjs inside it) is dynamic-imported so the ~1MB library only ever loads
+  // for someone who actually picks a PDF.
+  async function onPdfPicked(file: File | undefined) {
+    if (!file || extracting) return
+    setExtracting(true)
+    try {
+      const { extractPdfText } = await import('@/lib/pdf-text')
+      const { text: extracted, pages } = await extractPdfText(file)
+      // A scanned/image-only PDF "succeeds" with nothing in it — say so
+      // instead of leaving a silently empty box.
+      if (extracted.length < 20) {
+        toast.error(t('tasks.pdfNoText', '這個 PDF 沒有可讀文字（可能是掃描圖檔），請直接貼上文字'))
+        return
+      }
+      setText(prev => (prev.trim() ? `${prev.trimEnd()}\n${extracted}` : extracted))
+      toast.success(t('tasks.pdfExtracted', '已讀入 PDF 文字（{n} 頁）').replace('{n}', String(pages)))
+    } catch {
+      toast.error(t('tasks.pdfFailed', 'PDF 讀取失敗，請直接貼上文字'))
+    } finally {
+      setExtracting(false)
+    }
+  }
 
   const lines = text
     .split('\n')
@@ -305,7 +332,7 @@ function PasteMeetingDialog({
     }
   }
 
-  const busy = saving || analyzing
+  const busy = saving || analyzing || extracting
 
   return (
     <Dialog open onOpenChange={o => { if (!o) onClose() }}>
@@ -322,13 +349,26 @@ function PasteMeetingDialog({
 
         {!drafts ? (
           <>
-            <p className="text-xs text-gray-500">{t('tasks.pasteHint', '一行一個任務，會自動切開')}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-gray-500">{t('tasks.pasteHint', '一行一個任務，會自動切開')}</p>
+              <label className={`inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800 cursor-pointer shrink-0 ${extracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+                {extracting ? t('tasks.pdfExtracting', '讀取 PDF 中…') : t('tasks.uploadPdf', '上傳 PDF')}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  disabled={extracting}
+                  onChange={e => { onPdfPicked(e.target.files?.[0]); e.target.value = '' }}
+                />
+              </label>
+            </div>
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
               rows={7}
               autoFocus
-              disabled={analyzing}
+              disabled={analyzing || extracting}
               placeholder={t('tasks.pastePlaceholder', '- 跟供應商談封口膜交期\n- 採購 3 台推車\n- 下週五前交安全訓練文件')}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             />

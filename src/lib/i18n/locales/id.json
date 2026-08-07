@@ -1225,6 +1225,11 @@
       "doing": "Berjalan",
       "verifying": "Menunggu verifikasi",
       "done": "Selesai"
-    }
+    },
+    "uploadPdf": "Unggah PDF",
+    "pdfExtracting": "Membaca PDF…",
+    "pdfExtracted": "Teks PDF dimuat ({n} halaman)",
+    "pdfNoText": "PDF ini tidak punya teks yang bisa dibaca (mungkin hasil scan) — silakan tempel teksnya langsung",
+    "pdfFailed": "Gagal membaca PDF — silakan tempel teksnya langsung"
   }
 }
