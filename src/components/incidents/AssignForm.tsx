@@ -287,7 +287,17 @@ export default function AssignForm({
           )}
         </div>
         {accounts.length === 0 ? (
-          <p className="text-xs text-gray-400 mt-1">{t('assign.noAccounts', '尚無可指派的帳號')}</p>
+          // Distinguish "no accounts exist" from "the list couldn't load
+          // because we're offline" — the account list is a live query with no
+          // offline cache (deliberate: saving an assignment and the Telegram
+          // notify both need network anyway, so assignment is an online-only
+          // action). Telling an offline supervisor "no assignable accounts"
+          // was a lie that sent live testing down the wrong path.
+          typeof navigator !== 'undefined' && !navigator.onLine ? (
+            <p className="text-xs text-amber-600 mt-1">{t('assign.offlineNoList', '沒有網路連線 — 派工需要連線後才能選人與儲存')}</p>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">{t('assign.noAccounts', '尚無可指派的帳號')}</p>
+          )
         ) : (
           <>
             {/* Name search — only worth showing once the list is big */}

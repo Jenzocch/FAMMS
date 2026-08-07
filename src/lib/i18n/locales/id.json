@@ -50,7 +50,8 @@
     "dueDateSupervisorOnly": "Tenggat ditetapkan oleh supervisor",
     "confirmClearAll": "Hapus semua petugas? Orang yang saat ini ditugaskan tidak akan bisa melihat laporan ini lagi.",
     "savedNoInternal": "Tersimpan, tapi tidak ada akun internal — karyawan tidak akan melihat laporan ini, hanya pengawas",
-    "sectionHint": "Pilih siapa yang menangani laporan ini, bisa pilih beberapa orang"
+    "sectionHint": "Pilih siapa yang menangani laporan ini, bisa pilih beberapa orang",
+    "offlineNoList": "Tidak ada koneksi — penugasan perlu online untuk memilih orang dan menyimpan"
   },
   "report": {
     "title": "Lapor Masalah",
