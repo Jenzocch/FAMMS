@@ -336,11 +336,13 @@ function PasteMeetingDialog({
 
   return (
     <Dialog open onOpenChange={o => { if (!o) onClose() }}>
-      {/* Wider in preview mode: a stacked-card layout at the paste-mode width
-          only fit 1-2 draft rows before scrolling, and a supervisor reviewing
-          several meeting action items at once needs to see them together, not
-          hunt-and-scroll one at a time (real desktop usage caught this). */}
-      <DialogContent className={drafts ? 'max-w-3xl' : 'max-w-lg'}>
+      {/* Desktop-wide on purpose — filling is easier with room. MUST use the
+          sm: prefix: the base DialogContent carries its own `sm:max-w-sm`
+          desktop cap, and an unprefixed max-w-* loses to it at sm+ (variant
+          classes don't conflict in tailwind-merge, and the media-query rule
+          wins in CSS). An earlier unprefixed attempt silently shipped a
+          still-narrow dialog because of exactly this. */}
+      <DialogContent className={drafts ? 'sm:max-w-4xl' : 'sm:max-w-2xl'}>
         <DialogHeader>
           <DialogTitle>
             {drafts ? t('tasks.aiPreviewTitle', 'AI 抓到的任務（可修改）') : t('tasks.pasteMeeting', '貼上會議紀錄')}
@@ -398,7 +400,14 @@ function PasteMeetingDialog({
                 scrolling past every single one. */}
             <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-0.5">
               {drafts.map((d, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 p-2 flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-2">
+                // Inline row only at md+ where the sm:max-w-4xl dialog
+                // guarantees room for title + controls side by side. At sm the
+                // fixed-width controls (~400px) would crush a flexed title to
+                // a few characters wide — which, combined with the auto-grow,
+                // once rendered titles as a one-character-per-line vertical
+                // strip. Below md everything stacks; the title always keeps
+                // the full row width.
+                <div key={i} className="rounded-lg border border-gray-200 p-2 flex flex-col md:flex-row md:items-start gap-1.5 md:gap-2">
                   {/* Auto-growing textarea, not a single-line input: meeting
                       titles are sentences, and an <input> silently truncates
                       them — the reviewer must SEE the full text to judge the
@@ -414,13 +423,13 @@ function PasteMeetingDialog({
                         el.style.height = `${el.scrollHeight}px`
                       }
                     }}
-                    className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-gray-200 text-sm leading-snug resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full md:flex-1 md:min-w-[16rem] px-2 py-1.5 rounded-lg border border-gray-200 text-sm leading-snug resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap text-sm">
+                  <div className="flex items-center gap-1.5 md:gap-2 flex-wrap md:flex-nowrap md:shrink-0 text-sm">
                     <select
                       value={d.assignedTo}
                       onChange={e => updateDraft(i, { assignedTo: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700 sm:w-36"
+                      className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700 md:w-36"
                     >
                       {assigneeOptions}
                     </select>
@@ -428,12 +437,12 @@ function PasteMeetingDialog({
                       type="date"
                       value={d.dueDate}
                       onChange={e => updateDraft(i, { dueDate: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 sm:w-36"
+                      className="h-9 px-2 rounded-lg border border-gray-200 md:w-36"
                     />
                     <select
                       value={d.priority}
                       onChange={e => updateDraft(i, { priority: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 sm:w-16"
+                      className="h-9 px-2 rounded-lg border border-gray-200 md:w-16"
                     >
                       <option value="low">{t('tasks.priorityLow', '低')}</option>
                       <option value="normal">{t('tasks.priorityNormal', '中')}</option>
