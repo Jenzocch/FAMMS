@@ -334,6 +334,7 @@ src/
 │   └── api/
 │       ├── incidents/notify          new-incident Telegram fan-out
 │       ├── tasks                     create task(s) (batch; notifies assignees)
+│       ├── tasks/analyze             AI-draft tasks from a pasted meeting note (drafts only, never writes)
 │       ├── incidents/[id]/close      close + RCA gate + KB capture
 │       ├── incidents/[id]/photos     delete a report photo (supervisor+)
 │       ├── incidents/[id]/relations  confirm a repeat-failure link
@@ -411,6 +412,9 @@ src/
 │   ├── incidents/createIncidentServer.ts  server-side incident creation
 │   │                                 (shared: Telegram /lapor, QC, FQMS)
 │   ├── health-score.ts, audit.ts, csv-export.ts, qwen.ts
+│   ├── ai-cheap.ts                   free 3-provider AI fallback chain (OpenRouter → DeepSeek) for
+│   │                                 bulk/non-personal text, null if unconfigured/all fail
+│   ├── meeting-tasks.ts              extractTasksFromMeeting + matchAssignee, used by tasks/analyze
 │   ├── telegram.ts                   send/edit/buttons/notify helpers
 │   ├── offline-queue.ts              IndexedDB queue + offline-cache.ts
 │   ├── i18n/                         provider + locales/{zh,en,id}.json
@@ -456,6 +460,13 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 # https://dashscope.console.aliyun.com/
 QWEN_API_KEY=sk-...
 QWEN_MODEL=qwen-flash # optional, defaults to qwen-flash if unset
+
+# Free-tier AI chain for bulk/non-personal text (meeting-note task extraction
+# — src/lib/ai-cheap.ts, src/lib/meeting-tasks.ts). Optional, both: unset
+# means the "AI 分析" button in the tasks paste dialog just falls back to the
+# plain line-by-line split — nothing breaks either way.
+OPENROUTER_API_KEY=sk-or-... # tried first: llama-3.3-70b:free, then deepseek/deepseek-chat
+DEEPSEEK_API_KEY=sk-... # last-resort provider if OpenRouter is unset or fails
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij
