@@ -6,6 +6,7 @@ import { useI18n } from '@/lib/i18n'
 import type { Task } from '@/types'
 import { Plus, ChevronDown, ChevronUp, ClipboardList, Loader2, Sparkles, X, FileUp } from 'lucide-react'
 import SpeechMicButton from '@/components/shared/SpeechMicButton'
+import { wibTodayStr } from '@/lib/pm'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -292,10 +293,16 @@ function PasteMeetingDialog({
         toast.info(t('tasks.aiNoTasks', 'AI 沒有找到可執行的任務'))
         return
       }
+      // Owner's rule: a meeting task nobody put a deadline on still gets one —
+      // 40 days out (factory-local WIB day) — instead of sitting due-less
+      // forever. It's a visible, editable suggestion in the preview, so a real
+      // deadline heard in the meeting always wins (the AI only fills due_date
+      // it actually heard; this covers the silence).
+      const defaultDue = wibTodayStr(new Date(Date.now() + 40 * 86_400_000))
       setDrafts(found.map((d: { title: string; assigned_to_id: string | null; due_date: string; priority: string }) => ({
         title: d.title,
         assignedTo: d.assigned_to_id || '',
-        dueDate: d.due_date || '',
+        dueDate: d.due_date || defaultDue,
         priority: d.priority || 'normal',
         // Seed each row from the paste-mode checkbox, then edit per row.
         needsVerification,
