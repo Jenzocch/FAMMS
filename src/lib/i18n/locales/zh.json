@@ -50,7 +50,8 @@
     "dueDateSupervisorOnly": "完成日由主管設定",
     "confirmClearAll": "確定要清空所有指派嗎？被指派中的人員將無法再看到此工單。",
     "savedNoInternal": "已儲存，但未指派任何內部帳號 — 一般員工將看不到此工單，只有主管看得到",
-    "sectionHint": "選誰來處理這張工單，可以多選"
+    "sectionHint": "選誰來處理這張工單，可以多選",
+    "offlineNoList": "沒有網路連線 — 派工需要連線後才能選人與儲存"
   },
   "report": {
     "title": "回報問題",
