@@ -35,9 +35,14 @@ export default function ReportLocationFields({
       {/* Factory + area side by side: matches the natural "pick factory →
           its area" reading order without an extra scroll/tap. Machine and
           the free-text note stay full-width below since names/codes run long. */}
+      {/* w-full min-w-0 on both triggers: the base SelectTrigger is w-fit +
+          whitespace-nowrap, so an over-long value (a factory name — or the
+          raw-UUID bug this once amplified) grew past its grid cell and
+          overlapped the neighbour instead of truncating. Constrained width
+          lets the trigger's own line-clamp-1 do its job. */}
       <div className="grid grid-cols-2 gap-2">
         <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
-          <SelectTrigger><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
+          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
           <SelectContent>
             {factories.map(f => (
               <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
@@ -53,7 +58,7 @@ export default function ReportLocationFields({
             ...(areas.length === 0 ? [['__other__', t('report.selectAreaOther', '其他')]] : []),
           ])}
         >
-          <SelectTrigger><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
+          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
           <SelectContent>
             {areas.map(a => (
               <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -87,7 +92,7 @@ export default function ReportLocationFields({
 
       {assets.length > 0 && (
         <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')} items={Object.fromEntries(assets.map(a => [a.id, `${a.machine_code ? `[${a.machine_code}] ` : ''}${a.machine_name}`]))}>
-          <SelectTrigger><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>
+          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>
           <SelectContent>
             {assets.map(a => (
               <SelectItem key={a.id} value={a.id}>
