@@ -31,6 +31,25 @@ export function useReportLocation(presetMachineId?: string) {
   const restoredAssetRef = useRef<string | null>(null)
 
   useEffect(() => {
+    // Read the remembered last-used location up front, but APPLY it only
+    // after the factory list has arrived, and only if that factory actually
+    // exists among the options — this used to call setFactoryId(saved)
+    // unconditionally, and offline with an empty/missed factories cache the
+    // picker then had a value with no matching option, which Base UI renders
+    // as the raw UUID (caught on a real phone with no signal). Every other
+    // preselect path (QR preset, own-factory) already guarded; this was the
+    // one that didn't.
+    let savedFactoryId: string | null = null
+    if (!presetMachineId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY) ?? 'null')
+        if (typeof saved?.factoryId === 'string' && saved.factoryId) {
+          savedFactoryId = saved.factoryId
+          restoredAreaRef.current = typeof saved.areaId === 'string' ? saved.areaId : null
+        }
+      } catch { /* corrupt storage — start blank */ }
+    }
+
     // Preselect the reporter's own factory so the form is one step shorter for
     // technicians. Skipped when a QR preset is present — otherwise the two
     // async setters can race and swallow the preset's area/machine restore.
@@ -40,9 +59,14 @@ export function useReportLocation(presetMachineId?: string) {
       // offline queue is lost if the factory dropdown is empty.
       const data = cacheList<ReportFactory>(cacheKeys.factories, fresh as ReportFactory[] | null)
       setFactories(data)
-      if (!presetMachineId && myFactoryId && data.some(f => f.id === myFactoryId)) {
-        setFactoryId(prev => prev || myFactoryId)
-      }
+      if (presetMachineId) return
+      // Precedence: last-used location > own factory — both only when the
+      // option really exists in the list we just set.
+      const restored =
+        savedFactoryId && data.some(f => f.id === savedFactoryId) ? savedFactoryId
+        : myFactoryId && data.some(f => f.id === myFactoryId) ? myFactoryId
+        : null
+      if (restored) setFactoryId(prev => prev || restored)
     })
 
     // QR scan-to-report: ?machine=<id> preselects the whole location cascade
@@ -79,16 +103,6 @@ export function useReportLocation(presetMachineId?: string) {
       return
     }
 
-    // Restore the last-used factory/area for repeat reports.
-    try {
-      const saved = JSON.parse(localStorage.getItem(LAST_LOCATION_KEY) ?? 'null')
-      if (saved?.factoryId) {
-        restoredAreaRef.current = typeof saved.areaId === 'string' ? saved.areaId : null
-        // One-time mount restore from localStorage, not an external-data sync.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setFactoryId(saved.factoryId)
-      }
-    } catch { /* corrupt storage — start blank */ }
     // Mount-only: `presetMachineId` is treated as fixed for this hook's
     // lifetime (the caller reads it once, e.g. from a URL param), and
     // `supabase` is intentionally omitted since createClient() returns a new
