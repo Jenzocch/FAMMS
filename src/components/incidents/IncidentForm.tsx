@@ -73,11 +73,14 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   const [dueDate, setDueDate] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  // Generated ONCE per form instance (not per submit attempt) so that a retry
+  // Generated ONCE per logical report (not per submit attempt) so that a retry
   // after a flaky-signal timeout — user hits submit again because it looked
   // like it failed — is recognized as the same report instead of creating a
   // duplicate incident. See submitIncidentReport's idempotency check.
-  const [clientRequestId] = useState(() => crypto.randomUUID())
+  // Regenerated only after a successful offline enqueue, where the form stays
+  // on screen for the NEXT report — reusing the id there would make the queue
+  // treat two different reports as the same one.
+  const [clientRequestId, setClientRequestId] = useState(() => crypto.randomUUID())
 
   // Past incidents on the picked machine + KB entries matching the typed
   // problem — surfaced live in the form so last time's fix is one tap away.
@@ -134,8 +137,21 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
           photos: photoCapture.photos.map(f => ({ name: f.name, type: f.type, blob: f })),
         })
         location.rememberLocation()
+        // STAY on the form — do not navigate. Offline, a client-side route
+        // change needs a server round trip for the RSC payload, so
+        // router.push('/incidents') just stalled: on a real phone the submit
+        // looked like it did nothing (caught in live testing). This page is
+        // already loaded and working; clear the per-report fields so the next
+        // report can be filed immediately, keep the location/type/urgency
+        // (repeat reports are usually from the same spot), and mint a fresh
+        // clientRequestId — reusing it would make the queue see the NEXT
+        // report as a duplicate of this one.
+        setDescription('')
+        setDueDate('')
+        setLocationNote('')
+        photoCapture.resetPhotos()
+        setClientRequestId(crypto.randomUUID())
         toast.success(t('report.savedOffline', '已存在這台裝置 — 有訊號時會自動送出'), { duration: 6000 })
-        router.push('/incidents')
         return true
       } catch {
         return false // IndexedDB unavailable (private mode) — fall through
