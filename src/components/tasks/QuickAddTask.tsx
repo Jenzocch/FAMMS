@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '@/lib/i18n'
 import type { Task } from '@/types'
-import { Plus, ChevronDown, ChevronUp, ClipboardList, Loader2, Sparkles, X } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, ClipboardList, Loader2, Sparkles, X, FileUp } from 'lucide-react'
 import SpeechMicButton from '@/components/shared/SpeechMicButton'
 import { Button } from '@/components/ui/button'
 import {
@@ -202,7 +202,34 @@ function PasteMeetingDialog({
   const [needsVerification, setNeedsVerification] = useState(false)
   const [saving, setSaving] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [extracting, setExtracting] = useState(false)
   const [drafts, setDrafts] = useState<AiDraft[] | null>(null) // non-null = preview mode
+
+  // Meeting minutes usually arrive as a PDF — read its text right here in the
+  // browser (the file never leaves the device) and drop it into the paste box,
+  // then the normal AI-analyze / line-split flow takes over. pdf-text.ts (and
+  // pdfjs inside it) is dynamic-imported so the ~1MB library only ever loads
+  // for someone who actually picks a PDF.
+  async function onPdfPicked(file: File | undefined) {
+    if (!file || extracting) return
+    setExtracting(true)
+    try {
+      const { extractPdfText } = await import('@/lib/pdf-text')
+      const { text: extracted, pages } = await extractPdfText(file)
+      // A scanned/image-only PDF "succeeds" with nothing in it — say so
+      // instead of leaving a silently empty box.
+      if (extracted.length < 20) {
+        toast.error(t('tasks.pdfNoText', '這個 PDF 沒有可讀文字（可能是掃描圖檔），請直接貼上文字'))
+        return
+      }
+      setText(prev => (prev.trim() ? `${prev.trimEnd()}\n${extracted}` : extracted))
+      toast.success(t('tasks.pdfExtracted', '已讀入 PDF 文字（{n} 頁）').replace('{n}', String(pages)))
+    } catch {
+      toast.error(t('tasks.pdfFailed', 'PDF 讀取失敗，請直接貼上文字'))
+    } finally {
+      setExtracting(false)
+    }
+  }
 
   const lines = text
     .split('\n')
@@ -305,11 +332,15 @@ function PasteMeetingDialog({
     }
   }
 
-  const busy = saving || analyzing
+  const busy = saving || analyzing || extracting
 
   return (
     <Dialog open onOpenChange={o => { if (!o) onClose() }}>
-      <DialogContent className="max-w-lg">
+      {/* Wider in preview mode: a stacked-card layout at the paste-mode width
+          only fit 1-2 draft rows before scrolling, and a supervisor reviewing
+          several meeting action items at once needs to see them together, not
+          hunt-and-scroll one at a time (real desktop usage caught this). */}
+      <DialogContent className={drafts ? 'max-w-3xl' : 'max-w-lg'}>
         <DialogHeader>
           <DialogTitle>
             {drafts ? t('tasks.aiPreviewTitle', 'AI 抓到的任務（可修改）') : t('tasks.pasteMeeting', '貼上會議紀錄')}
@@ -318,13 +349,26 @@ function PasteMeetingDialog({
 
         {!drafts ? (
           <>
-            <p className="text-xs text-gray-500">{t('tasks.pasteHint', '一行一個任務，會自動切開')}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-gray-500">{t('tasks.pasteHint', '一行一個任務，會自動切開')}</p>
+              <label className={`inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800 cursor-pointer shrink-0 ${extracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+                {extracting ? t('tasks.pdfExtracting', '讀取 PDF 中…') : t('tasks.uploadPdf', '上傳 PDF')}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  disabled={extracting}
+                  onChange={e => { onPdfPicked(e.target.files?.[0]); e.target.value = '' }}
+                />
+              </label>
+            </div>
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
               rows={7}
               autoFocus
-              disabled={analyzing}
+              disabled={analyzing || extracting}
               placeholder={t('tasks.pastePlaceholder', '- 跟供應商談封口膜交期\n- 採購 3 台推車\n- 下週五前交安全訓練文件')}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             />
@@ -346,28 +390,37 @@ function PasteMeetingDialog({
         ) : (
           <>
             <p className="text-xs text-gray-500">{t('tasks.aiPreviewHint', '確認每筆的負責人與期限，按建立才會真的新增')}</p>
-            <div className="max-h-72 overflow-y-auto space-y-2 pr-0.5">
+            {/* max-h in viewport units (not a fixed rem) so more rows are
+                visible on a tall desktop window, while still capping the
+                dialog's height on a short screen. Each row lays out inline
+                on sm+ (title | assignee | date | priority | delete) instead
+                of stacking, so several tasks are readable at once without
+                scrolling past every single one. */}
+            <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-0.5">
               {drafts.map((d, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 p-2 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={d.title}
-                      onChange={e => updateDraft(i, { title: e.target.value })}
-                      className="flex-1 min-w-0 h-9 px-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeDraft(i)}
-                      className="h-9 w-9 shrink-0 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap text-sm">
+                <div key={i} className="rounded-lg border border-gray-200 p-2 flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-2">
+                  {/* Auto-growing textarea, not a single-line input: meeting
+                      titles are sentences, and an <input> silently truncates
+                      them — the reviewer must SEE the full text to judge the
+                      task. Height tracks content via scrollHeight (works in
+                      every browser, no field-sizing dependency). */}
+                  <textarea
+                    value={d.title}
+                    rows={1}
+                    onChange={e => updateDraft(i, { title: e.target.value })}
+                    ref={el => {
+                      if (el) {
+                        el.style.height = 'auto'
+                        el.style.height = `${el.scrollHeight}px`
+                      }
+                    }}
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-gray-200 text-sm leading-snug resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap text-sm">
                     <select
                       value={d.assignedTo}
                       onChange={e => updateDraft(i, { assignedTo: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700"
+                      className="h-9 px-2 rounded-lg border border-gray-200 text-gray-700 sm:w-36"
                     >
                       {assigneeOptions}
                     </select>
@@ -375,17 +428,26 @@ function PasteMeetingDialog({
                       type="date"
                       value={d.dueDate}
                       onChange={e => updateDraft(i, { dueDate: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200"
+                      className="h-9 px-2 rounded-lg border border-gray-200 sm:w-36"
                     />
                     <select
                       value={d.priority}
                       onChange={e => updateDraft(i, { priority: e.target.value })}
-                      className="h-9 px-2 rounded-lg border border-gray-200"
+                      className="h-9 px-2 rounded-lg border border-gray-200 sm:w-16"
                     >
                       <option value="low">{t('tasks.priorityLow', '低')}</option>
                       <option value="normal">{t('tasks.priorityNormal', '中')}</option>
                       <option value="high">{t('tasks.priorityHigh', '高')}</option>
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => removeDraft(i)}
+                      title={t('common.delete', '刪除')}
+                      aria-label={t('common.delete', '刪除')}
+                      className="h-9 w-9 shrink-0 inline-flex items-center justify-center text-gray-400 hover:text-red-500"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}

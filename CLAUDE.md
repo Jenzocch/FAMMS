@@ -415,6 +415,8 @@ src/
 │   ├── ai-cheap.ts                   free 3-provider AI fallback chain (OpenRouter → DeepSeek) for
 │   │                                 bulk/non-personal text, null if unconfigured/all fail
 │   ├── meeting-tasks.ts              extractTasksFromMeeting + matchAssignee, used by tasks/analyze
+│   ├── pdf-text.ts                   browser-side PDF→text for the meeting paste box
+│   │                                 (pdfjs-dist; dynamic-import ONLY — keeps the ~1MB lib lazy)
 │   ├── telegram.ts                   send/edit/buttons/notify helpers
 │   ├── offline-queue.ts              IndexedDB queue + offline-cache.ts
 │   ├── i18n/                         provider + locales/{zh,en,id}.json
