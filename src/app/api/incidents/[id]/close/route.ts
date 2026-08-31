@@ -5,6 +5,7 @@ import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import { summarizeForKnowledgeBase } from '@/lib/qwen'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { restoreMachineAfterClose } from '@/lib/qc-check'
+import { machineLabel } from '@/lib/machine-label'
 
 // POST /api/incidents/[id]/close — close an incident.
 // Blocks closing when RCA is required (same failure_code >= 3x in 90d) but no
@@ -177,7 +178,7 @@ export async function POST(
   if (save_to_kb && (root_cause || repair_method)) {
     const machine = incident.machine as unknown as { machine_name?: string; machine_code?: string | null } | null
     const machineName = machine
-      ? `${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name ?? ''}`
+      ? `${machineLabel(machine.machine_name, machine.machine_code)}`
       : null
     const rawProblem = [incident.title, incident.description].filter(Boolean).join(' — ')
       || incident.incident_type

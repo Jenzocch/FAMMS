@@ -20,6 +20,7 @@ import { loadFactories } from '@/lib/useFactories'
 import { PERMISSIONS } from '@/lib/permissions'
 import { PM_TYPE_LABELS, PM_TYPE_KEYS } from '@/lib/pm'
 import type { UserRole } from '@/types'
+import { machineLabel } from '@/lib/machine-label'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; factory_id: string; name: string }
@@ -154,7 +155,7 @@ export default function PMPage({ role = 'technician', defaultFactoryId }: { role
       id: `log-${l.id}`,
       kind: 'adhoc',
       machineName: l.machine
-        ? `${l.machine.machine_code ? `[${l.machine.machine_code}] ` : ''}${l.machine.machine_name}`
+        ? `${machineLabel(l.machine.machine_name, l.machine.machine_code)}`
         : null,
       performedBy: l.performed_by,
       notes: l.notes,
@@ -167,7 +168,7 @@ export default function PMPage({ role = 'technician', defaultFactoryId }: { role
         id: `rec-${r.id}`,
         kind: 'scheduled' as const,
         machineName: machine
-          ? `${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}`
+          ? `${machineLabel(machine.machine_name, machine.machine_code)}`
           : null,
         performedBy: null,
         notes: r.findings,
@@ -214,7 +215,7 @@ export default function PMPage({ role = 'technician', defaultFactoryId }: { role
   const factoryItems = Object.fromEntries(factories.map(f => [f.id, f.name]))
   const areaItems = Object.fromEntries(areas.map(a => [a.id, a.name]))
   const machineItems = Object.fromEntries(
-    machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
+    machines.map(m => [m.id, `${machineLabel(m.machine_name, m.machine_code)}`])
   )
 
   // ---- Build each section once, then arrange it below. -------------------
@@ -265,7 +266,7 @@ export default function PMPage({ role = 'technician', defaultFactoryId }: { role
           <SelectContent>
             {machines.map(m => (
               <SelectItem key={m.id} value={m.id}>
-                {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+                {machineLabel(m.machine_name, m.machine_code)}
               </SelectItem>
             ))}
           </SelectContent>

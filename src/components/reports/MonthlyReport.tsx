@@ -9,6 +9,7 @@ import {
 import { useI18n } from '@/lib/i18n'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { toCsv, downloadCsv, csvRow } from '@/lib/csv-export'
+import { machineLabel } from '@/lib/machine-label'
 
 export interface ReportIncidentRow {
   id: string
@@ -104,7 +105,7 @@ export default function MonthlyReport({ data }: { data: ReportData }) {
       [t('reports.colStatus', '狀態')]: t(`boardStatus.${i.status}`, i.status),
       [t('reports.colUrgency', '緊急度')]: i.downtime_impact,
       [t('reports.colMachine', '設備')]: i.machine
-        ? `${i.machine.machine_code ? `[${i.machine.machine_code}] ` : ''}${i.machine.machine_name}`
+        ? `${machineLabel(i.machine.machine_name, i.machine.machine_code)}`
         : '',
       [t('reports.colFactory', '工廠')]: i.factory?.name ?? '',
       [t('reports.colReported', '回報時間')]: i.reported_at.slice(0, 16).replace('T', ' '),

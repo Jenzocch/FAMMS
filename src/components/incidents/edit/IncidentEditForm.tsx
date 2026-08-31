@@ -23,6 +23,7 @@ import { useI18n } from '@/lib/i18n'
 import { usePhotoCapture } from '@/lib/hooks/usePhotoCapture'
 import PhotoPicker from '@/components/shared/PhotoPicker'
 import ExistingPhotos from './ExistingPhotos'
+import { machineLabel } from '@/lib/machine-label'
 
 // The expanded "edit this case" form. Split out of IncidentActions, which is
 // now just the Edit/Delete bar that opens it.
@@ -272,12 +273,12 @@ export default function IncidentEditForm({
               <Select
                 value={mId}
                 onValueChange={(v) => setMId(v ?? '')}
-                items={Object.fromEntries(machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`]))}
+                items={Object.fromEntries(machines.map(m => [m.id, `${machineLabel(m.machine_name, m.machine_code)}`]))}
               >
                 <SelectTrigger><SelectValue placeholder={tr('report.selectMachine', '選擇機器/項目（可選）')} /></SelectTrigger>
                 <SelectContent>
                   {machines.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>{machineLabel(m.machine_name, m.machine_code)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

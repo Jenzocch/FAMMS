@@ -2,6 +2,7 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { createIncidentServer } from '@/lib/incidents/createIncidentServer'
 import { notifyFactory, esc } from '@/lib/telegram'
 import { logAuditEvent } from '@/lib/audit'
+import { machineLabel } from '@/lib/machine-label'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -60,12 +61,12 @@ export async function reportMachineIssue(
   admin: AdminClient,
   input: ReportIssueInput,
 ): Promise<ReportedIssue> {
-  const machineLabel = `${input.machineCode ? `[${input.machineCode}] ` : ''}${input.machineName}`
+  const label = machineLabel(input.machineName, input.machineCode)
   const trimmedNote = input.note.trim()
-  const description = trimmedNote || `QC 點檢發現異常 / QC menemukan masalah — ${machineLabel}`
+  const description = trimmedNote || `QC 點檢發現異常 / QC menemukan masalah — ${label}`
   // Title mirrors the report form's rule (first line, capped) so the board
   // reads the same whatever channel filed the case.
-  const rawTitle = `${machineLabel} — ${description}`
+  const rawTitle = `${label} — ${description}`
   const title = rawTitle.length > 60 ? `${rawTitle.slice(0, 57)}...` : rawTitle
 
   const incident = await createIncidentServer(admin, {
@@ -103,7 +104,7 @@ export async function reportMachineIssue(
         resourceId: input.machineId,
         oldValue: 'running',
         newValue: 'repairing',
-        changeSummary: `機器轉為維修中：${machineLabel}（${input.via}）`,
+        changeSummary: `機器轉為維修中：${label}（${input.via}）`,
         factoryId: input.factoryId,
       }).catch(() => {})
     }
@@ -116,7 +117,7 @@ export async function reportMachineIssue(
     type: 'new_incident',
     html: [
       `🔍 <b>QC — Masalah Ditemukan</b> — ${esc(incident.incident_no)}`,
-      `🔧 ${esc(machineLabel)}`,
+      `🔧 ${esc(label)}`,
       input.machineStopped ? '🛑 <b>Mesin BERHENTI</b>' : '⚠️ Mesin masih jalan',
       `📋 ${esc(description)}`,
       input.reporterName ? `👤 ${esc(input.reporterName)}` : '',

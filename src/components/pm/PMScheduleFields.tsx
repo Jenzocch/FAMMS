@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n'
 import { PM_TYPE_KEYS, PM_TYPE_LABELS } from '@/lib/pm'
 import { type Account, accountName, isFactoryTechnician } from '@/lib/assignees'
 import AssigneeChip from '@/components/shared/AssigneeChip'
+import { machineLabel } from '@/lib/machine-label'
 
 // The create/edit form for a PM schedule. Split out of PMScheduleManager,
 // which is now just the data owner around it and the list below it.
@@ -78,8 +79,8 @@ export default function PMScheduleFields({
   )
 
   // value→label maps so Base UI <SelectValue> shows names, not raw IDs/codes
-  const machineLabel = (m: { machine_name: string; machine_code: string | null }) =>
-    `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`
+  const machineItem = (m: { machine_name: string; machine_code: string | null }) =>
+    machineLabel(m.machine_name, m.machine_code)
   const pmTypeItems = Object.fromEntries(
     Object.keys(PM_TYPE_KEYS).map(k => [k, t(PM_TYPE_KEYS[k], PM_TYPE_LABELS[k])])
   )
@@ -118,11 +119,11 @@ export default function PMScheduleFields({
         <Select
           value={value.machineId}
           onValueChange={(v) => onChange({ machineId: v ?? '' })}
-          items={Object.fromEntries(machines.map(m => [m.id, machineLabel(m)]))}
+          items={Object.fromEntries(machines.map(m => [m.id, machineItem(m)]))}
         >
           <SelectTrigger><SelectValue placeholder={t('pm.selectMachineStar')} /></SelectTrigger>
           <SelectContent>
-            {machines.map(m => <SelectItem key={m.id} value={m.id}>{machineLabel(m)}</SelectItem>)}
+            {machines.map(m => <SelectItem key={m.id} value={m.id}>{machineItem(m)}</SelectItem>)}
           </SelectContent>
         </Select>
       )}

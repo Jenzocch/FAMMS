@@ -2,6 +2,7 @@
 
 import { useI18n } from '@/lib/i18n'
 import { DAY_ABBRS, PM_TYPE_LABELS, PM_TYPE_KEYS, STATUS_DOT, STATUS_BADGE, STATUS_KEYS, STATUS_LABELS, type PMTask } from './types'
+import { machineLabel } from '@/lib/machine-label'
 
 // Week view — vertical day-by-day agenda. On a phone, 7 side-by-side columns
 // are too narrow to read (events collapse to "DI… Ad…"), so we list each day
@@ -70,7 +71,7 @@ export default function WeekAgenda({
                   >
                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_DOT[task.status] || 'bg-gray-400'}`} />
                     <span className="font-medium text-sm text-gray-800 truncate">
-                      {task.machine_code ? `[${task.machine_code}] ` : ''}{task.machine_name}
+                      {machineLabel(task.machine_name, task.machine_code)}
                     </span>
                     <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 shrink-0">
                       {typeLabel(task)}

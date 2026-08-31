@@ -15,6 +15,7 @@ import MonthGrid from './calendar/MonthGrid'
 import WeekAgenda from './calendar/WeekAgenda'
 import TaskDetailPanel, { type TaskActionPayload } from './calendar/TaskDetailPanel'
 import { DATE_LOCALES, getWeekDates, type PMTask, type PMEvent, type MachineOption } from './calendar/types'
+import { machineLabel } from '@/lib/machine-label'
 
 interface PMFullCalendarProps {
   factoryId: string
@@ -163,7 +164,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
   const machineItems: Record<string, string> = {
     all: t('pm.allMachines2'),
     ...Object.fromEntries(
-      machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`])
+      machines.map(m => [m.id, `${machineLabel(m.machine_name, m.machine_code)}`])
     ),
   }
 
@@ -181,7 +182,7 @@ export default function PMFullCalendar({ factoryId }: PMFullCalendarProps) {
             <SelectItem value="all">{t('pm.allMachines2')}</SelectItem>
             {machines.map(m => (
               <SelectItem key={m.id} value={m.id}>
-                {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+                {machineLabel(m.machine_name, m.machine_code)}
               </SelectItem>
             ))}
           </SelectContent>

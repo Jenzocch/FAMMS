@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { useI18n } from '@/lib/i18n'
+import { machineLabel } from '@/lib/machine-label'
 import {
   PM_TYPE_LABELS, PM_TYPE_KEYS, STATUS_DOT, STATUS_BADGE, STATUS_KEYS, STATUS_LABELS,
   isActionable, type PMTask, type PMTaskAction,
@@ -81,7 +82,7 @@ export default function TaskDetailPanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-semibold text-sm text-gray-800 truncate">
-                        {task.machine_code ? `[${task.machine_code}] ` : ''}{task.machine_name}
+                        {machineLabel(task.machine_name, task.machine_code)}
                       </span>
                       <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 shrink-0">
                         {typeLabel(task)}

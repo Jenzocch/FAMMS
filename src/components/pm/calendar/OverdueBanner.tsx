@@ -7,6 +7,7 @@ import type { Locale as DateFnsLocale } from 'date-fns'
 import { useI18n } from '@/lib/i18n'
 import type { OverdueMachine } from '@/lib/hooks/useOverdueMaintenanceData'
 import { PM_TYPE_LABELS, PM_TYPE_KEYS } from './types'
+import { machineLabel } from '@/lib/machine-label'
 
 // Collapsible "PM overdue" summary banner shown above the calendar.
 export default function OverdueBanner({ overdue, dateLocale }: {
@@ -42,7 +43,7 @@ export default function OverdueBanner({ overdue, dateLocale }: {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 truncate">
-                    {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+                    {machineLabel(m.machine_name, m.machine_code)}
                   </p>
                   <p className="text-gray-600 mt-0.5">
                     {pmTypeLabel(m.pm_type)}
