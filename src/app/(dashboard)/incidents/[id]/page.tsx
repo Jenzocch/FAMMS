@@ -23,6 +23,7 @@ import { URGENCY_FROM_IMPACT } from '@/lib/incident-display'
 import { Clock, User, UserCheck } from 'lucide-react'
 import { format } from 'date-fns'
 import type { ReactNode } from 'react'
+import { machineLabel } from '@/lib/machine-label'
 
 interface UpdateRow {
   id: string
@@ -224,7 +225,7 @@ export default async function IncidentDetailPage({
           <span className="text-gray-300">·</span>
           <span>
             📍 {factory?.name || '?'}
-            {machine ? ` · ${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}` : ''}
+            {machine ? ` · ${machineLabel(machine.machine_name, machine.machine_code)}` : ''}
             {incident.location_note ? ` · ${incident.location_note}` : ''}
           </span>
         </p>

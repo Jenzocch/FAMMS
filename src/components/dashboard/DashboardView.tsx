@@ -12,6 +12,7 @@ import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import NextStepHint from '@/components/incidents/NextStepHint'
 import { PM_TYPE_KEYS } from '@/lib/pm'
 import type { OverdueMachine } from '@/lib/pm-overdue'
+import { machineLabel } from '@/lib/machine-label'
 
 // Same left-edge urgency bar treatment as the board (IncidentBoard.tsx) — kept
 // in sync there so a card reads the same "how urgent" signal everywhere in
@@ -227,7 +228,7 @@ function OverdueList({ promise, t, pmTypeLabel }: {
         <div key={m.machine_id} className="flex items-center justify-between px-3 py-2.5">
           <div>
             <p className="text-sm font-medium text-gray-700">
-              {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+              {machineLabel(m.machine_name, m.machine_code)}
             </p>
             <p className="text-[13px] text-gray-500 mt-0.5">
               {t('pm.maintenanceFreq')}: {pmTypeLabel(m.pm_type)}

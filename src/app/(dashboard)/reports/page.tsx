@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
 import MonthlyReport, { ReportData, ReportIncidentRow } from '@/components/reports/MonthlyReport'
+import { machineLabel } from '@/lib/machine-label'
 
 export const metadata = { title: 'Monthly Report | FAMMS' }
 
@@ -113,7 +114,7 @@ export default async function ReportsPage({
   const byMachine: Record<string, number> = {}
   for (const i of incidents) {
     if (!i.machine) continue
-    const label = `${i.machine.machine_code ? `[${i.machine.machine_code}] ` : ''}${i.machine.machine_name}`
+    const label = `${machineLabel(i.machine.machine_name, i.machine.machine_code)}`
     byMachine[label] = (byMachine[label] ?? 0) + 1
   }
 

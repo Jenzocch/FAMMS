@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
 import { URGENCY_FROM_IMPACT, STATUS_ZH } from '@/lib/incident-display'
 import type { IncidentStatus } from '@/types'
+import { machineLabel } from '@/lib/machine-label'
 
 export interface ReportUpdateRow {
   id: string
@@ -156,7 +157,7 @@ export default function PrintReport({
           <div className="mt-2 text-sm space-y-0.5 pr-28">
             <p>
               {factory?.name || '?'}
-              {machine ? ` · ${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}` : ''}
+              {machine ? ` · ${machineLabel(machine.machine_name, machine.machine_code)}` : ''}
               {incident.location_note ? ` · ${incident.location_note}` : ''}
             </p>
             <p>{t('printReport.urgencyLabel', '緊急度')}: {urgencyLabel}</p>

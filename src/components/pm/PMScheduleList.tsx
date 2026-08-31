@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Trash2, Edit2, Users } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import type { PMSchedule } from '@/lib/pm-schedules'
+import { machineLabel } from '@/lib/machine-label'
 
 export default function PMScheduleList({
   schedules, cadenceLabel, onEdit, onRemove,
@@ -25,7 +26,7 @@ export default function PMScheduleList({
         <div key={s.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
           <div className="flex-1">
             <p className="text-sm font-medium">
-              {s.machine_code ? `[${s.machine_code}] ` : ''}{s.machine_name}
+              {machineLabel(s.machine_name, s.machine_code)}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
               {cadenceLabel(s.pm_type, s.interval_days)}

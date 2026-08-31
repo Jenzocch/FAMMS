@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
 import { toast } from 'sonner'
 import { wibTodayStr, PM_TYPE_LABELS, PM_TYPE_KEYS, daysBetween } from '@/lib/pm'
+import { machineLabel } from '@/lib/machine-label'
 
 interface PMDueListProps {
   factoryId: string
@@ -187,7 +188,7 @@ export default function PMDueList({ factoryId }: PMDueListProps) {
             <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${meta.dot}`} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-800 truncate">
-                {task.machine_code ? `[${task.machine_code}] ` : ''}{task.machine_name}
+                {machineLabel(task.machine_name, task.machine_code)}
               </p>
               <p className="text-xs text-gray-500">
                 {task.scheduled_date}

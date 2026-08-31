@@ -23,6 +23,7 @@ import { useIncidentTypes } from '@/lib/useIncidentTypes'
 import { useIncidentTypeLabel } from '@/lib/incident-type-label'
 import { useProgressNudge } from '@/lib/useProgressNudge'
 import { loadFactories } from '@/lib/useFactories'
+import { machineLabel } from '@/lib/machine-label'
 
 interface Factory { id: string; name: string }
 interface Area { id: string; name: string }
@@ -231,9 +232,7 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
     try {
       const exportData = results.map(r => {
         const machineDisplay = r.machine
-          ? r.machine.machine_code
-            ? `[${r.machine.machine_code}] ${r.machine.machine_name}`
-            : r.machine.machine_name
+          ? machineLabel(r.machine.machine_name, r.machine.machine_code)
           : ''
 
         return {
@@ -340,14 +339,14 @@ export default function IncidentSearch({ onResults, userRole = 'technician' }: I
           {machines.length > 0 && (
             <div>
               <Label className="text-xs">{t('board.machine')}</Label>
-              <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={Object.fromEntries(machines.map(m => [m.id, `${m.machine_code ? `[${m.machine_code}] ` : ''}${m.machine_name}`]))}>
+              <Select value={machineId} onValueChange={(v) => setMachineId(v ?? '')} items={Object.fromEntries(machines.map(m => [m.id, `${machineLabel(m.machine_name, m.machine_code)}`]))}>
                 <SelectTrigger className="mt-1 text-sm">
                   <SelectValue placeholder={t('board.selectMachine')} />
                 </SelectTrigger>
                 <SelectContent>
                   {machines.map(m => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.machine_code ? `[${m.machine_code}] ` : ''}{m.machine_name}
+                      {machineLabel(m.machine_name, m.machine_code)}
                     </SelectItem>
                   ))}
                 </SelectContent>

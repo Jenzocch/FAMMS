@@ -6,6 +6,7 @@ import {
 import { SLA_MINUTES } from '@/lib/constants'
 import { timingSafeEqualString } from '@/lib/timing-safe-equal'
 import type { DowntimeImpact } from '@/types'
+import { machineLabel } from '@/lib/machine-label'
 
 // GET /api/cron/sla-check — scheduled escalation sweep (vercel.json cron).
 //
@@ -80,10 +81,10 @@ export async function GET(req: Request) {
     if (!(await claimAlert(inc.id))) continue
 
     const machine = inc.machine as unknown as { machine_name: string; machine_code: string | null } | null
-    const machineLabel = machine
-      ? `${machine.machine_code ? `[${machine.machine_code}] ` : ''}${machine.machine_name}`
+    const label = machine
+      ? machineLabel(machine.machine_name, machine.machine_code)
       : (inc.title ?? '-')
-    const line = `• ${esc(inc.incident_no)} — ${esc(machineLabel)}, terlambat ${minutesLate} menit`
+    const line = `• ${esc(inc.incident_no)} — ${esc(label)}, terlambat ${minutesLate} menit`
       + (appUrl ? ` <a href="${appUrl}/incidents/${inc.id}">→</a>` : '')
     const bucket = slaByFactory.get(inc.factory_id) ?? { ids: [], lines: [] }
     bucket.ids.push(inc.id)

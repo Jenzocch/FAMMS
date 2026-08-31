@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/select'
 import { useI18n } from '@/lib/i18n'
 import type { ReportFactory, ReportArea, ReportAsset } from '@/lib/hooks/useReportLocation'
+import { machineLabel } from '@/lib/machine-label'
 
 // Factory → area → machine cascade + free-text "other location" for the
 // incident report form. Controlled entirely by the parent's useReportLocation
@@ -91,12 +92,12 @@ export default function ReportLocationFields({
       })()}
 
       {assets.length > 0 && (
-        <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')} items={Object.fromEntries(assets.map(a => [a.id, `${a.machine_code ? `[${a.machine_code}] ` : ''}${a.machine_name}`]))}>
+        <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')} items={Object.fromEntries(assets.map(a => [a.id, `${machineLabel(a.machine_name, a.machine_code)}`]))}>
           <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>
           <SelectContent>
             {assets.map(a => (
               <SelectItem key={a.id} value={a.id}>
-                {a.machine_code ? `[${a.machine_code}] ` : ''}{a.machine_name}
+                {machineLabel(a.machine_name, a.machine_code)}
               </SelectItem>
             ))}
           </SelectContent>

@@ -59,6 +59,14 @@ All user-facing label maps live in `src/types/famms.ts` (INCIDENT_STATUS_LABELS,
 ROLE_LABELS, ACTION_TYPE_LABELS, etc.). The fault tree seed
 (`supabase/seed_fault_tree.sql`) follows the same convention.
 
+**Machine labels: NAME first, code after** — `Mesin Sealer Toples [CST1]`,
+never a bare code (owner's rule, 2026-08: workers recognise names, a bare
+"CST1" forces a "which machine?" round trip). Every display goes through
+`machineLabel()` in `src/lib/machine-label.ts` — do NOT hand-format
+`[code] name` again; ~28 copy-pasted call sites is what made flipping this
+order a whole-app sweep. New machine codes (DIN/OLT imports) stay
+name-derived abbreviations, same as SJA's.
+
 ---
 
 ## System Architecture
