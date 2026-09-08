@@ -92,6 +92,7 @@
 - `migration_accepted_at.sql` — incidents 加 accepted_at / accepted_by_id
 - `migration_incident_location_note.sql` — 工單自由填寫地點
 - `migration_missing_tables.sql` — 補 incident_updates / audit_logs / maintenance_logs
+- `migration_supervisor_cross_factory.sql` — supervisor 不掛 factory_id 時可跨廠（例如巡多廠的 QA），有掛工廠的 supervisor 不受影響
 
 > 註：`migration_*` 的變更大多已併入 `setup_all.sql`，所以**全新環境只跑情境一即可**，
 > 不必逐個 migration 再跑一遍。這些單檔保留是給「只想補某一項」的舊資料庫用。
