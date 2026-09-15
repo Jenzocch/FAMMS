@@ -196,7 +196,7 @@ export async function GET(req: Request) {
   // ---- 4) APAR / safety-asset expiry warning -------------------------------
   const { data: expiring } = await supabase
     .from('machines')
-    .select('id, machine_name, machine_code, factory_id, expiry_date, last_expiry_alert_at')
+    .select('id, machine_name, machine_code, factory_id, expiry_date, last_expiry_alert_at, area:areas(name)')
     .eq('asset_category', 'safety')
     .not('expiry_date', 'is', null)
     .lte('expiry_date', aparDeadline)
@@ -241,8 +241,9 @@ export async function GET(req: Request) {
       for (const m of won) {
         if (!m.factory_id) continue
         const label = machineLabel(m.machine_name, m.machine_code)
+        const area = m.area as unknown as { name: string } | null
         const days = Math.round((new Date(m.expiry_date!).getTime() - now) / 86_400_000)
-        const line = `• ${esc(label)} — ` + (days < 0
+        const line = `• ${esc(label)}` + (area ? ` — ${esc(area.name)}` : '') + ' — ' + (days < 0
           ? `kadaluarsa ${-days} hari lalu`
           : `kadaluarsa dalam ${days} hari (${esc(m.expiry_date!)})`)
         const bucket = byFactory.get(m.factory_id) ?? { ids: [], lines: [] }
