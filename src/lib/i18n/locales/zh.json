@@ -587,6 +587,8 @@
     "catPipe": "水管/管線",
     "catElectrical": "電力/照明",
     "catFacility": "設施",
+    "catSafety": "消防/安全設備",
+    "expiryDate": "到期日 / 更換日期（APAR）",
     "addIncidentType": "新增問題類型",
     "loadIncidentTypesFailed": "載入問題類型失敗",
     "incidentTypeName": "問題類型名稱",

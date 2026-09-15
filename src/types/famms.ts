@@ -434,7 +434,8 @@ export type NotificationType =
   | 'pm_reminder'
   | 'daily_summary'
   | 'weekly_summary'
-  | 'parts_status';
+  | 'parts_status'
+  | 'apar_expiry';
 
 export type NotificationLog = {
   id: string;

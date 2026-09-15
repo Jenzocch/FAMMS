@@ -587,6 +587,8 @@
     "catPipe": "Pipe / Plumbing",
     "catElectrical": "Electrical / Lighting",
     "catFacility": "Facility",
+    "catSafety": "Fire Safety Equipment",
+    "expiryDate": "Expiry / Refill Date",
     "addIncidentType": "Add Issue Type",
     "loadIncidentTypesFailed": "Failed to load issue types",
     "incidentTypeName": "Issue Type Name",

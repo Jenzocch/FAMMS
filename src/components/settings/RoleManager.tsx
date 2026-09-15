@@ -50,7 +50,7 @@ export default function RoleManager() {
   const [labelEn, setLabelEn] = useState('')
   const [labelId, setLabelId] = useState('')
   const [baseRole, setBaseRole] = useState<UserRole>('technician')
-  const [caps, setCaps] = useState<CapMap>({ dashboard: false, boardFull: false, viewMachines: true, manageUsers: false })
+  const [caps, setCaps] = useState<CapMap>({ dashboard: false, boardFull: false, viewMachines: true, manageUsers: false, aparAlerts: false })
 
   // Mount-only load. `load` is intentionally omitted: it's a fresh function
   // reference every render (closes over the unstable `supabase` client), so
@@ -68,9 +68,9 @@ export default function RoleManager() {
       ])
       setRoles((roleRows ?? []) as CustomRole[])
       const byRole: Record<string, CapMap> = {}
-      for (const r of (roleRows ?? [])) byRole[r.key] = { dashboard: false, boardFull: false, viewMachines: true, manageUsers: false }
+      for (const r of (roleRows ?? [])) byRole[r.key] = { dashboard: false, boardFull: false, viewMachines: true, manageUsers: false, aparAlerts: false }
       for (const c of (capRows ?? [])) {
-        if (!byRole[c.role_key]) byRole[c.role_key] = { dashboard: false, boardFull: false, viewMachines: true, manageUsers: false }
+        if (!byRole[c.role_key]) byRole[c.role_key] = { dashboard: false, boardFull: false, viewMachines: true, manageUsers: false, aparAlerts: false }
         if ((CAPABILITY_KEYS as readonly string[]).includes(c.capability)) {
           byRole[c.role_key][c.capability as CapabilityKey] = c.allowed
         }
@@ -96,7 +96,7 @@ export default function RoleManager() {
     setLabelEn('')
     setLabelId('')
     setBaseRole('technician')
-    setCaps({ dashboard: false, boardFull: false, viewMachines: true, manageUsers: false })
+    setCaps({ dashboard: false, boardFull: false, viewMachines: true, manageUsers: false, aparAlerts: false })
     setShowForm(true)
     requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
@@ -108,7 +108,7 @@ export default function RoleManager() {
     setLabelEn(r.label_en)
     setLabelId(r.label_id)
     setBaseRole(r.base_role)
-    setCaps({ ...(capsByRole[r.key] ?? { dashboard: false, boardFull: false, viewMachines: true, manageUsers: false }) })
+    setCaps({ ...(capsByRole[r.key] ?? { dashboard: false, boardFull: false, viewMachines: true, manageUsers: false, aparAlerts: false }) })
     setShowForm(true)
     requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }

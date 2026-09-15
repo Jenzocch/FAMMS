@@ -20,6 +20,7 @@ interface Asset {
   machine_name: string
   machine_code: string | null
   asset_category: string | null
+  expiry_date: string | null
 }
 
 const CATEGORIES = [
@@ -28,7 +29,21 @@ const CATEGORIES = [
   { value: 'pipe', label: '水管/管線', labelKey: 'settings.catPipe', prefix: 'PIP' },
   { value: 'electrical', label: '電力/照明', labelKey: 'settings.catElectrical', prefix: 'ELE' },
   { value: 'facility', label: '設施', labelKey: 'settings.catFacility', prefix: 'FAC' },
+  { value: 'safety', label: '消防/安全設備', labelKey: 'settings.catSafety', prefix: 'APAR' },
 ]
+
+// Categories that carry a "due date" — only 'safety' for now (fire
+// extinguisher refill/expiry), but any future category needing the same
+// due-date + Telegram-alert treatment just gets added here, no schema change.
+const EXPIRY_CATEGORIES = ['safety']
+
+const DAY_MS = 86_400_000
+function expiryBadge(dateStr: string): { text: string; className: string } {
+  const days = Math.round((new Date(dateStr).getTime() - Date.now()) / DAY_MS)
+  if (days < 0) return { text: `Kadaluarsa ${-days} hari lalu`, className: 'text-red-700 bg-red-50 border-red-200' }
+  if (days <= 30) return { text: `Kadaluarsa dalam ${days} hari`, className: 'text-amber-700 bg-amber-50 border-amber-200' }
+  return { text: dateStr, className: 'text-gray-500 bg-gray-50 border-gray-200' }
+}
 
 export default function AssetManager() {
   const { t } = useI18n()
@@ -56,6 +71,7 @@ export default function AssetManager() {
   const [name, setName] = useState('')
   const [category, setCategory] = useState('machine')
   const [code, setCode] = useState('')
+  const [expiryDate, setExpiryDate] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   // Preselect the first factory once the shared list arrives (and keep the
@@ -103,7 +119,7 @@ export default function AssetManager() {
   async function loadAssets() {
     const { data } = await supabase
       .from('machines')
-      .select('id, area_id, machine_name, machine_code, asset_category')
+      .select('id, area_id, machine_name, machine_code, asset_category, expiry_date')
       .eq('area_id', areaId)
       .neq('status', 'scrapped')
       .order('machine_name')
@@ -132,6 +148,7 @@ export default function AssetManager() {
     setName('')
     setCode('')
     setCategory('machine')
+    setExpiryDate('')
     setShowForm(true)
     scrollToForm()
   }
@@ -141,6 +158,7 @@ export default function AssetManager() {
     setName(a.machine_name)
     setCode(a.machine_code || '')
     setCategory(a.asset_category || 'machine')
+    setExpiryDate(a.expiry_date || '')
     setShowForm(true)
     scrollToForm()
   }
@@ -150,6 +168,7 @@ export default function AssetManager() {
     setEditingId(null)
     setName('')
     setCode('')
+    setExpiryDate('')
   }
 
   async function submit() {
@@ -159,11 +178,13 @@ export default function AssetManager() {
     }
     setSubmitting(true)
     try {
+      const expiryValue = EXPIRY_CATEGORIES.includes(category) && expiryDate ? expiryDate : null
       if (editingId) {
         const { error } = await supabase.from('machines').update({
           machine_name: name,
           machine_code: code.trim() || null,
           asset_category: category,
+          expiry_date: expiryValue,
         }).eq('id', editingId)
         if (error) throw error
         toast.success(t('settings.updated'))
@@ -175,6 +196,7 @@ export default function AssetManager() {
           machine_name: name,
           machine_code: finalCode,
           asset_category: category,
+          expiry_date: expiryValue,
           status: 'running',
         })
         if (error) throw error
@@ -298,6 +320,17 @@ export default function AssetManager() {
               className="mt-1 font-mono"
             />
           </div>
+          {EXPIRY_CATEGORIES.includes(category) && (
+            <div>
+              <Label>{t('settings.expiryDate', 'Tanggal Kadaluarsa / Isi Ulang')}</Label>
+              <Input
+                type="date"
+                value={expiryDate}
+                onChange={e => setExpiryDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             <Button onClick={submit} disabled={submitting}>
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -320,6 +353,11 @@ export default function AssetManager() {
                   {a.machine_code || t('settings.noCode')}
                   {a.asset_category && ` · ${categoryLabel(a.asset_category)}`}
                 </p>
+                {a.expiry_date && (
+                  <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full border ${expiryBadge(a.expiry_date).className}`}>
+                    {expiryBadge(a.expiry_date).text}
+                  </span>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button size="icon" className="h-10 w-10" variant="outline" onClick={() => startEdit(a)}>
