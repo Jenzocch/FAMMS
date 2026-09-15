@@ -75,7 +75,11 @@ category already uses. The daily cron (`api/cron/sla-check`, section 4) DMs
 anyone with `role='admin'` or a custom role granted the `aparAlerts`
 capability (Settings → 角色管理 — e.g. a "採購"/purchasing role) 30 days before
 `expiry_date`, re-nagging daily via `last_expiry_alert_at` until it's
-replaced/updated.
+replaced/updated. The same section (4b) also auto-submits a Gudang One parts
+request through the existing webhook (no incident, no logged-in user —
+called directly with `machine_id` set and `incident_id` null), gated by
+`machines.gudang_requested_for_expiry` so it fires once per expiry cycle, not
+once per daily nag.
 
 ---
 
