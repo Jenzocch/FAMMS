@@ -67,6 +67,16 @@ never a bare code (owner's rule, 2026-08: workers recognise names, a bare
 order a whole-app sweep. New machine codes (DIN/OLT imports) stay
 name-derived abbreviations, same as SJA's.
 
+**Expiry-dated safety assets (APAR/fire extinguisher, etc.)** — Settings →
+資產管理 (`AssetManager.tsx`) has an `asset_category: 'safety'` option that
+shows an extra due-date field (`machines.expiry_date`), unlike every other
+category. No new table: this rides the same `machines` row every other asset
+category already uses. The daily cron (`api/cron/sla-check`, section 4) DMs
+anyone with `role='admin'` or a custom role granted the `aparAlerts`
+capability (Settings → 角色管理 — e.g. a "採購"/purchasing role) 30 days before
+`expiry_date`, re-nagging daily via `last_expiry_alert_at` until it's
+replaced/updated.
+
 ---
 
 ## System Architecture

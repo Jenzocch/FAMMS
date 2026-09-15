@@ -22,7 +22,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 // the privilege-escalation checks in the user-management routes — a custom
 // role granted manageUsers can create/edit/deactivate accounts but can never
 // promote anyone (including itself) to `role: 'admin'`.
-export const CAPABILITY_KEYS = ['dashboard', 'boardFull', 'viewMachines', 'manageUsers'] as const
+export const CAPABILITY_KEYS = ['dashboard', 'boardFull', 'viewMachines', 'manageUsers', 'aparAlerts'] as const
 export type CapabilityKey = typeof CAPABILITY_KEYS[number]
 
 export const CAPABILITY_LABELS: Record<CapabilityKey, { zh: string; en: string; id: string }> = {
@@ -30,6 +30,7 @@ export const CAPABILITY_LABELS: Record<CapabilityKey, { zh: string; en: string; 
   boardFull: { zh: '完整工單看板（非僅自己相關案件）', en: 'Full incident board (not just own cases)', id: 'Papan insiden penuh (bukan hanya kasus sendiri)' },
   viewMachines: { zh: '設備主檔（機器列表與詳情頁）', en: 'Equipment master (machine list & detail pages)', id: 'Data induk mesin (daftar & detail mesin)' },
   manageUsers: { zh: '帳號管理（建立/編輯/停用使用者、指派角色，不含系統管理員）', en: 'Account management (create/edit/deactivate users, assign roles — excluding System Admin)', id: 'Manajemen akun (buat/edit/nonaktifkan pengguna, tetapkan peran — tidak termasuk System Admin)' },
+  aparAlerts: { zh: '收到滅火器（APAR）到期 Telegram 警報', en: 'Receive fire extinguisher (APAR) expiry Telegram alerts', id: 'Menerima peringatan Telegram APAR kadaluarsa' },
 }
 
 // The 3 tiers a custom role may inherit from — deliberately excludes
@@ -59,6 +60,11 @@ export function baseCapabilityDefaults(baseRole: UserRole): EffectiveCapabilitie
     // is the role_capabilities override applied in resolveCapabilities()
     // below / resolveRoleOverlay() in lib/auth.ts.
     manageUsers: PERMISSIONS.manageUsers(baseRole),
+    // Opt-in only — no base role gets this automatically. True admins are
+    // always included in the APAR expiry alert regardless of this flag (see
+    // the recipient query in cron/sla-check); this only matters for granting
+    // it to a custom role like "採購" (Settings → 角色管理).
+    aparAlerts: false,
   }
 }
 

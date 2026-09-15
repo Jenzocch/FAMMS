@@ -587,6 +587,8 @@
     "catPipe": "Pipa / Saluran",
     "catElectrical": "Listrik / Pencahayaan",
     "catFacility": "Fasilitas",
+    "catSafety": "Alat Pemadam Api (APAR)",
+    "expiryDate": "Tanggal Kadaluarsa / Isi Ulang",
     "addIncidentType": "Tambah Jenis Masalah",
     "loadIncidentTypesFailed": "Gagal memuat jenis masalah",
     "incidentTypeName": "Nama Jenis Masalah",
