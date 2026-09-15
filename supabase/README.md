@@ -94,6 +94,7 @@
 - `migration_missing_tables.sql` — 補 incident_updates / audit_logs / maintenance_logs
 - `migration_supervisor_cross_factory.sql` — supervisor 不掛 factory_id 時可跨廠（例如巡多廠的 QA），有掛工廠的 supervisor 不受影響
 - `migration_apar_expiry.sql` — machines 加 expiry_date / last_expiry_alert_at 兩欄，給 Settings → 資產管理 新增的「消防/安全設備」(APAR) 類別填到期日用；到期前 30 天由每日 cron（sla-check）發 Telegram 給 admin ＋ 有 aparAlerts 權限的自訂角色（例如採購）
+- `migration_apar_gudang_autorequest.sql` — machines 加 gudang_requested_for_expiry 一欄；同一支 cron 到期前 30 天也會自動向 Gudang One 送一張叫料單（沿用既有的叫料串接，見 `docs/GUDANG_INTEGRATION.md`），這欄防止同一個到期週期重複送單
 
 > 註：`migration_*` 的變更大多已併入 `setup_all.sql`，所以**全新環境只跑情境一即可**，
 > 不必逐個 migration 再跑一遍。這些單檔保留是給「只想補某一項」的舊資料庫用。

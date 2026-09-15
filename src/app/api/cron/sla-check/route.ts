@@ -17,7 +17,9 @@ import { machineLabel } from '@/lib/machine-label'
 //  3. Daily summary per factory (open / new / closed / overdue-PM counts)
 //  4. APAR/safety-asset expiry warning (machines.asset_category='safety' with
 //     an expiry_date coming due), DMed to admins + any custom role granted
-//     the 'aparAlerts' capability (Settings → 角色管理) — e.g. 採購/purchasing
+//     the 'aparAlerts' capability (Settings → 角色管理) — e.g. 採購/purchasing —
+//     and, if Gudang One is configured, auto-submits a parts request for it
+//     (same webhook the interactive "向倉庫叫料" button uses)
 //
 // Auth: Vercel sends `Authorization: Bearer ${CRON_SECRET}` when the env var
 // is set. Runs with the service-role client — there is no user session here.
@@ -41,7 +43,7 @@ export async function GET(req: Request) {
   // spam the same breach forever but keeps nudging until someone acts.
   const alertFloor = new Date(now - 22 * 3600000).toISOString()
 
-  const results = { slaAlerts: 0, overdueAlerts: 0, summaries: 0, aparAlerts: 0, failed: 0 }
+  const results = { slaAlerts: 0, overdueAlerts: 0, summaries: 0, aparAlerts: 0, gudangRequests: 0, failed: 0 }
   // Expiry warnings fire this many days ahead of the actual due date — gives
   // purchasing lead time to order a replacement/refill before it's overdue.
   const APAR_LEAD_DAYS = 30
@@ -196,7 +198,7 @@ export async function GET(req: Request) {
   // ---- 4) APAR / safety-asset expiry warning -------------------------------
   const { data: expiring } = await supabase
     .from('machines')
-    .select('id, machine_name, machine_code, factory_id, expiry_date, last_expiry_alert_at, area:areas(name)')
+    .select('id, machine_name, machine_code, factory_id, expiry_date, last_expiry_alert_at, gudang_requested_for_expiry, area:areas(name)')
     .eq('asset_category', 'safety')
     .not('expiry_date', 'is', null)
     .lte('expiry_date', aparDeadline)
@@ -266,6 +268,82 @@ export async function GET(req: Request) {
         } else {
           results.failed++
           await supabase.from('machines').update({ last_expiry_alert_at: null }).in('id', bucket.ids)
+        }
+      }
+
+      // ---- 4b) Auto-submit a Gudang One parts request per due APAR --------
+      // Same webhook the interactive "📦 向倉庫叫料" button uses (see
+      // src/app/api/gudang/request/route.ts / docs/GUDANG_INTEGRATION.md),
+      // called directly here since there's no incident or logged-in user to
+      // attach this to. Gated separately from the Telegram claim above via
+      // gudang_requested_for_expiry — the Telegram nag repeats roughly daily
+      // until the APAR is replaced, but a purchase request should only go out
+      // once per expiry_date, not once per nag.
+      const gudangUrl = process.env.GUDANG_WEBHOOK_URL
+      const gudangSecret = process.env.GUDANG_WEBHOOK_SECRET
+      if (gudangUrl && gudangSecret) {
+        const factoryNameById = new Map((factoriesRes.data ?? []).map(f => [f.id, f.name]))
+        const gudangWarehouse = process.env.GUDANG_WAREHOUSE || 'HARDWARE'
+        for (const m of won) {
+          if (!m.factory_id) continue
+          if (m.gudang_requested_for_expiry === m.expiry_date) continue // already requested this cycle
+
+          const label = machineLabel(m.machine_name, m.machine_code)
+          const days = Math.round((new Date(m.expiry_date!).getTime() - now) / 86_400_000)
+          const urgency = days < 0 ? 'urgent' : 'normal'
+          const factoryName = factoryNameById.get(m.factory_id) || '?'
+          const note = `[Pabrik: ${factoryName}] Auto: APAR ${days < 0 ? 'sudah kadaluarsa' : `kadaluarsa dalam ${days} hari`} — ganti/isi ulang.`
+          const items = [{ name: `Ganti/Isi Ulang ${label}`, part_no: '', qty: 1, unit: 'unit' }]
+
+          const { data: tracked, error: trackErr } = await supabase
+            .from('parts_requests')
+            .insert({ factory_id: m.factory_id, machine_id: m.id, items, urgency, note })
+            .select('id')
+            .single()
+          if (trackErr || !tracked) { results.failed++; continue }
+
+          const payload = {
+            famms_request_id: tracked.id,
+            machine_id: m.machine_code || m.machine_name || '-',
+            machine_name: m.machine_name || '',
+            work_order: `APAR-${m.machine_code || tracked.id.slice(0, 8)}`,
+            items,
+            urgency,
+            requester: 'FAMMS (Auto — APAR)',
+            warehouse: gudangWarehouse,
+            note,
+          }
+
+          try {
+            const resp = await fetch(gudangUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-famms-secret': gudangSecret },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(8000),
+            })
+            if (resp.ok) {
+              let out: { request_id?: unknown } | null = null
+              try { out = await resp.json() } catch { out = null }
+              await supabase.from('machines').update({ gudang_requested_for_expiry: m.expiry_date }).eq('id', m.id)
+              if (out?.request_id) {
+                await supabase.from('parts_requests').update({ external_ref: String(out.request_id) }).eq('id', tracked.id)
+              }
+              results.gudangRequests++
+            } else {
+              // Gudang explicitly rejected — drop the local row (mirrors the
+              // interactive route) and leave gudang_requested_for_expiry
+              // untouched so tomorrow's run retries.
+              await supabase.from('parts_requests').delete().eq('id', tracked.id)
+              results.failed++
+            }
+          } catch {
+            // Ambiguous delivery (timeout/network drop). The interactive
+            // route can tell a human "check before resending" — a cron can't,
+            // so it accepts the small risk of an occasional duplicate request
+            // over silently losing one: the local row stays, and
+            // gudang_requested_for_expiry stays unset so tomorrow retries.
+            results.failed++
+          }
         }
       }
     }
