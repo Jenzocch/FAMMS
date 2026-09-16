@@ -463,6 +463,7 @@ src/
 | `docs/FQMS_INTEGRATION.md` | who owns what between FAMMS and FQMS, and the two endpoints |
 | `docs/GUDANG_INTEGRATION.md` | how parts requests reach Gudang One |
 | `docs/GUDANG_ONE_CONFIRM.md` | the agreed contract with the Gudang One side, incl. their answers |
+| `docs/GUDANG_ONE_APAR_NOTICE.md` | heads-up to forward to Gudang One about the auto APAR requests (no code change on their side) |
 | `supabase/README.md` | which SQL to run and in what order (the RLS chain is mandatory) |
 
 ---
