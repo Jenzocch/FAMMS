@@ -14,7 +14,7 @@ FAMMS incident 頁「📦 向倉庫叫料」
 （APAR，`machines.asset_category = 'safety'`）到期前 30 天，會直接呼叫同一支
 Gudang webhook 自動送出叫料單，不經過「向倉庫叫料」按鈕、沒有 incident、
 也沒有登入使用者——payload 格式完全相同，`requester` 固定填
-`"FAMMS (Auto — APAR)"`，方便倉管分辨這張是系統自動送的還是技師手動叫的。
+`"FAMMS (Auto - APAR)"`，方便倉管分辨這張是系統自動送的還是技師手動叫的。
 同一個到期週期只會送一次（見 `machines.gudang_requested_for_expiry`），
 不會跟著每日的 Telegram 提醒一起重複送單。
 

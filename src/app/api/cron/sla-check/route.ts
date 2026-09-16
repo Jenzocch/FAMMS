@@ -292,7 +292,7 @@ export async function GET(req: Request) {
           const days = Math.round((new Date(m.expiry_date!).getTime() - now) / 86_400_000)
           const urgency = days < 0 ? 'urgent' : 'normal'
           const factoryName = factoryNameById.get(m.factory_id) || '?'
-          const note = `[Pabrik: ${factoryName}] Auto: APAR ${days < 0 ? 'sudah kadaluarsa' : `kadaluarsa dalam ${days} hari`} — ganti/isi ulang.`
+          const note = `[Pabrik: ${factoryName}] Auto: APAR ${days < 0 ? 'sudah kadaluarsa' : `kadaluarsa dalam ${days} hari`} - ganti/isi ulang.`
           const items = [{ name: `Ganti/Isi Ulang ${label}`, part_no: '', qty: 1, unit: 'unit' }]
 
           const { data: tracked, error: trackErr } = await supabase
@@ -313,7 +313,7 @@ export async function GET(req: Request) {
             work_order: m.machine_code || `APAR-${tracked.id.slice(0, 8)}`,
             items,
             urgency,
-            requester: 'FAMMS (Auto — APAR)',
+            requester: 'FAMMS (Auto - APAR)',
             warehouse: gudangWarehouse,
             note,
           }
