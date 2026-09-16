@@ -306,7 +306,11 @@ export async function GET(req: Request) {
             famms_request_id: tracked.id,
             machine_id: m.machine_code || m.machine_name || '-',
             machine_name: m.machine_name || '',
-            work_order: `APAR-${m.machine_code || tracked.id.slice(0, 8)}`,
+            // Not a real work order (there's no incident) — the APAR's own
+            // code is the most useful thing for warehouse staff to see here.
+            // Auto-generated safety codes already carry an APAR- prefix, so
+            // prefixing again produced "APAR-APAR-003".
+            work_order: m.machine_code || `APAR-${tracked.id.slice(0, 8)}`,
             items,
             urgency,
             requester: 'FAMMS (Auto — APAR)',
