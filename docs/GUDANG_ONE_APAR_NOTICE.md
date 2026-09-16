@@ -25,11 +25,11 @@ FAMMS 新增了滅火器（APAR）的到期追蹤：每支滅火器登記在哪�
 
 | 欄位 | 技師手動叫料（原本就有的） | APAR 自動叫料（新的） |
 |---|---|---|
-| `requester` | 技師本人姓名，例如 `Rudi` | 固定是 `FAMMS (Auto — APAR)` |
+| `requester` | 技師本人姓名，例如 `Rudi` | 固定是 `FAMMS (Auto - APAR)` |
 | `work_order` | 真的工單號 `FIT-20260723-004` | 那支滅火器的代號（例如 `APAR-003`），**不是真工單號** |
 | `machine_id` / `machine_name` | 該工單的機台 | 那支滅火器的代號 / 名稱 |
 | `items` | 技師自己填的零件清單 | 固定一筆：`Ganti/Isi Ulang <滅火器名稱>`，qty 1、unit `unit` |
-| `note` | `[Pabrik: 廠名]` ＋ 技師自己寫的備註 | `[Pabrik: 廠名] Auto: APAR kadaluarsa dalam N hari — ganti/isi ulang.` |
+| `note` | `[Pabrik: 廠名]` ＋ 技師自己寫的備註 | `[Pabrik: 廠名] Auto: APAR kadaluarsa dalam N hari - ganti/isi ulang.` |
 | `urgency` | 技師自己選 | 還沒過期 = `normal`；已經過期 = `urgent` |
 
 Payload 範例：
@@ -44,9 +44,9 @@ Payload 範例：
     { "name": "Ganti/Isi Ulang Alat Pemadam Api Ringan [APAR-003]", "part_no": "", "qty": 1, "unit": "unit" }
   ],
   "urgency": "normal",
-  "requester": "FAMMS (Auto — APAR)",
+  "requester": "FAMMS (Auto - APAR)",
   "warehouse": "HARDWARE",
-  "note": "[Pabrik: SJA] Auto: APAR kadaluarsa dalam 28 hari — ganti/isi ulang."
+  "note": "[Pabrik: SJA] Auto: APAR kadaluarsa dalam 28 hari - ganti/isi ulang."
 }
 ```
 
@@ -82,11 +82,15 @@ Payload 範例：
    > **回覆：沒有任何解析或 `FIT-` 開頭的假設，`APAR-003` 直接可用。**
    > 欄位確認存在，倉管畫面會正常顯示成 `🔧 APAR-003`。
 
-2. **`requester` 字串**：`FAMMS (Auto — APAR)` 這樣寫，倉管看得懂「這是系統自動
+2. **`requester` 字串**：`FAMMS (Auto - APAR)` 這樣寫，倉管看得懂「這是系統自動
    送的，不是某個人」嗎？如果你們有偏好的寫法（例如 `SISTEM FAMMS`、`AUTO`），
    跟我說，改字串很快。
 
-   > **回覆：看得懂，不用改**——APAR 是印尼文的標準縮寫，倉管本來就認得。
+   > **回覆：看得懂，不用改**——APAR 是印尼文的標準縮寫，倉管本來就認得，
+   > 比 `SISTEM FAMMS` 更清楚（同時說明了「系統送的」和「為了什麼」）。
+   > 唯一建議：裡面那個破折號原本是 em-dash（`—`），建議換成普通連字號（`-`）
+   > 比較保險，避免某些字型或匯出情境變亂碼。**已照建議改掉**，`requester` 與
+   > `note` 兩處的 em-dash 都換成 `-` 了（FAMMS 送出的字串裡不再有非 ASCII 標點）。
 
-**結論：兩邊都不用再改任何東西**，照現在的格式送就行。這份文件留著當紀錄，
+**結論：Gudang One 那側不用改任何東西**，照現在的格式送就行。這份文件留著當紀錄，
 以後若要改 `work_order` / `requester` 格式，記得這兩題是已經對過的。
