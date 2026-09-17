@@ -80,7 +80,9 @@
 ### Seed（範例 / 初始資料）
 - `seed_fault_tree.sql` — 故障代碼樹
 - `seed_demo.sql` — 範例工作區 + 機台
-- `seed_din_machines.sql` / `seed_sja_olt_machines.sql` — 各廠初始機台
+- `seed_din_machines.sql` / `seed_sja_olt_machines.sql` — 各廠**佔位**機台（真實清單匯入前的暫代資料，各 4 台虛構機器）
+- `seed_sja_machines.sql` — **SJA 真實清單**：15 區域 + 109 台（工廠自己的 DAP 表單）
+- `seed_din_machines_real.sql` — **DIN 真實清單**：9 區域（按機台站別）+ 42 台，代號照工廠原樣（A1A-KA、C11-03S、HMG1…）
 - `seed_demo_incidents.sql` — 範例工單（FIT-DEMO-*，可重跑）
 
 ### Migration（後加的 schema 變更，皆 idempotent）

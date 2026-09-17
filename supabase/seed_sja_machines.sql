@@ -61,9 +61,17 @@ WHERE f.code = 'SJA'
 ON CONFLICT (factory_id, code) DO UPDATE SET name = EXCLUDED.name, updated_at = NOW();
 
 -- ── Machines ────────────────────────────────────────────────────────────────
-INSERT INTO machines (factory_id, area_id, machine_code, machine_name, brand, model, status, remarks)
-SELECT a.factory_id, a.id, v.code, v.name, v.brand, v.model, v.status, v.remarks
-FROM (VALUES
+-- Deliberately NOT using ON CONFLICT (factory_id, machine_code): schema.sql
+-- creates that unique index as a PARTIAL one (… WHERE machine_code IS NOT
+-- NULL), and Postgres refuses to infer a partial index from a bare
+-- ON CONFLICT (a, b) — it aborts with "no unique or exclusion constraint
+-- matching the ON CONFLICT specification" before touching a single row. This
+-- file used ON CONFLICT and therefore imported nothing at all on a database
+-- built from schema.sql (the production DB it originally ran against has the
+-- index without that WHERE clause, which is why it worked there and nowhere
+-- else). Insert-what's-missing + update-what's-there works either way.
+WITH src(area_code, code, name, brand, model, status, remarks) AS (
+  VALUES
   ('FILLING-POWDER', 'TDK4', 'Timbangan Digital Kecil', 'Digi', 'DS-673', 'running', 'Resolusi 0.001 kg; Kapasitas 3 kg'),
   ('FORMULASI-BAWAH', 'MIP1', 'Mesin Mixing Powder', NULL, NULL, 'running', NULL),
   ('FORMULASI-BAWAH', 'TDB1', 'Timbangan Digital Besar', NULL, NULL, 'running', NULL),
@@ -173,17 +181,37 @@ FROM (VALUES
   ('SYRUP-DAN-JELLY', 'TPD5', 'Tangki Pendingin', NULL, NULL, 'running', NULL),
   ('SYRUP-DAN-JELLY', 'TPD6', 'Tangki Pendingin', NULL, NULL, 'running', NULL),
   ('TIMBANG-WARNA', 'TDK3', 'Timbangan Digital Kecil', 'Kenko', 'KK-SW', 'running', 'Resolusi 0.1 g; Kapasitas 15 kg')
-) AS v(area_code, code, name, brand, model, status, remarks)
-JOIN areas a ON a.code = v.area_code
-JOIN factories f ON f.id = a.factory_id AND f.code = 'SJA'
--- Status deliberately absent from the UPDATE list — see the header.
-ON CONFLICT (factory_id, machine_code) DO UPDATE
-  SET area_id      = EXCLUDED.area_id,
-      machine_name = EXCLUDED.machine_name,
-      brand        = EXCLUDED.brand,
-      model        = EXCLUDED.model,
-      remarks      = EXCLUDED.remarks,
-      updated_at   = NOW();
+),
+-- Resolve each row's factory + area once, so the list above is written once.
+resolved AS (
+  SELECT f.id AS factory_id, a.id AS area_id, s.*
+  FROM src s
+  JOIN areas a ON a.code = s.area_code
+  JOIN factories f ON f.id = a.factory_id AND f.code = 'SJA'
+),
+-- New machines: this is the only place status is written.
+inserted AS (
+  INSERT INTO machines (factory_id, area_id, machine_code, machine_name, brand, model, status, remarks)
+  SELECT r.factory_id, r.area_id, r.code, r.name, r.brand, r.model, r.status, r.remarks
+  FROM resolved r
+  WHERE NOT EXISTS (
+    SELECT 1 FROM machines m
+    WHERE m.factory_id = r.factory_id AND m.machine_code = r.code
+  )
+  RETURNING 1
+)
+-- Already-imported machines: refresh the descriptive columns, never status
+-- (see the header). This UPDATE runs against the pre-statement snapshot, so
+-- the rows `inserted` just created are correctly left alone.
+UPDATE machines m
+SET area_id      = r.area_id,
+    machine_name = r.name,
+    brand        = r.brand,
+    model        = r.model,
+    remarks      = r.remarks,
+    updated_at   = NOW()
+FROM resolved r
+WHERE m.factory_id = r.factory_id AND m.machine_code = r.code;
 
 COMMIT;
 
