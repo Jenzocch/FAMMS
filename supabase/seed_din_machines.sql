@@ -1,4 +1,12 @@
 -- ============================================================================
+-- ⚠️ PLACEHOLDER DATA — superseded by seed_din_machines_real.sql
+-- The 4 machines below are fictional, written when DIN had no machine list at
+-- all. DIN's real 42 machines (and the 9 station areas they live in) are in
+-- `seed_din_machines_real.sql` — run that one. This file is kept only because
+-- those 4 rows exist in production and the owner chose to keep them for now;
+-- do not add to it. In particular DIN-HMG-001 "Horizontal Milling Gearbox" is
+-- invented and is NOT the real homogenizer (that one is HMG1).
+-- ============================================================================
 -- SEED: initial areas + machines for the DIN factory.
 -- DIN had no machines, so reporting an incident / scheduling PM there failed.
 -- This script is self-contained and idempotent (safe to re-run):
