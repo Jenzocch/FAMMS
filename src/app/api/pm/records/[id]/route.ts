@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { nextOccurrenceAfter, checklistIncompleteError } from '@/lib/pm'
 import type { PMType, PMDelayReason } from '@/types'
+import { requireActiveUser } from '@/lib/auth'
 
 // PATCH /api/pm/records/[id] — complete or skip a PM record.
 // On completion (or skip), generate the next pending record from the schedule
@@ -10,9 +11,10 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   const body = await req.json()
@@ -49,13 +51,15 @@ export async function PATCH(
     if (checklistError) return NextResponse.json({ error: checklistError }, { status: 400 })
   }
 
-  const { error: updateErr } = await supabase
+  // Compare-and-set preserves the first completion. A second open form must
+  // refresh instead of overwriting another technician's evidence or cost.
+  const { data: updated, error: updateErr } = await supabase
     .from('pm_records')
     .update({
       status,
       checklist_results: checklist_results && checklist_results.length ? checklist_results : null,
       completed_at: status === 'completed' ? new Date().toISOString() : null,
-      completed_by_id: status === 'completed' ? user.id : null,
+      completed_by_id: status === 'completed' ? guard.user.id : null,
       findings: findings || null,
       parts_replaced: parts_replaced && parts_replaced.length ? JSON.stringify(parts_replaced) : null,
       cost: typeof cost === 'number' ? cost : null,
@@ -63,9 +67,15 @@ export async function PATCH(
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  }
+  if (!updated) {
+    return NextResponse.json({ error: 'PM record sudah diproses oleh pengguna lain' }, { status: 409 })
   }
 
   // Generate the next occurrence if the schedule is still active.

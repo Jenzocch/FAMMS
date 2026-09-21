@@ -40,6 +40,7 @@
 
 -- 1) RLS-policy helper functions — `authenticated` must keep EXECUTE.
 GRANT EXECUTE ON FUNCTION app_role()                 TO authenticated;
+GRANT EXECUTE ON FUNCTION app_is_active()            TO authenticated;
 GRANT EXECUTE ON FUNCTION app_factory()               TO authenticated;
 GRANT EXECUTE ON FUNCTION app_is_admin()              TO authenticated;
 GRANT EXECUTE ON FUNCTION app_is_manager_plus()       TO authenticated;
@@ -73,7 +74,7 @@ BEGIN
     FROM pg_proc p
     WHERE p.pronamespace = 'public'::regnamespace
       AND p.proname IN (
-        'app_role', 'app_factory', 'app_is_admin', 'app_is_manager_plus',
+        'app_role', 'app_is_active', 'app_factory', 'app_is_admin', 'app_is_manager_plus',
         'app_is_supervisor_plus', 'app_cross_factory', 'app_can_access',
         'app_can_access_incident', 'app_can_access_pm_schedule',
         'user_role', 'is_admin', 'is_supervisor_up',

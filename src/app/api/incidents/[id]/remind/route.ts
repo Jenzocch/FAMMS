@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { notifyFactory, notifyAssignees, incidentActionButtons } from '@/lib/telegram'
 import { PERMISSIONS } from '@/lib/permissions'
-import type { UserRole } from '@/types'
+import { requireActiveUser } from '@/lib/auth'
 
 // Escape user-supplied text for Telegram HTML parse mode.
 function esc(s: string): string {
@@ -16,18 +16,13 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Role gate — only supervisors+ may send a reminder.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, full_name')
-    .eq('id', user.id)
-    .single()
-  const role = (profile?.role ?? 'technician') as UserRole
-  if (!PERMISSIONS.remindProgress(role)) {
+  if (!PERMISSIONS.remindProgress(guard.user.role)) {
     return NextResponse.json({ error: 'Hanya supervisor yang bisa mengirim pengingat' }, { status: 403 })
   }
 
@@ -63,7 +58,7 @@ export async function POST(
     `<b>Lokasi:</b> ${esc(factory?.name || '?')}${machine ? ` · ${esc(machine.machine_name)}` : ''}`,
     incident.assigned_to ? `<b>PIC:</b> ${esc(incident.assigned_to)}` : '<b>PIC:</b> (belum ditugaskan)',
     incident.due_date ? `<b>Target selesai:</b> ${esc(incident.due_date)}` : '',
-    `${esc(profile?.full_name || 'Supervisor')} meminta Anda memperbarui progres kasus ini.`,
+    `${esc(guard.user.full_name || 'Supervisor')} meminta Anda memperbarui progres kasus ini.`,
     note ? `<b>📝 Catatan:</b> ${esc(note)}` : '',
     `<a href="${appUrl}/incidents/${incident.id}">Perbarui progres →</a>`,
   ].filter(Boolean).join('\n')

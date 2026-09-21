@@ -90,6 +90,19 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   }
 })
 
+// Baseline guard for a server-side action that only needs an active signed-in
+// account. Do not replace this with auth.getUser(): a valid Auth session can
+// outlive an administrator disabling the matching profile.
+export async function requireActiveUser(): Promise<
+  | { ok: true; user: CurrentUser }
+  | { ok: false; status: 401 | 403 }
+> {
+  const user = await getCurrentUser()
+  if (!user) return { ok: false, status: 401 }
+  if (!user.is_active) return { ok: false, status: 403 }
+  return { ok: true, user }
+}
+
 // Guard for admin-only API routes. Returns the admin user or an error reason.
 // Strictly `role === 'admin'` (系統管理員) — used wherever TRUE unrestricted
 // admin is required. Do NOT loosen this to accept the manageUsers capability;
@@ -100,11 +113,9 @@ export async function requireAdmin(): Promise<
   | { ok: true; user: CurrentUser }
   | { ok: false; status: 401 | 403 }
 > {
-  const user = await getCurrentUser()
-  if (!user) return { ok: false, status: 401 }
-  // Deactivated accounts must not pass admin checks even with a valid session —
-  // the layout blocks them in the browser, but API routes don't go through it.
-  if (!user.is_active) return { ok: false, status: 403 }
+  const active = await requireActiveUser()
+  if (!active.ok) return active
+  const { user } = active
   if (user.role !== 'admin') return { ok: false, status: 403 }
   return { ok: true, user }
 }
@@ -124,9 +135,9 @@ export async function requireUserManager(): Promise<
   | { ok: true; user: CurrentUser }
   | { ok: false; status: 401 | 403 }
 > {
-  const user = await getCurrentUser()
-  if (!user) return { ok: false, status: 401 }
-  if (!user.is_active) return { ok: false, status: 403 }
+  const active = await requireActiveUser()
+  if (!active.ok) return active
+  const { user } = active
   if (user.role !== 'admin' && !user.capabilities.manageUsers) return { ok: false, status: 403 }
   return { ok: true, user }
 }

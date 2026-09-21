@@ -1,23 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { computeHealthScore } from '@/lib/health-score'
+import { requireActiveUser } from '@/lib/auth'
+import { PERMISSIONS } from '@/lib/permissions'
 
 // POST /api/health-score — recalculate equipment health scores for the current
 // user's factory and persist them (one latest row per machine).
 export async function POST() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+  if (!PERMISSIONS.manageMachines(guard.user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('factory_id')
-    .eq('id', user.id)
-    .single()
-  if (!profile?.factory_id) {
+  const supabase = await createClient()
+  if (!guard.user.factory_id) {
     return NextResponse.json({ error: 'Factory tidak ditemukan' }, { status: 400 })
   }
-  const factoryId = profile.factory_id
+  const factoryId = guard.user.factory_id
 
   const windowStart = new Date(Date.now() - 90 * 86400000).toISOString()
 

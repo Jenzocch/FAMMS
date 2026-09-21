@@ -18,14 +18,19 @@
 -- Safe to re-run.
 -- ============================================================================
 
+CREATE OR REPLACE FUNCTION app_is_active() RETURNS BOOLEAN
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_active IS TRUE)
+$$;
+
 CREATE OR REPLACE FUNCTION app_role() RETURNS TEXT
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT role FROM profiles WHERE id = auth.uid()
+  SELECT role FROM profiles WHERE id = auth.uid() AND is_active IS TRUE
 $$;
 
 CREATE OR REPLACE FUNCTION app_factory() RETURNS UUID
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT factory_id FROM profiles WHERE id = auth.uid()
+  SELECT factory_id FROM profiles WHERE id = auth.uid() AND is_active IS TRUE
 $$;
 
 CREATE OR REPLACE FUNCTION app_is_admin() RETURNS BOOLEAN
@@ -54,7 +59,7 @@ $$;
 -- Can the current user access rows belonging to factory f?
 CREATE OR REPLACE FUNCTION app_can_access(f UUID) RETURNS BOOLEAN
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT auth.uid() IS NOT NULL
+  SELECT app_is_active()
      AND ( app_cross_factory()
         OR f IS NOT DISTINCT FROM app_factory()
         OR f IS NULL )

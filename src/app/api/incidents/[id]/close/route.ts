@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { checkRCARequirement } from '@/lib/rca'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { requireActiveUser, PERMISSIONS } from '@/lib/auth'
 import { summarizeForKnowledgeBase } from '@/lib/qwen'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { restoreMachineAfterClose } from '@/lib/qc-check'
@@ -18,8 +18,9 @@ export async function POST(
   // Server-side guard: only supervisor+ may close (the client hides the option
   // for technicians, but the API must enforce it too — a technician closing a
   // case is exactly the review step we don't want to bypass).
-  const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+  const user = guard.user
   if (!PERMISSIONS.closeIncident(user.role)) {
     return NextResponse.json(
       { error: 'Hanya supervisor ke atas yang dapat menutup kasus' },

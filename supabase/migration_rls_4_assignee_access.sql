@@ -14,7 +14,7 @@
 -- True if the current user may access this incident (by factory OR assignment)
 CREATE OR REPLACE FUNCTION app_can_access_incident(inc UUID) RETURNS BOOLEAN
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (
+  SELECT app_is_active() AND EXISTS (
     SELECT 1 FROM incidents i
     WHERE i.id = inc
       AND ( app_can_access(i.factory_id) OR auth.uid() = ANY(i.assigned_user_ids) )
@@ -27,10 +27,10 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS incidents_sel ON incidents;
     DROP POLICY IF EXISTS incidents_upd ON incidents;
     CREATE POLICY incidents_sel ON incidents FOR SELECT
-      USING (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids));
+      USING (app_is_active() AND (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids)));
     CREATE POLICY incidents_upd ON incidents FOR UPDATE
-      USING (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids))
-      WITH CHECK (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids));
+      USING (app_is_active() AND (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids)))
+      WITH CHECK (app_is_active() AND (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids)));
   END IF;
 END $$;
 
@@ -67,10 +67,11 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS machines_sel ON machines;
     CREATE POLICY machines_sel ON machines FOR SELECT
       USING (
+        app_is_active() AND (
         app_can_access(factory_id)
         OR EXISTS (SELECT 1 FROM incidents i
                    WHERE i.machine_id = machines.id
-                     AND auth.uid() = ANY(i.assigned_user_ids))
+                     AND auth.uid() = ANY(i.assigned_user_ids)))
       );
   END IF;
 END $$;

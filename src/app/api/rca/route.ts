@@ -1,21 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { requireActiveUser, PERMISSIONS } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
 // POST /api/rca — create a Root Cause Analysis record for a machine_id +
 // incident_type pair (see src/lib/rca.ts for why this key was chosen over
 // failure_code_id, which no report path ever populates).
 export async function POST(req: Request) {
-  const currentUser = await getCurrentUser()
-  if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+  const currentUser = guard.user
   if (!PERMISSIONS.submitRCA(currentUser.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
   const body = await req.json()
   const {
     machine_id,

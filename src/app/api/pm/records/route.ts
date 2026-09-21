@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { nextOccurrenceAfter, checklistIncompleteError } from '@/lib/pm'
 import type { PMType, PMDelayReason } from '@/types'
+import { requireActiveUser } from '@/lib/auth'
 
 // POST /api/pm/records — complete or skip a *projected* PM occurrence.
 //
@@ -11,9 +12,10 @@ import type { PMType, PMDelayReason } from '@/types'
 // final status in one step — so every task shown on the calendar can actually
 // be saved, whether or not a pending row existed yet.
 export async function POST(req: Request) {
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
   const { pm_schedule_id, scheduled_date, status, findings, cost, delay_reason, checklist_results } = body as {
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
     status,
     checklist_results: checklist_results && checklist_results.length ? checklist_results : null,
     completed_at: status === 'completed' ? new Date().toISOString() : null,
-    completed_by_id: status === 'completed' ? user.id : null,
+    completed_by_id: status === 'completed' ? guard.user.id : null,
     findings: findings || null,
     cost: typeof cost === 'number' ? cost : null,
     delay_reason: delay_reason || null,
@@ -73,8 +75,20 @@ export async function POST(req: Request) {
 
   let recordErrMsg: string | null = null
   if (existing) {
-    const { error } = await supabase.from('pm_records').update(values).eq('id', existing.id)
-    recordErrMsg = error?.message ?? null
+    // Compare-and-set: only the still-pending occurrence may be completed or
+    // skipped. Without this, a second technician can silently overwrite the
+    // first person's findings, cost, completed_by_id, and timestamp.
+    const { data: updated, error } = await supabase
+      .from('pm_records')
+      .update(values)
+      .eq('id', existing.id)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle()
+    if (error) recordErrMsg = error.message
+    else if (!updated) {
+      return NextResponse.json({ error: 'PM record sudah diproses oleh pengguna lain' }, { status: 409 })
+    }
   } else {
     const { error } = await supabase.from('pm_records').insert({
       pm_schedule_id,
@@ -82,21 +96,9 @@ export async function POST(req: Request) {
       ...values,
     })
     if (error?.code === '23505') {
-      // Race lost: someone materialised this (schedule, date) between our
-      // check and insert — the unique index (migration_pm_records_unique)
-      // stopped a duplicate. Apply our result to the winner's row instead.
-      const { data: winner } = await supabase
-        .from('pm_records')
-        .select('id')
-        .eq('pm_schedule_id', pm_schedule_id)
-        .eq('scheduled_date', scheduled_date)
-        .single()
-      if (winner) {
-        const { error: updErr } = await supabase.from('pm_records').update(values).eq('id', winner.id)
-        recordErrMsg = updErr?.message ?? null
-      } else {
-        recordErrMsg = error.message
-      }
+      // Race lost: the unique index materialised this occurrence first. Do
+      // not write our stale form values over the winner's completed record.
+      return NextResponse.json({ error: 'PM record sudah diproses oleh pengguna lain' }, { status: 409 })
     } else {
       recordErrMsg = error?.message ?? null
     }

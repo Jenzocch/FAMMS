@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { requireActiveUser, PERMISSIONS } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { nextOccurrenceAfter, wibTodayStr } from '@/lib/pm'
 import type { PMType } from '@/types'
@@ -7,16 +7,14 @@ import type { PMType } from '@/types'
 // POST /api/pm/schedules — create a PM schedule for a machine,
 // and generate its first pending pm_record.
 export async function POST(req: Request) {
-  const currentUser = await getCurrentUser()
-  if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+  const currentUser = guard.user
   if (!PERMISSIONS.managePMSchedules(currentUser.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
   const body = await req.json()
   const { machine_id, pm_type, interval_days, description, checklist, first_due_date, assigned_user_ids, assigned_to } = body as {
     machine_id?: string

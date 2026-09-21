@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireActiveUser } from '@/lib/auth'
 
 // POST /api/knowledge-base — create a knowledge base entry (post-incident learning).
 export async function POST(req: Request) {
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
   const {
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
       keywords: keywords || null,
       parts_used: parts_used && parts_used.length ? JSON.stringify(parts_used) : null,
       photos: photos && photos.length ? JSON.stringify(photos) : null,
-      created_by_id: user.id,
+      created_by_id: guard.user.id,
     })
     .select('*')
     .single()

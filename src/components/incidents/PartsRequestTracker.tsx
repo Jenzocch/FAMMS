@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { ExternalLink, Package, Warehouse } from 'lucide-react'
 import { format } from 'date-fns'
 import { useI18n } from '@/lib/i18n'
@@ -40,8 +39,9 @@ const STALE_DAYS = 2
 // technician having to remember to reload the page. Stops once every
 // request is resolved. No submit form here (that lives in GudangRequest).
 export default function PartsRequestTracker({
-  requests, incidentClosed = false, nowMs,
+  incidentId, requests, incidentClosed = false, nowMs,
 }: {
+  incidentId: string
   requests: TrackedRequest[]
   incidentClosed?: boolean
   // Server-render timestamp, passed in rather than read via Date.now() here:
@@ -52,19 +52,39 @@ export default function PartsRequestTracker({
   nowMs: number
 }) {
   const { t } = useI18n()
-  const router = useRouter()
+  const [liveRequests, setLiveRequests] = useState(requests)
+  const [liveNowMs, setLiveNowMs] = useState(nowMs)
   // Closed incidents stop polling even if a request is stuck un-resolved
   // (e.g. Gudang never followed up) — refreshing a finished case forever
   // serves nobody.
-  const hasOpenRequest = !incidentClosed && requests.some(r => r.status === 'requested' || r.status === 'ordered')
+  const hasOpenRequest = !incidentClosed && liveRequests.some(r => r.status === 'requested' || r.status === 'ordered')
 
   useEffect(() => {
     if (!hasOpenRequest) return
-    const id = setInterval(() => router.refresh(), 20_000)
-    return () => clearInterval(id)
-  }, [hasOpenRequest, router])
+    let cancelled = false
+    async function refreshStatus() {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const res = await fetch(`/api/incidents/${incidentId}/parts-requests`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json() as { requests?: TrackedRequest[]; nowMs?: number }
+        if (!cancelled && data.requests) {
+          setLiveRequests(data.requests)
+          setLiveNowMs(data.nowMs ?? Date.now())
+        }
+      } catch { /* polling is best-effort; Telegram remains the primary alert */ }
+    }
+    const onVisible = () => { void refreshStatus() }
+    document.addEventListener('visibilitychange', onVisible)
+    const interval = window.setInterval(() => { void refreshStatus() }, 60_000)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(interval)
+    }
+  }, [hasOpenRequest, incidentId])
 
-  if (requests.length === 0) return null
+  if (liveRequests.length === 0) return null
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
@@ -86,9 +106,9 @@ export default function PartsRequestTracker({
           </a>
         )}
       </div>
-      {requests.map(r => {
+      {liveRequests.map(r => {
         const unresolved = r.status === 'requested' || r.status === 'ordered'
-        const daysWaiting = Math.floor((nowMs - new Date(r.requested_at).getTime()) / 86400000)
+        const daysWaiting = Math.floor((liveNowMs - new Date(r.requested_at).getTime()) / 86400000)
         const isStale = unresolved && daysWaiting >= STALE_DAYS
         return (
           <div key={r.id} className="border rounded-lg p-2.5">
