@@ -27,6 +27,7 @@ interface TaskInput {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
 const PRIORITIES = ['low', 'normal', 'high']
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function POST(req: Request) {
   const user = await getCurrentUser()
@@ -70,6 +71,40 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient()
+
+  // The browser's select box is only a convenience. Treat its IDs as
+  // untrusted: without this authoritative, single batched lookup a forged
+  // request could assign a task (and trigger a Telegram notification) to an
+  // inactive or cross-factory profile.
+  const assigneeIds = [...new Set(rows.map(row => row.assigned_to_id).filter((id): id is string => !!id))]
+  if (assigneeIds.some(id => !UUID_RE.test(id))) {
+    return NextResponse.json({ error: 'Penanggung jawab tugas tidak valid' }, { status: 400 })
+  }
+  if (assigneeIds.length > 0) {
+    const { data: assignees, error: assigneesError } = await supabase
+      .from('profiles')
+      .select('id, factory_id, is_active')
+      .in('id', assigneeIds)
+    if (assigneesError) {
+      return NextResponse.json({ error: 'Gagal memeriksa penanggung jawab tugas' }, { status: 500 })
+    }
+    const byId = new Map((assignees ?? []).map(profile => [profile.id, profile]))
+    const invalidAssignee = assigneeIds.some(id => {
+      const profile = byId.get(id)
+      if (!profile?.is_active) return true
+      // A user attached to one factory can assign within that factory (or to
+      // a deliberately cross-factory profile). Cross-factory users have a
+      // null factory_id by design and retain their existing global workflow.
+      return !!user.factory_id && !!profile.factory_id && profile.factory_id !== user.factory_id
+    })
+    if (invalidAssignee) {
+      return NextResponse.json(
+        { error: 'Penanggung jawab harus aktif dan berada di pabrik yang sama' },
+        { status: 400 },
+      )
+    }
+  }
+
   const { data: inserted, error } = await supabase
     .from('tasks')
     .insert(rows)

@@ -46,6 +46,7 @@
 | 9 | `migration_rls_7_missing_tables.sql` | 補上三張晚於 RLS 佈署才建立的表（`telegram_report_drafts`／`vendors`／`parts_requests`）的 RLS 與政策，並移除一次性的 `rls_set()` 佈署工具函式——沒補之前，任何登入帳號都能跨廠直接讀寫這三張表 |
 | 10 | `migration_security_phase4_active_account_gate.sql` | 停用帳號的 JWT 還有效時，仍必須從所有 RLS helper、assignee 例外與 own-profile 政策被拒絕；**先在 staging 套用與測試** |
 | 11 | `migration_security_phase5_storage_write_gate.sql` | 維持既有公開圖片讀取相容性，但把 Storage 寫入綁到 active 帳號、可存取的工單路徑或明確的管理權限；**必須在 phase 4 之後執行** |
+| 12 | `migration_security_phase6_task_identity_gate.sql` | 封鎖 client 偽造任務建立者、跨廠／停用帳號指派；**必須在 `migration_tasks.sql` 與 phase 4 之後執行** |
 
 跑完這 8 步之後再跑 `SYNC_SCHEMA_LATEST.sql` 是安全的——它不會動 anon 權限或 RLS 狀態，不會把這一組鎖定復原。
 
@@ -80,6 +81,7 @@
 - `migration_security_phase3_function_execute.sql` — 收回 PUBLIC 對 SECURITY DEFINER 函式的執行權限
 - `migration_security_phase4_active_account_gate.sql` — 在資料庫層封鎖已停用帳號（含跨廠指派例外）
 - `migration_security_phase5_storage_write_gate.sql` — 收緊 public `incident-photos` bucket 的寫入權限；不會把 bucket 轉 private
+- `migration_security_phase6_task_identity_gate.sql` — 任務建立者／指派對象的資料庫完整性防線
 
 ### Seed（範例 / 初始資料）
 - `seed_fault_tree.sql` — 故障代碼樹
