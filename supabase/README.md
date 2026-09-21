@@ -44,6 +44,8 @@
 | 7 | `migration_rls_6_pm_assignee_access.sql` | PM 保養版的第 5 步，讓跨廠 PM 負責人看得到自己排定的任務 |
 | 8 | `migration_security_phase3_function_execute.sql` | 收回 `PUBLIC` 對這些函式的執行權限——只收回 `anon` 不夠，Postgres 預設會把新函式的 EXECUTE 權限給 `PUBLIC`，而每個角色（包含 `anon`）都隱含是 `PUBLIC` 的成員，所以只 revoke `anon` 沒有真正關上這個洞 |
 | 9 | `migration_rls_7_missing_tables.sql` | 補上三張晚於 RLS 佈署才建立的表（`telegram_report_drafts`／`vendors`／`parts_requests`）的 RLS 與政策，並移除一次性的 `rls_set()` 佈署工具函式——沒補之前，任何登入帳號都能跨廠直接讀寫這三張表 |
+| 10 | `migration_security_phase4_active_account_gate.sql` | 停用帳號的 JWT 還有效時，仍必須從所有 RLS helper、assignee 例外與 own-profile 政策被拒絕；**先在 staging 套用與測試** |
+| 11 | `migration_security_phase5_storage_write_gate.sql` | 維持既有公開圖片讀取相容性，但把 Storage 寫入綁到 active 帳號、可存取的工單路徑或明確的管理權限；**必須在 phase 4 之後執行** |
 
 跑完這 8 步之後再跑 `SYNC_SCHEMA_LATEST.sql` 是安全的——它不會動 anon 權限或 RLS 狀態，不會把這一組鎖定復原。
 
@@ -76,6 +78,8 @@
 - `migration_rls_1_helpers.sql` ~ `migration_rls_6_pm_assignee_access.sql` — RLS 政策 + 分階段開啟 + 指派者存取
 - `migration_security_phase2_prevent_escalation.sql` — 擋掉使用者自己把 role 改成 admin
 - `migration_security_phase3_function_execute.sql` — 收回 PUBLIC 對 SECURITY DEFINER 函式的執行權限
+- `migration_security_phase4_active_account_gate.sql` — 在資料庫層封鎖已停用帳號（含跨廠指派例外）
+- `migration_security_phase5_storage_write_gate.sql` — 收緊 public `incident-photos` bucket 的寫入權限；不會把 bucket 轉 private
 
 ### Seed（範例 / 初始資料）
 - `seed_fault_tree.sql` — 故障代碼樹
