@@ -408,10 +408,9 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       {/* ---- End two-column grid ---- */}
       </div>
 
-      {/* Sticky submit bar (phone only) — pinned just above BottomNav (h-16)
-          so it's always reachable without scrolling back up. z-40 keeps it
-          below BottomNav's z-50 in case of any visual overlap. */}
-      <div className="lg:hidden fixed inset-x-0 bottom-16 z-40 border-t border-gray-200 bg-white/95 backdrop-blur px-4 py-3 safe-area-bottom">
+      {/* Sticky submit bar (phone only) — pinned above the BottomNav and its
+          iPhone safe area, so it stays reachable without covering navigation. */}
+      <div className="lg:hidden fixed inset-x-0 bottom-above-mobile-nav z-40 border-t border-gray-200 bg-white/95 backdrop-blur px-4 py-3">
         <div className="max-w-lg mx-auto">
           <Button
             onClick={submit}

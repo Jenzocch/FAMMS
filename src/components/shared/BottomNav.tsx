@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
-import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, ClipboardCheck, ListTodo } from 'lucide-react'
+import { ClipboardList, Plus, LayoutDashboard, Settings, Wrench, ClipboardCheck, ListTodo, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -28,6 +28,10 @@ const NAV: NavItem[] = [
   { href: '/tasks', labelKey: 'navigation.tasks', icon: ListTodo },
   { href: '/pm', labelKey: 'navigation.pm', icon: Wrench },
   { href: '/qc', labelKey: 'navigation.qc', icon: ClipboardCheck },
+  // The sidebar is hidden below lg, so Knowledge Base needs a direct mobile
+  // entry too. Without it, phone/tablet users can only reach it via a deep
+  // link, despite it being part of the desktop's primary navigation.
+  { href: '/knowledge-base', labelKey: 'navigation.knowledgeBase', icon: BookOpen },
   // An Account Admin custom role (manageUsers capability) needs the Settings
   // link too — see the matching comment in components/shared/Sidebar.tsx.
   { href: '/settings', labelKey: 'navigation.settings', icon: Settings, requiredRole: (r, c) => PERMISSIONS.viewSettings(r) || !!c?.manageUsers },
@@ -88,7 +92,7 @@ export default function BottomNav({ userRole = 'technician', incidentBadge = 0, 
               key={href}
               href={href}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg flex-1',
+                'flex min-w-0 flex-col items-center justify-center gap-1 px-1.5 sm:px-2 py-2 rounded-lg flex-1',
                 active ? 'text-blue-600' : 'text-gray-500'
               )}
             >
@@ -100,7 +104,7 @@ export default function BottomNav({ userRole = 'technician', incidentBadge = 0, 
                   </span>
                 )}
               </span>
-              <span className="text-xs font-medium">{label}</span>
+              <span className="max-w-full truncate text-xs font-medium">{label}</span>
             </Link>
           )
         })}

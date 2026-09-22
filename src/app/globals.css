@@ -161,6 +161,17 @@
   }
 }
 
+/* Home-indicator safe area for the fixed phone navigation. The submit bar on
+   the incident form uses the matching offset below, so the two fixed layers
+   never cover each other on iPhones. */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-above-mobile-nav {
+  bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
 /* A4-friendly page box for printable reports (monthly report, work-order
    review). Keeps margins sane across browsers' print/PDF dialogs. */
 @media print {
