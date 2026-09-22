@@ -50,7 +50,6 @@ export default function IncidentActions(props: IncidentActionsProps) {
       toast.success(t('caseEdit.deleted'))
       setShowDeleteConfirm(false)
       router.push('/incidents')
-      router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('caseEdit.deleteFailed'))
       setDeleting(false)

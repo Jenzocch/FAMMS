@@ -125,7 +125,6 @@ export default function MachineForm({ machine }: Props) {
         toast.success(t('machineForm.added', '機器已新增'))
       }
       router.push('/machines')
-      router.refresh()
     } catch (err) {
       // 23505 on (factory_id, machine_code) — say what's wrong instead of
       // showing the raw Postgres unique-violation message.

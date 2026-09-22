@@ -136,20 +136,21 @@ export default function PMPage({ role = 'technician', defaultFactoryId }: { role
   }, [])
 
   async function loadRecent() {
-    // Ad-hoc maintenance logs
-    const { data: logs } = await supabase
-      .from('maintenance_logs')
-      .select('id, notes, performed_by, performed_at, machine:machines(machine_name, machine_code)')
-      .order('performed_at', { ascending: false })
-      .limit(50)
-
-    // Completed scheduled PM records
-    const { data: records } = await supabase
-      .from('pm_records')
-      .select('id, completed_at, findings, cost, schedule:pm_schedules(pm_type, machine:machines(machine_name, machine_code))')
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(50)
+    // These independent reads feed the same recent-activity list. Start them
+    // together so the page waits for one network round-trip, not two.
+    const [{ data: logs }, { data: records }] = await Promise.all([
+      supabase
+        .from('maintenance_logs')
+        .select('id, notes, performed_by, performed_at, machine:machines(machine_name, machine_code)')
+        .order('performed_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('pm_records')
+        .select('id, completed_at, findings, cost, schedule:pm_schedules(pm_type, machine:machines(machine_name, machine_code))')
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(50),
+    ])
 
     const adhoc: RecentItem[] = ((logs ?? []) as unknown as LogRow[]).map((l) => ({
       id: `log-${l.id}`,
