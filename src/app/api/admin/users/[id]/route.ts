@@ -37,6 +37,10 @@ export async function PATCH(
 
   const admin = createAdminClient()
 
+  if (body.is_shared_device === true && !isTrueAdmin) {
+    return NextResponse.json({ error: '只有系統管理員可以設定共用平板帳號' }, { status: 403 })
+  }
+
   // Privilege-escalation guard #1: an Account Admin must never be able to
   // touch a true system admin's account at all — not edit its fields, not
   // reset its password, not deactivate it. (A true admin editing themselves
@@ -122,6 +126,21 @@ export async function PATCH(
       return NextResponse.json({ error: '無法將帳號設為系統管理員' }, { status: 403 })
     }
     update.role = body.role
+  }
+
+  // A shared-device account is deliberately a factory-bound technician only.
+  // Resolve omitted fields from the persisted profile so partial PATCH cannot
+  // bypass this invariant.
+  if (body.is_shared_device === true || (body.is_shared_device !== false)) {
+    const { data: target } = await admin.from('profiles').select('role, factory_id, is_shared_device').eq('id', id).maybeSingle()
+    if (target) {
+      const nextRole = (update.role ?? target.role) as string
+      const nextFactory = 'factory_id' in update ? update.factory_id : target.factory_id
+      const nextShared = body.is_shared_device ?? target.is_shared_device
+      if (nextShared && (nextRole !== 'technician' || typeof nextFactory !== 'string')) {
+        return NextResponse.json({ error: '共用平板帳號必須是指定工廠的技師帳號' }, { status: 400 })
+      }
+    }
   }
 
   if (Object.keys(update).length > 0) {

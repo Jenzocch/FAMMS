@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Wrench, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Wrench, Eye, EyeOff, Users, UserRound } from 'lucide-react'
 import { accountNameToEmail } from '@/lib/login-name'
 import { useI18n } from '@/lib/i18n'
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher'
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [sharedTablet, setSharedTablet] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -29,8 +30,19 @@ export default function LoginPage() {
     try {
       // Accept a login name (mapped to a synthetic email) or a real email.
       const email = accountNameToEmail(account)
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data: signedIn, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles').select('is_shared_device').eq('id', signedIn.user.id).single()
+      if (profileError || !profile) {
+        await supabase.auth.signOut()
+        throw new Error('profile check failed')
+      }
+      if (sharedTablet && !profile.is_shared_device) {
+        await supabase.auth.signOut()
+        toast.error(t('login.wrongSharedAccount'))
+        return
+      }
       router.push('/dashboard')
       router.refresh()
     } catch {
@@ -59,7 +71,12 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">{t('login.signIn')}</h2>
+          <div className="grid grid-cols-2 gap-2 mb-5" role="group" aria-label="登入方式">
+            <button type="button" onClick={() => setSharedTablet(false)} aria-pressed={!sharedTablet} className={`h-11 rounded-lg border text-sm font-medium ${!sharedTablet ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-gray-200 text-gray-600'}`}><UserRound className="inline w-4 h-4 mr-2"/>{t('login.personalMode')}</button>
+            <button type="button" onClick={() => setSharedTablet(true)} aria-pressed={sharedTablet} className={`h-11 rounded-lg border text-sm font-medium ${sharedTablet ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-gray-200 text-gray-600'}`}><Users className="inline w-4 h-4 mr-2"/>{t('login.sharedTabletMode')}</button>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">{sharedTablet ? t('login.sharedTabletTitle') : t('login.signIn')}</h2>
+          {sharedTablet && <p className="text-sm text-gray-500 mb-5">{t('login.sharedTabletHint')}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

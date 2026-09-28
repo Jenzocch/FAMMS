@@ -17,6 +17,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (currentUser && currentUser.is_active === false) {
     return <AccountDisabled />
   }
+  // Dedicated tablet identities must not enter the regular app shell.
+  if (currentUser.is_shared_device) redirect('/tablet')
 
   const capabilities = currentUser?.capabilities ?? null
   const customRole = currentUser?.customRole ?? null

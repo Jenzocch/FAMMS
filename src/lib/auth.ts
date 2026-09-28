@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/types'
 import { baseCapabilityDefaults, resolveCapabilities, type CustomRole, type EffectiveCapabilities } from '@/lib/roles'
+import { createAdminClient } from '@/lib/supabase/admin'
 export { PERMISSIONS } from '@/lib/permissions'
 
 export type CurrentUser = {
@@ -17,6 +18,7 @@ export type CurrentUser = {
   // is ONLY for the couple of capabilities lib/roles.ts allows overriding.
   capabilities: EffectiveCapabilities
   is_active: boolean
+  is_shared_device: boolean
 }
 
 // Server-only: looks up a custom role's base tier + capability overrides.
@@ -69,7 +71,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('factory_id, full_name, role, custom_role_key, is_active')
+    .select('factory_id, full_name, role, custom_role_key, is_active, is_shared_device')
     .eq('id', claims.sub)
     .single()
 
@@ -87,6 +89,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
     customRole,
     capabilities,
     is_active: profile.is_active ?? true,
+    is_shared_device: profile.is_shared_device ?? false,
   }
 })
 
@@ -101,6 +104,41 @@ export async function requireActiveUser(): Promise<
   if (!user) return { ok: false, status: 401 }
   if (!user.is_active) return { ok: false, status: 403 }
   return { ok: true, user }
+}
+
+// Dedicated shared-tablet boundary. The device identity remains the signed-in
+// actor; roster names are only declared performers and never become auth users.
+export async function getSharedTabletContext() {
+  const active = await requireActiveUser()
+  if (!active.ok) return { ok: false as const, status: active.status }
+  const user = active.user
+  if (!user.is_shared_device || user.role !== 'technician' || !user.factory_id) {
+    return { ok: false as const, status: 403 as const }
+  }
+
+  try {
+    const admin = createAdminClient()
+    const { data: device, error: deviceError } = await admin
+      .from('shared_devices').select('id, auth_user_id, factory_id, label, enabled')
+      .eq('auth_user_id', user.id).maybeSingle()
+    if (deviceError || !device || !device.enabled || device.factory_id !== user.factory_id) {
+      return { ok: false as const, status: 403 as const }
+    }
+    const { data: roster, error: rosterError } = await admin
+      .from('shared_device_roster').select('technician_profile_id').eq('device_id', device.id)
+    if (rosterError || !roster?.length) return { ok: false as const, status: 403 as const }
+    const ids = roster.map(row => row.technician_profile_id)
+    const { data: profiles, error: profilesError } = await admin
+      .from('profiles').select('id, full_name, role, factory_id, is_active').in('id', ids)
+    if (profilesError) return { ok: false as const, status: 503 as const }
+    const members = (profiles ?? []).filter(profile =>
+      profile.is_active === true && profile.role === 'technician' && profile.factory_id === device.factory_id
+    ).map(profile => ({ id: profile.id, full_name: profile.full_name ?? '' }))
+    if (!members.length) return { ok: false as const, status: 403 as const }
+    return { ok: true as const, user, device, roster: members }
+  } catch {
+    return { ok: false as const, status: 503 as const }
+  }
 }
 
 // Guard for admin-only API routes. Returns the admin user or an error reason.

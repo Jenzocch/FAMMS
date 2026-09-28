@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>FAMMS · Tablet Bersama Teknisi (Prototype)</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #172033; background: #f4f6fa; font-synthesis: none; text-rendering: optimizeLegibility;
+      --blue: #1769e0; --blue-dark: #1255b8; --ink: #172033; --muted: #687386;
+      --line: #e4e8ef; --surface: #fff; --soft: #f6f8fb; --green: #15845b;
+      --shadow: 0 8px 30px rgba(22, 34, 58, .06); --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid rgba(23,105,224,.35); outline-offset: 2px;
+    }
+    .prototype-banner { background: #fff2cf; color: #684600; padding: 10px 16px; text-align: center; font-size: 13px; font-weight: 700; letter-spacing: .01em; border-bottom: 1px solid #f0dcab; }
+    .shell { max-width: 1120px; margin: 0 auto; padding: 24px 22px 56px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 750; font-size: 19px; letter-spacing: -.03em; }
+    .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; color: white; background: linear-gradient(145deg,#3489f4,#145ac2); box-shadow: 0 5px 12px #1769e044; }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .device-label { color: var(--muted); font-size: 13px; text-align: right; }
+    .screen { display: none; }
+    .screen.active { display: block; animation: arrive .22s ease-out; }
+    @keyframes arrive { from { opacity: .55; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .login-wrap { max-width: 510px; margin: 5vh auto 0; }
+    .hero { text-align: center; margin-bottom: 24px; }
+    h1,h2,h3,p { margin-top: 0; }
+    h1 { font-size: clamp(27px,4vw,38px); letter-spacing: -.045em; margin-bottom: 9px; }
+    h2 { font-size: 21px; letter-spacing: -.025em; margin-bottom: 7px; }
+    h3 { font-size: 16px; margin-bottom: 7px; }
+    .sub { color: var(--muted); line-height: 1.55; margin-bottom: 0; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .login-card { padding: clamp(22px,5vw,34px); }
+    .field { display: grid; gap: 8px; margin: 15px 0; }
+    label { font-size: 14px; font-weight: 650; }
+    input, textarea { width: 100%; border: 1px solid #d8deea; background: #fff; border-radius: 12px; padding: 13px 14px; color: var(--ink); }
+    input { min-height: 48px; }
+    textarea { min-height: 104px; line-height: 1.5; resize: vertical; }
+    .btn { min-height: 48px; border: 0; border-radius: 13px; padding: 12px 17px; font-weight: 700; transition: transform .12s, background .15s, box-shadow .15s; }
+    .btn:active { transform: scale(.985); }
+    .primary { color: #fff; background: var(--blue); box-shadow: 0 5px 12px #1769e02a; }
+    .primary:hover { background: var(--blue-dark); }
+    .secondary { background: #edf3ff; color: #1457b2; }
+    .secondary:hover { background: #e1ebff; }
+    .ghost { background: transparent; color: #4d5a6f; }
+    .ghost:hover { background: #f0f3f8; }
+    .danger { background: #fff0ee; color: #b5352b; }
+    .wide { width: 100%; }
+    .divider { display: flex; align-items: center; gap: 12px; color: #8892a2; font-size: 12px; margin: 20px 0; }
+    .divider::before,.divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .demo-note { margin-top: 18px; padding: 12px 14px; border-radius: 12px; color: #6c5a2d; background: #fff9e9; font-size: 12px; line-height: 1.5; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 20px; }
+    .section-head .sub { max-width: 610px; }
+    .eyebrow { color: var(--blue); text-transform: uppercase; letter-spacing: .1em; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
+    .people { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+    .person { display: grid; justify-items: center; gap: 11px; min-height: 174px; padding: 22px 14px; color: var(--ink); background: white; border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); font-size: 19px; font-weight: 750; transition: transform .16s, border-color .16s, box-shadow .16s; }
+    .person:hover { transform: translateY(-2px); border-color: #a9c8f8; box-shadow: 0 12px 28px #19386212; }
+    .avatar { width: 72px; height: 72px; display: grid; place-items: center; border-radius: 24px; color: #1769e0; background: #eaf2ff; font-size: 23px; font-weight: 800; }
+    .person:nth-child(2) .avatar { color: #00856b; background: #e2f7f1; }
+    .person:nth-child(3) .avatar { color: #8c5ad5; background: #f0eaff; }
+    .small { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .pick-footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 20px; }
+    .dashboard-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 21px; }
+    .identity { display: flex; align-items: center; gap: 12px; }
+    .identity .avatar { width: 48px; height: 48px; border-radius: 17px; font-size: 16px; }
+    .identity-name { font-weight: 750; }
+    .identity-meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(300px,.8fr); align-items: start; gap: 18px; }
+    .panel { padding: 21px; }
+    .tabs { display: inline-flex; gap: 4px; padding: 4px; background: #eef1f6; border-radius: 13px; margin: 15px 0 17px; }
+    .tab { min-height: 40px; border: 0; background: transparent; color: #626d7e; border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 700; }
+    .tab[aria-pressed="true"] { color: var(--ink); background: white; box-shadow: 0 2px 5px #17203314; }
+    .work-list { display: grid; gap: 10px; }
+    .work-item { width: 100%; text-align: left; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 15px; padding: 15px; transition: border .15s, background .15s; }
+    .work-item:hover,.work-item.selected { border-color: #9bbcf2; background: #fbfdff; }
+    .work-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .work-id { font-size: 12px; font-weight: 800; color: #526075; letter-spacing: .03em; }
+    .status { color: #8d5a03; background: #fff3d9; border-radius: 99px; padding: 5px 9px; font-size: 11px; font-weight: 750; white-space: nowrap; }
+    .work-title { font-weight: 740; margin-bottom: 6px; }
+    .work-detail { color: var(--muted); font-size: 12px; }
+    .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+    .chip { background: #f0f3f8; color: #536075; border-radius: 99px; padding: 4px 8px; font-size: 11px; }
+    .empty { border: 1px dashed #ccd4e0; border-radius: 14px; padding: 22px; color: var(--muted); font-size: 14px; text-align: center; }
+    .selected-work { border: 1px solid #d6e5fb; background: #f8fbff; border-radius: 13px; padding: 12px; margin: 15px 0; }
+    .checkbox-list { display: grid; gap: 8px; grid-template-columns: repeat(3,minmax(0,1fr)); }
+    .check-option { display: flex; align-items: center; gap: 8px; padding: 10px; min-height: 46px; border: 1px solid var(--line); border-radius: 12px; font-size: 13px; font-weight: 650; cursor: pointer; }
+    .check-option:has(input:checked) { border-color: #8eb4f1; background: #f1f6ff; }
+    .check-option input { width: 17px; height: 17px; min-height: 0; accent-color: var(--blue); }
+    .help { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 9px 0 0; }
+    .progress-title { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .read-only { color: var(--green); font-size: 11px; font-weight: 750; background: #e8f7f0; border-radius: 99px; padding: 6px 9px; white-space: nowrap; }
+    .feed { display: grid; gap: 11px; margin-top: 13px; }
+    .feed-item { background: var(--soft); border-radius: 13px; padding: 13px; }
+    .feed-meta { font-size: 11px; color: var(--muted); line-height: 1.6; margin-bottom: 6px; }
+    .feed-note { font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .notice { padding: 12px 14px; margin: 12px 0; border-radius: 13px; font-size: 12px; line-height: 1.5; }
+    .notice.blue { color: #23528e; background: #eef5ff; }
+    .notice.amber { color: #75540b; background: #fff7df; }
+    .statusbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 13px; margin-top: 14px; }
+    .toast { position: fixed; z-index: 10; left: 50%; bottom: max(22px,env(safe-area-inset-bottom)); transform: translate(-50%,16px); opacity: 0; pointer-events: none; background: #182235; color: white; border-radius: 13px; padding: 12px 16px; box-shadow: 0 7px 28px #111a2d45; max-width: min(92vw,540px); font-size: 13px; transition: .2s; }
+    .toast.show { opacity: 1; transform: translate(-50%,0); }
+    dialog { width: min(480px,calc(100% - 28px)); border: 0; padding: 0; border-radius: 21px; box-shadow: 0 20px 80px #101b2e45; color: var(--ink); }
+    dialog::backdrop { background: rgba(18,29,49,.42); backdrop-filter: blur(4px); }
+    .dialog-body { padding: 24px; }
+    .dialog-actions { display: grid; gap: 9px; margin-top: 18px; }
+    .dialog-actions.two { grid-template-columns: 1fr 1fr; }
+    .dialog-copy { color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .code-hint { font-family: ui-monospace,SFMono-Regular,Menlo,monospace; display: inline-block; background: #f1f4f8; padding: 8px 11px; border-radius: 9px; letter-spacing: .08em; font-weight: 800; }
+    .personal-badge { color: #2761a9; background: #eaf2ff; }
+    @media (max-width: 760px) {
+      .shell { padding: 18px 15px 40px; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .section-head { align-items: start; flex-direction: column; }
+      .people { gap: 10px; }
+      .person { min-height: 145px; padding: 16px 8px; font-size: 16px; }
+      .avatar { width: 62px; height: 62px; border-radius: 21px; }
+      .panel { padding: 17px; }
+    }
+    @media (max-width: 480px) {
+      .topbar { margin-bottom: 21px; }
+      .brand { font-size: 17px; }
+      .device-label { font-size: 11px; }
+      .people { grid-template-columns: 1fr; }
+      .person { grid-template-columns: auto 1fr; justify-items: start; align-items: center; min-height: 86px; text-align: left; padding: 12px 15px; }
+      .person .avatar { grid-row: span 2; width: 54px; height: 54px; border-radius: 18px; }
+      .person .small { align-self: start; }
+      .checkbox-list { grid-template-columns: 1fr; }
+      .dashboard-head { align-items: start; }
+      .dashboard-head > .btn { min-height: 44px; padding: 9px 11px; font-size: 12px; }
+      .statusbar { align-items: start; flex-direction: column; }
+      .dialog-actions.two { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="prototype-banner">PROTOTYPE · Data contoh · Tidak terhubung ke sistem FAMMS atau database</div>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M14.3 6.2a5 5 0 0 0-6.5 6.5L3.5 17a2 2 0 0 0 2.8 2.8l4.3-4.3a5 5 0 0 0 6.5-6.5l-3 3-2.8-2.8 3-3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>FAMMS</div>
+      <div class="device-label" id="deviceLabel">Mode demo · Bengkel Bandung</div>
+    </header>
+
+    <section class="screen active" id="loginScreen" aria-labelledby="loginTitle">
+      <div class="login-wrap">
+        <div class="hero"><div class="eyebrow">Workshop operations</div><h1 id="loginTitle">Selamat datang</h1><p class="sub">Masuk untuk melihat dan memperbarui pekerjaan perawatan.</p></div>
+        <div class="card login-card">
+          <h2>Masuk dengan akun pribadi</h2><p class="sub">Akun pribadi tetap tersedia seperti biasa.</p>
+          <div class="field"><label for="personalAccount">Nama akun atau email</label><input id="personalAccount" autocomplete="username" placeholder="contoh: teknisi.tablet" value="tablet.teknisi"></div>
+          <button class="btn primary wide" id="personalLogin" type="button">Masuk (demo akun pribadi)</button>
+          <div class="divider">atau</div>
+          <button class="btn secondary wide" id="sharedEntry" type="button">Tablet Bersama Teknisi</button>
+          <div class="demo-note">Prototype ini tidak meminta atau menyimpan kata sandi. Tombol masuk hanya mensimulasikan akun contoh, bukan autentikasi nyata.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="pairScreen" aria-labelledby="pairTitle">
+      <div class="login-wrap">
+        <div class="hero"><div class="eyebrow">Tablet bersama</div><h1 id="pairTitle">Aktifkan perangkat</h1><p class="sub">Perangkat contoh ini belum dipasangkan. Dalam sistem nyata, admin harus mengotorisasi pabrik dan teknisi yang boleh dipilih.</p></div>
+        <div class="card login-card">
+          <div class="field"><label for="pairCode">Kode pemasangan demo</label><input id="pairCode" autocomplete="off" placeholder="Masukkan kode demo"></div>
+          <p class="help">Kode contoh untuk prototype: <span class="code-hint">DEMO-1234</span> · bukan kode nyata.</p>
+          <div class="field"><label>Pabrik demo</label><input value="Bengkel Bandung · terkunci untuk demo" readonly aria-readonly="true"></div>
+          <button class="btn primary wide" id="pairButton" type="button">Hubungkan perangkat demo</button>
+          <button class="btn ghost wide" id="backToLogin" type="button" style="margin-top:7px">Kembali ke halaman masuk</button>
+          <div class="notice blue"><strong>Opsi rancangan tahap berikutnya.</strong> Untuk versi awal, admin menyiapkan akun tablet khusus.</div>
+          <div class="demo-note">Tidak ada akun admin, session, atau token yang dibuat maupun disimpan. Ini hanya simulasi alur aktivasi.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="pickerScreen" aria-labelledby="pickerTitle">
+      <div class="section-head"><div><div class="eyebrow">Tablet Bersama Teknisi · Pabrik Bandung</div><h1 id="pickerTitle">Pilih nama Anda</h1><p class="sub">Pilih teknisi yang akan memakai tablet. Nama ini adalah pernyataan pengguna, bukan verifikasi identitas.</p></div><button class="btn ghost" id="pickerExit" type="button">Keluar ke masuk</button></div>
+      <div class="people" id="peopleGrid" aria-label="Teknisi demo"></div>
+      <p class="pick-footer">Nama tidak ada? Hubungi admin untuk memperbarui daftar perangkat.</p>
+      <div class="notice amber" style="max-width:720px;margin:22px auto 0"><strong>Perlu diketahui:</strong> memilih nama tidak mengubah hak akses dan tidak membuktikan siapa yang memegang perangkat.</div>
+    </section>
+
+    <section class="screen" id="workScreen" aria-label="Pekerjaan teknisi">
+      <div class="dashboard-head">
+        <div class="identity"><div class="avatar" id="currentAvatar" aria-hidden="true">P</div><div><div class="identity-name" id="currentName">Pak Dasir</div><div class="identity-meta" id="sessionLabel">Tablet bersama · Pabrik Bandung</div></div></div>
+        <button class="btn secondary" id="switchUser" type="button">Ganti pengguna</button>
+      </div>
+      <div class="notice blue" id="draftNotice" hidden></div>
+      <div class="dashboard-grid">
+        <section class="card panel" aria-labelledby="workHeading">
+          <div class="progress-title"><div><div class="eyebrow">Daftar pekerjaan</div><h2 id="workHeading">Pekerjaan aktif</h2></div><span class="read-only">Data contoh</span></div>
+          <div class="tabs" role="group" aria-label="Filter pekerjaan"><button class="tab" type="button" id="myTasks" aria-pressed="true">Tugas saya</button><button class="tab" type="button" id="teamTasks" aria-pressed="false">Tugas tim</button></div>
+          <div class="work-list" id="workList"></div>
+          <div class="statusbar"><span id="workCount">3 pekerjaan terbuka</span><button class="btn ghost" id="simulateIdle" type="button" aria-describedby="idleHelp">Simulasikan 10 menit idle</button></div>
+          <p class="help" id="idleHelp">Demo: mengembalikan tablet ke pemilihan nama. Draft tetap terikat pada pengisi awal.</p>
+        </section>
+
+        <section class="card panel" aria-labelledby="updateHeading">
+          <div class="progress-title"><div><div class="eyebrow">Catatan teknisi</div><h2 id="updateHeading">Laporkan perbaikan</h2></div><span class="read-only">Bukan penutupan</span></div>
+          <p class="help">Catat tindakan atau temuan. Hanya melaporkan kemajuan perbaikan, bukan menutup work order.</p>
+          <div class="selected-work" id="selectedWork">Pilih pekerjaan dari daftar untuk mulai.</div>
+          <div class="field"><label for="progressNote">Apa yang sudah dikerjakan?</label><textarea id="progressNote" placeholder="Contoh: Memeriksa seal pompa dan membersihkan area..."></textarea></div>
+          <div class="field"><label>Yang menangani (bisa pilih lebih dari satu)</label><div class="checkbox-list" id="performers"></div></div>
+          <p class="help">Nama dipilih pengguna. Penugasan work order tetap terpisah.</p>
+          <button class="btn primary wide" id="submitProgress" type="button">Simpan laporan perbaikan</button>
+          <div class="notice amber">Dikirim melalui akun perangkat. Nama yang menangani dicatat terpisah dan tidak memberi hak supervisor.</div>
+        </section>
+      </div>
+      <section class="card panel" aria-labelledby="feedHeading" style="margin-top:18px">
+        <div class="progress-title"><div><div class="eyebrow">Riwayat demo</div><h2 id="feedHeading">Catatan pekerjaan terbaru</h2></div><span class="read-only">Dikirim melalui perangkat</span></div>
+        <div class="feed" id="feed"></div>
+      </section>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="switchDialog" aria-labelledby="switchTitle" aria-describedby="switchCopy">
+    <div class="dialog-body"><div class="eyebrow">Draf belum tersimpan</div><h2 id="switchTitle">Ganti pengguna?</h2><p class="dialog-copy" id="switchCopy">Draf ini tetap terikat pada orang yang mulai mengisinya. Pengguna lain tidak bisa melanjutkan atau mengirimkannya.</p>
+      <div class="dialog-actions"><button class="btn secondary" id="saveAndSwitch" type="button">Simpan draf &amp; ganti pengguna</button><button class="btn ghost" id="returnToDraft" type="button">Kembali ke draf</button><button class="btn danger" id="discardAndSwitch" type="button">Buang draf &amp; ganti</button></div>
+    </div>
+  </dialog>
+  <dialog id="draftDialog" aria-labelledby="draftTitle" aria-describedby="draftCopy">
+    <div class="dialog-body"><div class="eyebrow">Draf atas nama <span id="draftOwner">Pak Dasir</span></div><h2 id="draftTitle">Lanjutkan draf ini?</h2><p class="dialog-copy" id="draftCopy">Draf ini disimpan atas nama pengisi awal. Pilih nama yang sama untuk melanjutkan. Pemilihan nama bukan verifikasi identitas.</p><div class="dialog-actions two"><button class="btn primary" id="resumeDraft" type="button">Lanjutkan draf</button><button class="btn ghost" id="laterDraft" type="button">Nanti</button><button class="btn danger" id="discardSavedDraft" type="button">Hapus draf</button></div></div>
+  </dialog>
+
+  <script>
+    (() => {
+      'use strict';
+      const technicians = [
+        { id: 'pak-dasir', name: 'Pak Dasir', short: 'Pak Dasir' },
+        { id: 'suwardi', name: 'Suwardi', short: 'Suwardi' },
+        { id: 'wiwit', name: 'Wiwit', short: 'Wiwit' },
+        { id: 'rudi', name: 'Rudi', short: 'Rudi' },
+      ];
+      const incidents = [
+        { id: 'wo-104', number: 'WO-104', title: 'Pompa air mengalami kebocoran', area: 'Utility · Pompa P-04', status: 'Dalam perbaikan', assignees: ['pak-dasir','suwardi'], updates: [] },
+        { id: 'wo-107', number: 'WO-107', title: 'Getaran pada motor conveyor', area: 'Line 2 · Conveyor C-12', status: 'Menunggu pemeriksaan', assignees: ['suwardi','wiwit'], updates: [] },
+        { id: 'wo-112', number: 'WO-112', title: 'Lampu indikator panel mati', area: 'Packaging · Panel E-3', status: 'Dalam perbaikan', assignees: ['rudi'], updates: [] },
+      ];
+      const state = {
+        deviceEnabled: false, activeUserId: null, accountMode: 'tablet', selectedIncidentId: null,
+        taskMode: 'mine', draft: null, idleTimer: null, toastTimer: null,
+        dirty: false, draftPromptedFor: null,
+      };
+      const $ = (id) => document.getElementById(id);
+      const screens = ['loginScreen','pairScreen','pickerScreen','workScreen'].map($);
+      const dialogSwitch = $('switchDialog');
+      const dialogDraft = $('draftDialog');
+
+      function tech(id) { return technicians.find((person) => person.id === id) || null; }
+      function activeTech() { return tech(state.activeUserId); }
+      function safeText(value) { return String(value ?? ''); }
+      function showScreen(id) {
+        for (const screen of screens) screen.classList.toggle('active', screen.id === id);
+        const heading = document.querySelector('#' + id + ' h1, #' + id + ' h2');
+        if (heading) { heading.setAttribute('tabindex','-1'); heading.focus({ preventScroll: true }); }
+      }
+      function notify(message) {
+        const toast = $('toast'); toast.textContent = message; toast.classList.add('show');
+        window.clearTimeout(state.toastTimer); state.toastTimer = window.setTimeout(() => toast.classList.remove('show'), 3000);
+      }
+      function makeButton(className, label, onClick) {
+        const button = document.createElement('button'); button.type = 'button'; button.className = className; button.textContent = label; button.addEventListener('click', onClick); return button;
+      }
+      function renderPeople() {
+        const grid = $('peopleGrid'); grid.replaceChildren();
+        for (const person of technicians) {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'person';
+          const avatar = document.createElement('span'); avatar.className = 'avatar'; avatar.setAttribute('aria-hidden','true'); avatar.textContent = person.short.charAt(0);
+          const name = document.createElement('span'); name.textContent = person.name;
+          const hint = document.createElement('span'); hint.className = 'small'; hint.textContent = 'Pilih untuk mulai';
+          button.append(avatar, name, hint); button.addEventListener('click', () => selectPerson(person.id)); grid.append(button);
+        }
+      }
+      function selectPerson(id) {
+        state.activeUserId = id; state.draftPromptedFor = null;
+        const person = activeTech();
+        $('currentAvatar').textContent = person.short.charAt(0); $('currentName').textContent = person.name;
+        $('sessionLabel').textContent = state.accountMode === 'personal' ? 'Akun pribadi demo · perangkat tetap tercatat terpisah' : 'Tablet bersama · Pabrik Bandung';
+        $('deviceLabel').textContent = state.accountMode === 'personal' ? 'Prototype · akun pribadi demo' : 'Perangkat demo · Bengkel Bandung';
+        renderPerformers(); renderWork(); renderFeed();
+        showScreen('workScreen'); armIdleTimer(); maybeOfferDraft();
+      }
+      function armIdleTimer() {
+        window.clearTimeout(state.idleTimer);
+        if (state.activeUserId && state.accountMode === 'tablet') state.idleTimer = window.setTimeout(() => returnToPicker(true), 10 * 60 * 1000);
+      }
+      function returnToPicker(fromIdle) {
+        const shouldKeepDraft = fromIdle && state.activeUserId && (state.dirty || $('progressNote').value.trim());
+        if (shouldKeepDraft) state.draft = draftPayload();
+        if (dialogSwitch.open) dialogSwitch.close();
+        if (dialogDraft.open) dialogDraft.close();
+        window.clearTimeout(state.idleTimer); state.idleTimer = null;
+        state.activeUserId = null; state.selectedIncidentId = null; state.dirty = false;
+        $('progressNote').value = ''; renderPerformers(); $('selectedWork').textContent = 'Pilih pekerjaan dari daftar untuk mulai.';
+        $('draftNotice').hidden = !state.draft;
+        if (state.draft) $('draftNotice').textContent = 'Draf milik ' + tech(state.draft.ownerId).short + ' tersimpan di memori prototype. Hanya pemilik awal yang bisa memulihkannya.';
+        showScreen('pickerScreen');
+        if (fromIdle) notify(shouldKeepDraft ? 'Sesi direset setelah 10 menit. Draf tersimpan untuk ' + tech(state.draft.ownerId).short + '.' : 'Sesi nama direset setelah 10 menit.');
+      }
+      function filteredIncidents() {
+        if (state.taskMode === 'team') return incidents;
+        return incidents.filter((item) => item.assignees.includes(state.activeUserId));
+      }
+      function renderWork() {
+        const list = $('workList'); list.replaceChildren();
+        const rows = filteredIncidents(); $('workCount').textContent = rows.length + (rows.length === 1 ? ' pekerjaan aktif' : ' pekerjaan aktif');
+        if (!rows.length) { const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = 'Tidak ada pekerjaan pada daftar ini.'; list.append(empty); return; }
+        for (const incident of rows) {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'work-item' + (state.selectedIncidentId === incident.id ? ' selected' : '');
+          button.setAttribute('aria-pressed', String(state.selectedIncidentId === incident.id));
+          const top = document.createElement('div'); top.className = 'work-top';
+          const number = document.createElement('span'); number.className = 'work-id'; number.textContent = incident.number;
+          const status = document.createElement('span'); status.className = 'status'; status.textContent = incident.status; top.append(number,status);
+          const title = document.createElement('div'); title.className = 'work-title'; title.textContent = incident.title;
+          const area = document.createElement('div'); area.className = 'work-detail'; area.textContent = incident.area;
+          const chips = document.createElement('div'); chips.className = 'chips';
+          for (const id of incident.assignees) { const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = 'Ditugaskan: ' + (tech(id)?.short || ''); chips.append(chip); }
+          button.append(top,title,area,chips); button.addEventListener('click', () => chooseIncident(incident.id)); list.append(button);
+        }
+      }
+      function chooseIncident(id) {
+        state.selectedIncidentId = id; renderWork();
+        const incident = incidents.find((item) => item.id === id);
+        $('selectedWork').textContent = incident ? incident.number + ' · ' + incident.title : 'Pilih pekerjaan dari daftar untuk mulai.';
+        touch();
+      }
+      function renderPerformers(selectedIds) {
+        const area = $('performers'); area.replaceChildren();
+        const selected = selectedIds || (state.activeUserId ? [state.activeUserId] : []);
+        for (const person of technicians) {
+          const label = document.createElement('label'); label.className = 'check-option';
+          const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'performer'; input.value = person.id; input.checked = selected.includes(person.id);
+          input.addEventListener('change', () => { state.dirty = true; touch(); });
+          const text = document.createElement('span'); text.textContent = person.short; label.append(input,text); area.append(label);
+        }
+      }
+      function renderFeed() {
+        const feed = $('feed'); feed.replaceChildren();
+        const all = incidents.flatMap((incident) => incident.updates.map((update) => ({ ...update, incidentNumber: incident.number })));
+        if (!all.length) {
+          const sample = document.createElement('article'); sample.className = 'feed-item';
+          const meta = document.createElement('div'); meta.className = 'feed-meta'; meta.textContent = 'Data contoh · WO-107 · Dikirim melalui: akun perangkat · Yang menangani: Suwardi';
+          const note = document.createElement('div'); note.className = 'feed-note'; note.textContent = 'Pemeriksaan awal dijadwalkan.'; sample.append(meta,note); feed.append(sample); return;
+        }
+        for (const entry of all.slice().reverse()) {
+          const article = document.createElement('article'); article.className = 'feed-item';
+          const meta = document.createElement('div'); meta.className = 'feed-meta';
+          const names = entry.performers.map((id) => tech(id)?.short || 'Teknisi').join(', ');
+          meta.textContent = entry.time + ' · ' + entry.incidentNumber + ' · Dikirim melalui: ' + entry.actor + ' · Yang menangani: ' + names;
+          const note = document.createElement('div'); note.className = 'feed-note'; note.textContent = entry.note;
+          article.append(meta,note); feed.append(article);
+        }
+      }
+      function touch() { if (state.activeUserId && state.accountMode === 'tablet') armIdleTimer(); }
+      function resetFields() { $('progressNote').value = ''; renderPerformers(); state.dirty = false; }
+      function draftPayload() {
+        return { ownerId: state.activeUserId, incidentId: state.selectedIncidentId, note: $('progressNote').value, performers: Array.from(document.querySelectorAll('input[name="performer"]:checked')).map((input) => input.value), savedAt: new Date().toLocaleString('id-ID') };
+      }
+      function saveDraftAndSwitch() {
+        state.draft = draftPayload(); resetFields(); state.selectedIncidentId = null;
+        $('selectedWork').textContent = 'Pilih pekerjaan dari daftar untuk mulai.';
+        $('draftNotice').hidden = false; $('draftNotice').textContent = 'Draf milik ' + tech(state.draft.ownerId).short + ' tersimpan di memori prototype (' + state.draft.savedAt + '). Hanya pemilik awal yang bisa memulihkannya.';
+        dialogSwitch.close(); returnToPicker(false); notify('Draf tersimpan. Silakan ganti pengguna.');
+      }
+      function switchOrSave() {
+        if (state.dirty || $('progressNote').value.trim()) { dialogSwitch.showModal(); $('saveAndSwitch').focus(); return; }
+        returnToPicker(false);
+      }
+      function maybeOfferDraft() {
+        if (!state.draft || state.draft.ownerId !== state.activeUserId || state.draftPromptedFor === state.activeUserId) return;
+        state.draftPromptedFor = state.activeUserId;
+        $('draftOwner').textContent = tech(state.draft.ownerId).short;
+        dialogDraft.showModal(); $('resumeDraft').focus();
+      }
+      function resumeDraft() {
+        if (!state.draft || state.draft.ownerId !== state.activeUserId) { dialogDraft.close(); notify('Hanya pengisi awal yang dapat memulihkan draf.'); return; }
+        const draft = state.draft; state.draft = null; dialogDraft.close();
+        if (draft.incidentId) chooseIncident(draft.incidentId);
+        $('progressNote').value = draft.note; renderPerformers(draft.performers); state.dirty = Boolean(draft.note || draft.performers.length); touch(); notify('Draf dipulihkan untuk ' + tech(state.activeUserId).short + '.');
+      }
+      function submitProgress() {
+        const note = $('progressNote').value.trim();
+        if (!state.selectedIncidentId) { notify('Pilih work order terlebih dahulu.'); $('workHeading').focus(); return; }
+        if (!note) { notify('Tulis catatan pekerjaan sebelum menyimpan.'); $('progressNote').focus(); return; }
+        const performers = Array.from(document.querySelectorAll('input[name="performer"]:checked')).map((input) => input.value);
+        if (!performers.length) { notify('Pilih minimal satu penangan.'); $('performers').querySelector('input')?.focus(); return; }
+        const incident = incidents.find((item) => item.id === state.selectedIncidentId);
+        incident.updates.push({ note, performers, actor: state.accountMode === 'tablet' ? 'Perangkat tablet (akun perangkat)' : 'Akun pribadi demo (' + tech(state.activeUserId).short + ')', time: new Date().toLocaleString('id-ID') });
+        resetFields(); renderFeed(); renderWork(); notify('Laporan perbaikan tersimpan (simulasi saja).');
+      }
+      $('sharedEntry').addEventListener('click', () => { state.accountMode = 'tablet'; showScreen(state.deviceEnabled ? 'pickerScreen' : 'pairScreen'); if (state.deviceEnabled) renderPeople(); });
+      $('backToLogin').addEventListener('click', () => showScreen('loginScreen'));
+      $('pickerExit').addEventListener('click', () => { state.activeUserId = null; showScreen('loginScreen'); });
+      $('pairButton').addEventListener('click', () => {
+        if ($('pairCode').value.trim().toUpperCase() !== 'DEMO-1234') { notify('Kode demo tidak cocok. Coba DEMO-1234.'); $('pairCode').focus(); return; }
+        state.deviceEnabled = true; renderPeople(); $('pairCode').value = ''; notify('Perangkat demo diaktifkan (simulasi).'); showScreen('pickerScreen');
+      });
+      $('personalLogin').addEventListener('click', () => { state.accountMode = 'personal'; selectPerson('pak-dasir'); notify('Masuk akun pribadi demo. Tidak ada autentikasi nyata.'); });
+      $('switchUser').addEventListener('click', switchOrSave);
+      $('saveAndSwitch').addEventListener('click', saveDraftAndSwitch);
+      $('returnToDraft').addEventListener('click', () => dialogSwitch.close());
+      $('discardAndSwitch').addEventListener('click', () => { dialogSwitch.close(); state.dirty = false; resetFields(); returnToPicker(false); notify('Draf yang belum disimpan dibuang.'); });
+      $('resumeDraft').addEventListener('click', resumeDraft);
+      $('laterDraft').addEventListener('click', () => dialogDraft.close());
+      $('discardSavedDraft').addEventListener('click', () => { state.draft = null; dialogDraft.close(); notify('Draf dihapus dari memori prototype.'); });
+      $('myTasks').addEventListener('click', () => { state.taskMode = 'mine'; $('myTasks').setAttribute('aria-pressed','true'); $('teamTasks').setAttribute('aria-pressed','false'); renderWork(); touch(); });
+      $('teamTasks').addEventListener('click', () => { state.taskMode = 'team'; $('myTasks').setAttribute('aria-pressed','false'); $('teamTasks').setAttribute('aria-pressed','true'); renderWork(); touch(); });
+      $('submitProgress').addEventListener('click', submitProgress);
+      $('simulateIdle').addEventListener('click', () => returnToPicker(true));
+      $('progressNote').addEventListener('input', () => { state.dirty = true; touch(); });
+      for (const eventName of ['pointerdown','keydown']) document.addEventListener(eventName, () => { if (!dialogSwitch.open && !dialogDraft.open) touch(); }, { passive: true });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) touch(); });
+      dialogSwitch.addEventListener('cancel', () => { state.dirty = true; });
+      dialogDraft.addEventListener('cancel', () => { state.draftPromptedFor = state.activeUserId; });
+      renderPeople(); renderPerformers(); renderFeed();
+    })();
+  </script>
+</body>
+</html>

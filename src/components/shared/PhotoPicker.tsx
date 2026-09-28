@@ -43,6 +43,7 @@ const KEYS: Record<Variant, {
 export default function PhotoPicker({
   photos, photoPreviews, compressing, maxPhotos, onAddPhotos, onRemovePhoto,
   variant = 'report',
+  compact = false,
 }: {
   photos: File[]
   photoPreviews: string[]
@@ -51,6 +52,7 @@ export default function PhotoPicker({
   onAddPhotos: (files: File[]) => void
   onRemovePhoto: (index: number) => void
   variant?: Variant
+  compact?: boolean
 }) {
   const { t } = useI18n()
   const k = KEYS[variant]
@@ -73,7 +75,7 @@ export default function PhotoPicker({
       key={kind}
       className={
         big
-          ? `flex-1 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed rounded-xl h-28 cursor-pointer transition-colors ${
+          ? `min-w-0 flex-1 flex items-center justify-center border-2 border-dashed rounded-xl cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-blue-600 ${compact ? 'min-h-16 gap-2 px-3 py-2' : 'h-28 flex-col gap-1.5'} ${
               compressing ? 'border-blue-300 bg-blue-50' : 'border-blue-300 bg-blue-50/60 active:bg-blue-100 hover:border-blue-400'
             }`
           : `flex-1 flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-2.5 cursor-pointer transition-colors ${
@@ -82,7 +84,7 @@ export default function PhotoPicker({
       }
     >
       {icon}
-      <span className={big ? 'text-sm font-semibold text-blue-700' : 'text-sm text-gray-500'}>
+      <span className={big ? 'min-w-0 text-sm font-semibold text-blue-700 break-words' : 'text-sm text-gray-500'}>
         {compressing ? t(k.compressing) : label}
       </span>
       <input
@@ -91,12 +93,12 @@ export default function PhotoPicker({
         {...(kind === 'camera' ? { capture: 'environment' as const } : { multiple: true })}
         onChange={e => onAddPhotos(Array.from(e.target.files ?? []))}
         disabled={compressing}
-        className="hidden"
+        className="sr-only"
       />
     </label>
   )
 
-  const iconCls = big ? 'w-7 h-7 text-blue-500' : 'w-5 h-5 text-gray-400'
+  const iconCls = big ? `${compact ? 'w-5 h-5' : 'w-7 h-7'} shrink-0 text-blue-500` : 'w-5 h-5 shrink-0 text-gray-400'
 
   return (
     <div>
