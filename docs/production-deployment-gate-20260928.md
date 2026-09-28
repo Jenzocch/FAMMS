@@ -6,7 +6,7 @@
 - Vercel: `wnsb-system/famms`, project `prj_hkKgArUwMT9BbUi92RYsdloKltAN`.
 - Candidate: `dpl_Gz9mfMu4YqCkLvnBCKhA8rt99ip8`, https://famms-2vtp0rrzz-wnsb-system.vercel.app. Cloud build and unauthenticated login rendering passed. Candidate is a dirty-worktree upload based on `be95098`, not a new Git commit.
 - Custom production domain was verified on the previous deployment during staging; no promotion was performed in this audit.
-- No commit/push, tablet migration, tablet account provisioning, or roster activation performed.
+- At the initial audit snapshot, no commit/push, tablet migration, tablet account provisioning, or roster activation had been performed. Subsequent source push and containment status are recorded below.
 
 ## Verified live metadata
 
@@ -52,3 +52,13 @@ An actual `SET LOCAL ROLE anon` negative SELECT test was also executed: dynamic 
 6. Verify personal reporting and shared tablet progress end-to-end on phone/tablet/desktop, then promote the exact validated Vercel artifact and smoke-test the custom domain.
 
 Release acceptance is blocked by missing security integration tests and tablet schema/RPC acceptance, not by browser connectivity. Do not treat the cloud build, a Healthy database, or existing SQL files as production acceptance.
+
+## Follow-up: source push, view containment and identity decision
+
+- Source commit `7667f73` was pushed to `codex/shared-tablet-mobile-ux`; main remains `be95098`. This was not a production promotion.
+- `npm audit --json` on this checkout's lockfile reported 0 vulnerabilities. GitHub's push warning still reported 66 default-branch alerts; that signal requires separate triage and is not presented as resolved by npm audit.
+- Full read-only catalog inspection identified `incident_audit_trail` as a definer view over `audit_logs`, with anon SELECT despite the earlier base-table revoke.
+- Equivalent SQL recorded in `supabase/migrations/20260928150359_production_audit_view_lockdown.sql` was executed and committed in the verified production SQL Editor. The same transaction asserted authenticated/service_role privileges unchanged, then ran an actual anon-role `SELECT ... LIMIT 0` negative test. Result: `PASS: actual anon SELECT denied; authenticated/service_role privileges unchanged`, anon SELECT false, authenticated SELECT true. No business rows were read/changed. CLI migration history was not updated.
+- This is minimal anonymous containment only. Authenticated view access, duplicate policy consolidation, RLS activation, browser audit integrity, Storage, field/actor guards and full acceptance remain unfinished.
+- Scoped exact-name roster lookup found active technician profiles Rudi, Suwardi and Wiwit, all with NULL factory_id; Pak Dasir had no exact full-name match. Owner must confirm intended factory/cross-factory scope and Pak Dasir's actual account before activation. Do not guess identity or broaden NULL-factory technician access.
+- See `docs/policy-consolidation-plan-20260928.md` for the verified policy findings, business-rule dependencies and explicit allow/deny test matrix reviewed independently by Terra.
