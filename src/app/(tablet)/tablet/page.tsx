@@ -18,17 +18,17 @@ export default async function TabletPage() {
   }
 
   const admin = createAdminClient()
-  const { data: factory } = await admin
-    .from('factories').select('name').eq('id', context.device.factory_id).maybeSingle()
+  const { data: factories } = await admin
+    .from('factories').select('name').in('id', context.device.factory_ids)
 
   const session: TabletSession = {
     device: {
       id: context.device.id,
       label: context.device.label,
-      factory_id: context.device.factory_id,
+      factory_ids: context.device.factory_ids,
     },
     roster: context.roster,
-    factoryName: factory?.name ?? 'Pabrik terdaftar',
+    factoryName: factories?.map(factory => factory.name).join(' / ') || 'Pabrik terdaftar',
   }
 
   return <TabletHome session={session} />

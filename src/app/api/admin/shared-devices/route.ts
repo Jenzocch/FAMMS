@@ -3,72 +3,40 @@ import { requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 export async function GET() {
   const guard = await requireAdmin()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
   const admin = createAdminClient()
-  const [{ data: devices, error: devicesError }, { data: factories, error: factoriesError }, { data: profiles, error: profilesError }] = await Promise.all([
-    admin.from('shared_devices').select('id, auth_user_id, factory_id, label, enabled, updated_at').order('created_at', { ascending: false }),
+  const [{ data: devices, error: devicesError }, { data: factories, error: factoriesError }, { data: technicians, error: techniciansError }, { data: performers, error: performersError }] = await Promise.all([
+    admin.from('shared_devices').select('id, auth_user_id, label, enabled, updated_at').order('created_at', { ascending: false }),
     admin.from('factories').select('id, name').order('name'),
-    admin.from('profiles').select('id, full_name, role, factory_id, is_active, is_shared_device').eq('role', 'technician').eq('is_active', true).order('full_name'),
+    admin.from('profiles').select('id, full_name, factory_id, is_shared_device').eq('role', 'technician').eq('is_active', true).order('full_name'),
+    // Include inactive performers so an existing device can be edited without silently dropping history/roster IDs.
+    admin.from('shared_technicians').select('id, full_name, is_active').order('full_name'),
   ])
-  if (devicesError || factoriesError || profilesError) return NextResponse.json({ error: '平板設定載入失敗，請稍後重試' }, { status: 500 })
-  const ids = (devices ?? []).map(device => device.id)
-  const { data: roster, error: rosterError } = ids.length
-    ? await admin.from('shared_device_roster').select('device_id, technician_profile_id').in('device_id', ids)
-    : { data: [], error: null }
-  if (rosterError) return NextResponse.json({ error: '技師名單載入失敗，請稍後重試' }, { status: 500 })
-  return NextResponse.json({ devices: (devices ?? []).map(device => ({
-    ...device,
-    roster: (roster ?? []).filter(member => member.device_id === device.id).map(member => member.technician_profile_id),
-  })), factories: factories ?? [], technicians: profiles ?? [] }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } })
+  if (devicesError || factoriesError || techniciansError || performersError) return NextResponse.json({ error: '平板設定載入失敗，請稍後重試' }, { status: 500 })
+  const deviceIds = (devices ?? []).map(device => device.id)
+  const [{ data: deviceFactories, error: deviceFactoriesError }, { data: roster, error: rosterError }] = deviceIds.length ? await Promise.all([
+    admin.from('shared_device_factories').select('device_id, factory_id').in('device_id', deviceIds),
+    admin.from('shared_device_roster').select('device_id, technician_id').in('device_id', deviceIds),
+  ]) : [{ data: [], error: null }, { data: [], error: null }]
+  if (deviceFactoriesError || rosterError) return NextResponse.json({ error: '平板設定載入失敗，請稍後重試' }, { status: 500 })
+  return NextResponse.json({ factories: factories ?? [], technicians: technicians ?? [], performers: performers ?? [], devices: (devices ?? []).map(device => ({ ...device, factory_ids: (deviceFactories ?? []).filter(row => row.device_id === device.id).map(row => row.factory_id), roster: (roster ?? []).filter(row => row.device_id === device.id).map(row => row.technician_id) })) }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } })
 }
 
 export async function POST(request: Request) {
   const guard = await requireAdmin()
   if (!guard.ok) return NextResponse.json({ error: '無權限' }, { status: guard.status })
-  let body: { auth_user_id?: unknown; factory_id?: unknown; label?: unknown; technician_ids?: unknown }
+  let body: { auth_user_id?: unknown; label?: unknown; factory_ids?: unknown; performers?: unknown }
   try { body = await request.json() } catch { return NextResponse.json({ error: '請求格式無效' }, { status: 400 }) }
   const authUserId = typeof body.auth_user_id === 'string' ? body.auth_user_id : ''
-  const factoryId = typeof body.factory_id === 'string' ? body.factory_id : ''
-  const label = typeof body.label === 'string' ? body.label.trim().slice(0, 100) : ''
-  const technicianIds = Array.isArray(body.technician_ids) ? body.technician_ids : []
-  if (!authUserId || !factoryId || !label || technicianIds.length < 1 || technicianIds.length > 20 || technicianIds.some(id => typeof id !== 'string') || new Set(technicianIds).size !== technicianIds.length) {
-    return NextResponse.json({ error: '請設定平板帳號、工廠、名稱及 1–20 位技師' }, { status: 400 })
-  }
-  const admin = createAdminClient()
-  const [{ data: account, error: accountError }, { data: members, error: membersError }] = await Promise.all([
-    admin.from('profiles').select('id, role, factory_id, is_active, is_shared_device').eq('id', authUserId).maybeSingle(),
-    admin.from('profiles').select('id').in('id', technicianIds).eq('role', 'technician').eq('factory_id', factoryId).eq('is_active', true),
-  ])
-  if (accountError || membersError) return NextResponse.json({ error: '帳號或技師名單驗證失敗，請稍後重試' }, { status: 500 })
-  if (!account || account.role !== 'technician' || account.is_active !== true || account.is_shared_device !== true || account.factory_id !== factoryId) {
-    return NextResponse.json({ error: '平板登入帳號必須是同工廠、啟用中的共用技師帳號' }, { status: 400 })
-  }
-  if ((members ?? []).length !== technicianIds.length || technicianIds.includes(authUserId)) {
-    return NextResponse.json({ error: '技師名單必須全部是同工廠啟用中的個人技師帳號' }, { status: 400 })
-  }
-
-  const now = new Date().toISOString()
-  const { data: existingDevice, error: existingDeviceError } = await admin.from('shared_devices').select('id').eq('auth_user_id', authUserId).maybeSingle()
-  if (existingDeviceError) return NextResponse.json({ error: '平板設定讀取失敗，請稍後重試' }, { status: 500 })
-  const { data: device, error } = existingDevice
-    ? await admin.from('shared_devices').update({
-        factory_id: factoryId, label, enabled: false, updated_at: now,
-        disabled_at: now, disabled_by_user_id: guard.user.id,
-      }).eq('id', existingDevice.id).select('id').single()
-    : await admin.from('shared_devices').insert({
-        auth_user_id: authUserId, factory_id: factoryId, label, enabled: false,
-        updated_at: now, created_by_user_id: guard.user.id,
-      }).select('id').single()
-  if (error || !device) return NextResponse.json({ error: '平板資料儲存失敗' }, { status: 500 })
-
-  const { error: clearError } = await admin.from('shared_device_roster').delete().eq('device_id', device.id)
-  if (clearError) return NextResponse.json({ error: '名單更新失敗；平板目前維持停用' }, { status: 500 })
-  const { error: rosterError } = await admin.from('shared_device_roster').insert(technicianIds.map(technician_profile_id => ({ device_id: device.id, technician_profile_id })))
-  if (rosterError) return NextResponse.json({ error: '名單更新失敗；平板目前維持停用' }, { status: 500 })
-  const { error: enableError } = await admin.from('shared_devices').update({ enabled: true, updated_at: new Date().toISOString(), disabled_at: null, disabled_by_user_id: null }).eq('id', device.id)
-  if (enableError) return NextResponse.json({ error: '平板設定尚未啟用' }, { status: 500 })
-  return NextResponse.json({ ok: true, deviceId: device.id }, { status: 201 })
+  const label = typeof body.label === 'string' ? body.label.trim() : ''
+  const factoryIds = Array.isArray(body.factory_ids) ? body.factory_ids : []
+  const performers = Array.isArray(body.performers) ? body.performers : []
+  if (!UUID.test(authUserId) || !label || label.length > 100 || factoryIds.length < 1 || factoryIds.length > 100 || factoryIds.some(id => typeof id !== 'string' || !UUID.test(id)) || new Set(factoryIds).size !== factoryIds.length || performers.length < 1 || performers.length > 20 || performers.some(person => !person || typeof person !== 'object' || (typeof (person as { id?: unknown }).id !== 'undefined' && (typeof (person as { id?: unknown }).id !== 'string' || !UUID.test((person as { id: string }).id))) || typeof (person as { full_name?: unknown }).full_name !== 'string' || !(person as { full_name: string }).full_name.trim() || (person as { full_name: string }).full_name.trim().length > 120)) return NextResponse.json({ error: '請設定平板帳號、名稱、至少一個工廠與 1–20 位處理人' }, { status: 400 })
+  const { data: deviceId, error } = await createAdminClient().rpc('configure_shared_device', { p_actor_id: guard.user.id, p_auth_user_id: authUserId, p_label: label, p_factory_ids: factoryIds, p_performers: performers.map(person => ({ id: (person as { id?: string }).id, full_name: (person as { full_name: string }).full_name.trim() })) })
+  if (error) return NextResponse.json({ error: error.code === '42501' ? '平板登入帳號或處理人已失效' : '平板設定無效或儲存失敗' }, { status: error.code === '42501' ? 403 : 400 })
+  return NextResponse.json({ ok: true, deviceId }, { status: 201 })
 }

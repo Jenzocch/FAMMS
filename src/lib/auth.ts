@@ -112,30 +112,29 @@ export async function getSharedTabletContext() {
   const active = await requireActiveUser()
   if (!active.ok) return { ok: false as const, status: active.status }
   const user = active.user
-  if (!user.is_shared_device || user.role !== 'technician' || !user.factory_id) {
+  if (!user.is_shared_device || user.role !== 'technician') {
     return { ok: false as const, status: 403 as const }
   }
 
   try {
     const admin = createAdminClient()
     const { data: device, error: deviceError } = await admin
-      .from('shared_devices').select('id, auth_user_id, factory_id, label, enabled')
+      .from('shared_devices').select('id, auth_user_id, label, enabled')
       .eq('auth_user_id', user.id).maybeSingle()
-    if (deviceError || !device || !device.enabled || device.factory_id !== user.factory_id) {
+    if (deviceError || !device || !device.enabled) {
       return { ok: false as const, status: 403 as const }
     }
-    const { data: roster, error: rosterError } = await admin
-      .from('shared_device_roster').select('technician_profile_id').eq('device_id', device.id)
-    if (rosterError || !roster?.length) return { ok: false as const, status: 403 as const }
-    const ids = roster.map(row => row.technician_profile_id)
-    const { data: profiles, error: profilesError } = await admin
-      .from('profiles').select('id, full_name, role, factory_id, is_active').in('id', ids)
-    if (profilesError) return { ok: false as const, status: 503 as const }
-    const members = (profiles ?? []).filter(profile =>
-      profile.is_active === true && profile.role === 'technician' && profile.factory_id === device.factory_id
-    ).map(profile => ({ id: profile.id, full_name: profile.full_name ?? '' }))
+    const [{ data: factories, error: factoriesError }, { data: roster, error: rosterError }] = await Promise.all([
+      admin.from('shared_device_factories').select('factory_id').eq('device_id', device.id),
+      admin.from('shared_device_roster').select('technician_id, technician:shared_technicians(id, full_name, is_active)').eq('device_id', device.id),
+    ])
+    if (factoriesError || rosterError || !factories?.length) return { ok: false as const, status: 403 as const }
+    const members = (roster ?? []).flatMap(row => {
+      const person = Array.isArray(row.technician) ? row.technician[0] : row.technician
+      return person?.is_active ? [{ id: person.id, full_name: person.full_name ?? '' }] : []
+    })
     if (!members.length) return { ok: false as const, status: 403 as const }
-    return { ok: true as const, user, device, roster: members }
+    return { ok: true as const, user, device: { id: device.id, label: device.label, factory_ids: factories.map(row => row.factory_id) }, roster: members }
   } catch {
     return { ok: false as const, status: 503 as const }
   }

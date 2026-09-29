@@ -48,7 +48,7 @@ An actual `SET LOCAL ROLE anon` negative SELECT test was also executed: dynamic 
 2. Consolidate every permissive policy family rather than applying the existing active-account migration blindly. In particular, remove or constrain `profiles_read` and `incidents_insert` and review authenticated writes to the four currently RLS-disabled tables.
 3. Test active personal technician, supervisor and admin allow-paths; disabled accounts, cross-factory access, spoofed actor, and anonymous access deny-paths. Use an isolated staging database or a transaction-rollback fixture harness with no persistent business writes.
 4. Validate the tablet foundation migration on the verified schema; apply only once, atomically; verify table RLS/grants, RPC grants, device/factory/roster validation and idempotency.
-5. Bind the four named technicians by their real profile IDs and factory, not name inference. No accounts or memberships should be guessed.
+5. Revised 2026-09-29: use independent, stable performer roster IDs for the four names; no personal account is required. Configure explicit device factory allowlists for cross-factory work. Preserve the verified device actor separately from declared performers. See the name-roster revision plan.
 6. Verify personal reporting and shared tablet progress end-to-end on phone/tablet/desktop, then promote the exact validated Vercel artifact and smoke-test the custom domain.
 
 Release acceptance is blocked by missing security integration tests and tablet schema/RPC acceptance, not by browser connectivity. Do not treat the cloud build, a Healthy database, or existing SQL files as production acceptance.
@@ -62,3 +62,7 @@ Release acceptance is blocked by missing security integration tests and tablet s
 - This is minimal anonymous containment only. Authenticated view access, duplicate policy consolidation, RLS activation, browser audit integrity, Storage, field/actor guards and full acceptance remain unfinished.
 - Scoped exact-name roster lookup found active technician profiles Rudi, Suwardi and Wiwit, all with NULL factory_id; Pak Dasir had no exact full-name match. Owner must confirm intended factory/cross-factory scope and Pak Dasir's actual account before activation. Do not guess identity or broaden NULL-factory technician access.
 - See `docs/policy-consolidation-plan-20260928.md` for the verified policy findings, business-rule dependencies and explicit allow/deny test matrix reviewed independently by Terra.
+
+## 2026-09-29 clarified roster requirement
+
+Owner confirmed cross-factory work and no individual technician accounts. The prior Pak Dasir account/factory clarification is no longer a blocker and must not trigger account creation or personal profile changes. Local implementation is being revised to independent roster identities and explicit device factory allowlists. Security policy consolidation, actual database allow/deny tests and authenticated responsive UI acceptance still block production promotion; this clarification does not resolve those gates.
