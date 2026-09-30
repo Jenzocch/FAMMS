@@ -82,7 +82,7 @@
 - `seed_demo.sql` — 範例工作區 + 機台
 - `seed_din_machines.sql` / `seed_sja_olt_machines.sql` — 各廠**佔位**機台（真實清單匯入前的暫代資料，各 4 台虛構機器）
 - `seed_sja_machines.sql` — **SJA 真實清單**：15 區域 + 109 台（工廠自己的 DAP 表單）
-- `seed_din_machines_real.sql` — **DIN 真實清單**：9 區域（按機台站別）+ 42 台，代號照工廠原樣（A1A-KA、C11-03S、HMG1…）
+- `reconcile_din_machines.sql` — **DIN 真實清單（取代已移除的 `seed_din_machines_real.sql`）**：把工廠給的 42 台對到 production 原本就有的機器——原本就有的（C1→C1-03S…、DIN-MIX-001→I1、DIN-HMG-001→HMG1）**保留原列、改代號、併掉重複那筆並把紀錄搬過去**，沒有的才新增並放進真實房間。一個 transaction，遇到意外整包中止；可重跑
 - `seed_demo_incidents.sql` — 範例工單（FIT-DEMO-*，可重跑）
 
 ### Migration（後加的 schema 變更，皆 idempotent）
