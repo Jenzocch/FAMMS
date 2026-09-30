@@ -1,4 +1,22 @@
 -- ============================================================================
+-- ⚠️ DO NOT RE-RUN — PLACEHOLDER DATA, SUPERSEDED, AND IT WILL UNDO CLEAN-UP
+-- Everything below was written when SJA and Olentia had no machine list at all.
+-- Both factories now have real data, and this file would quietly put the
+-- placeholders back:
+--   • OLT — cleaned up by hand on 2026-09-30. OLT has ONE real machine
+--     (OLT-MIX-001, renamed "Powder Mixer") in two real rooms, Ruang Powder and
+--     Ruang Liquid, plus Gudang. Running this file recreates the generic
+--     Produksi / Packing areas and three of the invented machines it seeds
+--     (Process Water Pump, Exhaust Fan Unit, PLC Control Panel) — exactly
+--     what was deleted. (OLT-MIX-001 would be left alone: that code exists.)
+--   • SJA — the real list is seed_sja_machines.sql (15 areas, 109 machines).
+--     The four SJA-xxx-001 starters here are placeholders.
+-- (seed_din_machines.sql got the same treatment after an import that assumed
+-- DIN was empty duplicated 12 machines — docs/LESSONS.md #32.)
+-- Kept only as a record of what the placeholders were. To add machines to
+-- either factory, reconcile against what production holds first.
+-- ============================================================================
+-- ============================================================================
 -- SEED: initial areas + machines for the SJA and Olentia (OLT) factories.
 -- Mirrors seed_din_machines.sql. Self-contained and idempotent (safe to re-run).
 -- For each factory it:
