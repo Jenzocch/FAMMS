@@ -30,7 +30,10 @@
 --   F1–F4 (Vakum)        → Packing            (owner: "Ruang Packing")
 --   C1–C8, C10, C11, I1, HMG1 keep the room they are already in
 --   C12–C14              untouched — not on the list, still in use
---   C9-06, HPE, HPM, WJ1–WJ4 → Other          (owner has not said where yet —
+--   WJ1–WJ4 (Waterjet)   → Ruang Pemotongan    (owner: "water jet 在 potong 那邊";
+--       Pemotongan rather than Ruang Ayak dan Potong Baru — edit the four rows
+--       below and re-run if it is the other room)
+--   C9-06, HPE, HPM      → Other               (owner has not said where yet —
 --       parked in the existing empty "Other" area, NOT a new invented one.
 --       Tell me the room and move them with one UPDATE / an edit to this file.)
 --
@@ -79,8 +82,8 @@ INSERT INTO _din_list (final_code, orig_code, name, target_area) VALUES
   ('F1', NULL, 'Mesin Vakum', 'PACK'), ('F2', NULL, 'Mesin Vakum', 'PACK'),
   ('F3', NULL, 'Mesin Vakum', 'PACK'), ('F4', NULL, 'Mesin Vakum', 'PACK'),
   ('HPE', NULL, 'Hand Pallet', 'O'), ('HPM', NULL, 'Hand Pallet', 'O'),
-  ('WJ1', NULL, 'Waterjet', 'O'), ('WJ2', NULL, 'Waterjet', 'O'),
-  ('WJ3', NULL, 'Waterjet', 'O'), ('WJ4', NULL, 'Waterjet', 'O');
+  ('WJ1', NULL, 'Waterjet', 'Ruang Pemotongan'), ('WJ2', NULL, 'Waterjet', 'Ruang Pemotongan'),
+  ('WJ3', NULL, 'Waterjet', 'Ruang Pemotongan'), ('WJ4', NULL, 'Waterjet', 'Ruang Pemotongan');
 
 -- ── Preflight: every target room must exist exactly once ────────────────────
 DO $$
@@ -193,9 +196,9 @@ WHERE f.id = a.factory_id AND f.code = 'DIN'
 COMMIT;
 
 -- ── Verify ──────────────────────────────────────────────────────────────────
--- Expect: Ruang Slice 15 · Ruang Pemotongan 8 · Ruang Ayak dan Potong Baru 6
+-- Expect: Ruang Slice 15 · Ruang Pemotongan 12 · Ruang Ayak dan Potong Baru 6
 -- (C10-05, C11-03S, C12, C13, C14, AYK1) · Ruang Press 3 · Packing 4 ·
--- Other 7 · Production 7 · Ruang Pasteurisasi 8.
+-- Other 3 · Production 7 · Ruang Pasteurisasi 8.
 SELECT a.code, a.name, COUNT(m.id) AS machines
 FROM areas a
 JOIN factories f ON f.id = a.factory_id AND f.code = 'DIN'
