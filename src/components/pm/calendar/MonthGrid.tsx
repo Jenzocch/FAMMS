@@ -36,34 +36,35 @@ export default function MonthGrid({
           const isSelected = dateStr === selectedDate
           const dots = dayDots(tasks)
 
+          if (!dateStr) {
+            return <div key={idx} aria-hidden="true" className="min-h-14 border-b border-r border-gray-100 bg-gray-50" />
+          }
+
           return (
-            <div
+            <button
               key={idx}
-              onClick={() => dateStr && onSelectDate(isSelected ? null : dateStr)}
-              className={`min-h-14 p-1 border-b border-r border-gray-100 transition-colors ${
-                !dateStr ? 'bg-gray-50' :
-                isSelected ? 'bg-blue-50 cursor-pointer' :
-                'hover:bg-gray-50 cursor-pointer'
+              type="button"
+              onClick={() => onSelectDate(isSelected ? null : dateStr)}
+              aria-pressed={isSelected}
+              aria-label={dateStr}
+              className={`min-h-14 p-1 text-left border-b border-r border-gray-100 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600 ${
+                isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
               }`}
             >
-              {dateStr && (
-                <>
-                  <div className={`text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full mb-1 ${
-                    isToday ? 'bg-blue-600 text-white' : 'text-gray-700'
-                  }`}>
-                    {parseInt(dateStr.split('-')[2])}
-                  </div>
-                  <div className="flex flex-wrap gap-0.5">
-                    {dots.map(s => (
-                      <div key={s} className={`w-2 h-2 rounded-full ${STATUS_DOT[s]}`} />
-                    ))}
-                    {tasks.length > 1 && (
-                      <span className="text-xs text-gray-400 leading-none self-end">{tasks.length}</span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+              <div className={`text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full mb-1 ${
+                isToday ? 'bg-blue-600 text-white' : 'text-gray-700'
+              }`}>
+                {parseInt(dateStr.split('-')[2])}
+              </div>
+              <div className="flex flex-wrap gap-0.5">
+                {dots.map(s => (
+                  <div key={s} className={`w-2 h-2 rounded-full ${STATUS_DOT[s]}`} />
+                ))}
+                {tasks.length > 1 && (
+                  <span className="text-xs text-gray-400 leading-none self-end">{tasks.length}</span>
+                )}
+              </div>
+            </button>
           )
         })}
       </div>

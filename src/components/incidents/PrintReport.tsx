@@ -14,6 +14,7 @@ export interface ReportUpdateRow {
   new_status: string | null
   note: string | null
   updated_by: string | null
+  shared_device_id?: string | null
   photos: string[]
   created_at: string
 }
@@ -212,7 +213,7 @@ export default function PrintReport({
                 {updates.map(u => (
                   <tr key={u.id} className="border-b border-gray-100 align-top break-inside-avoid">
                     <td className="py-1.5 pr-2 whitespace-nowrap">{format(new Date(u.created_at), 'yyyy-MM-dd HH:mm')}</td>
-                    <td className="py-1.5 pr-2">{u.updated_by || '-'}</td>
+                    <td className="py-1.5 pr-2">{u.shared_device_id ? `${t('progressTimeline.sharedDeviceSource', '共用設備帳號回報 · 自述處理人')}: ${u.updated_by || '-'}` : u.updated_by || '-'}</td>
                     <td className="py-1.5 pr-2">{u.new_status ? statusLabel(u.new_status) : '-'}</td>
                     <td className="py-1.5">
                       <p className="whitespace-pre-wrap">{u.note || '-'}</p>

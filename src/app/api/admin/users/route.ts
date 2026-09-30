@@ -131,6 +131,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '無法建立系統管理員帳號' }, { status: 403 })
   }
 
+  if (body.is_shared_device && (!isTrueAdmin || role !== 'technician')) {
+    return NextResponse.json({ error: '共用平板帳號只能由系統管理員建立，且必須是啟用中的技師帳號' }, { status: 403 })
+  }
+
   // factory_id may be null = "cross-factory" (not bound to one factory).
   const resolvedFactoryId = factory_id
 

@@ -44,6 +44,9 @@
 | 7 | `migration_rls_6_pm_assignee_access.sql` | PM 保養版的第 5 步，讓跨廠 PM 負責人看得到自己排定的任務 |
 | 8 | `migration_security_phase3_function_execute.sql` | 收回 `PUBLIC` 對這些函式的執行權限——只收回 `anon` 不夠，Postgres 預設會把新函式的 EXECUTE 權限給 `PUBLIC`，而每個角色（包含 `anon`）都隱含是 `PUBLIC` 的成員，所以只 revoke `anon` 沒有真正關上這個洞 |
 | 9 | `migration_rls_7_missing_tables.sql` | 補上三張晚於 RLS 佈署才建立的表（`telegram_report_drafts`／`vendors`／`parts_requests`）的 RLS 與政策，並移除一次性的 `rls_set()` 佈署工具函式——沒補之前，任何登入帳號都能跨廠直接讀寫這三張表 |
+| 10 | `migration_security_phase4_active_account_gate.sql` | 停用帳號的 JWT 還有效時，仍必須從所有 RLS helper、assignee 例外與 own-profile 政策被拒絕；**先在 staging 套用與測試** |
+| 11 | `migration_security_phase5_storage_write_gate.sql` | 維持既有公開圖片讀取相容性，但把 Storage 寫入綁到 active 帳號、可存取的工單路徑或明確的管理權限；**必須在 phase 4 之後執行** |
+| 12 | `migration_security_phase6_task_identity_gate.sql` | 封鎖 client 偽造任務建立者、跨廠／停用帳號指派；**必須在 `migration_tasks.sql` 與 phase 4 之後執行** |
 
 跑完這 8 步之後再跑 `SYNC_SCHEMA_LATEST.sql` 是安全的——它不會動 anon 權限或 RLS 狀態，不會把這一組鎖定復原。
 
@@ -58,6 +61,16 @@
 1. Supabase → **SQL Editor** → New query
 2. 打開那個檔案，**整個內容**全選複製貼進去
 3. 按 **Run**
+
+### 共用技師平板 Phase A（staging only）
+
+`migrations/20260928032216_shared_technician_tablet_foundation.sql` 是 Supabase CLI 建立的版本化 migration。它先以 `is_shared_device`（預設 false）標記專用平板 profile，再建立設備綁定、設備技師名單及進度事件的自述處理人關聯；新增的 `incident_updates.shared_device_id` 與 nullable `request_id` 保留舊個人進度列相容，`updated_by_id` 仍代表 verified actor。三張新表開啟 RLS、沒有一般 client policy，資料存取限 server `service_role`；trigger 拒絕共用設備 JWT 直接寫任何 progress row，也拒絕一般 JWT 直接改 shared-tablet event。不可把 service role key 傳到瀏覽器。
+
+- 套用前：先在 staging 核對 `factories.id`、`profiles.id`、`incident_updates.id` 的實際型別與外鍵，以及現行 RLS/grants。Migration 會檢查必要資料表/UUID 欄位，但不能取代部署 schema 與權限盤點。
+- 套用：使用 `supabase migration list` 確認版本，再按專案既有 migration 流程在 staging 套用並保存輸出；本次 checkout 尚無 `supabase/config.toml`，不要假設 `db push` 已連到正確專案。若採 SQL Editor，貼上該檔完整內容並先確認 staging 專案。
+- 驗收：確認三張新表 `relrowsecurity = true`、沒有 anon/authenticated policy 或 table grants、service_role 權限符合 server route 需要；確認新表對 server 所用的 Data API role 可見（Data API exposure 不等於授予 client 權限）；檢查新個人事件仍可不帶 device/request 欄位，共用設備 JWT 直寫／改寫／刪除 progress 都被 trigger 拒絕，重複同內容的 tablet `request_id` 只回傳原紀錄，不同內容則拒絕。
+- 邊界：本 migration 不改 `incident_updates` 既有 RLS/grants，以免中斷個人進度回報；因此 staging 必須記錄該表實際 client 寫入權限。Tablet write route 僅透過 server-only `service_role` 呼叫 `create_shared_tablet_update`，由資料庫交易再驗證設備、工廠、案件及 roster，絕不可相信瀏覽器提供的 actor/device 欄位。
+- 回滾（僅限 staging 且先確認新資料可丟棄）：先 `DROP TRIGGER prevent_direct_shared_tablet_update_writes ON public.incident_updates`；再 `DROP FUNCTION public.prevent_direct_shared_tablet_update_writes()` 與 `DROP FUNCTION public.create_shared_tablet_update(UUID, UUID, UUID, UUID, TEXT, UUID[])`；移除 `incident_updates_request_id_uidx`、`incident_updates_device_request_pair_check`，再 drop `incident_updates.request_id` 與 `incident_updates.shared_device_id`；接著 drop `incident_update_performers`、`shared_device_roster`、`shared_devices`。`profiles.is_shared_device` 預設 false，可保留作相容欄位；如要移除，必須先確認 app 已回退且沒有任何共用帳號標記資料。其他 drop 動作會刪除新建的設備名單與 performer 關聯資料。
 
 需要的話我會把完整 SQL **直接貼在對話裡**，你連檔案都不用開，直接複製即可。
 
@@ -76,6 +89,9 @@
 - `migration_rls_1_helpers.sql` ~ `migration_rls_6_pm_assignee_access.sql` — RLS 政策 + 分階段開啟 + 指派者存取
 - `migration_security_phase2_prevent_escalation.sql` — 擋掉使用者自己把 role 改成 admin
 - `migration_security_phase3_function_execute.sql` — 收回 PUBLIC 對 SECURITY DEFINER 函式的執行權限
+- `migration_security_phase4_active_account_gate.sql` — 在資料庫層封鎖已停用帳號（含跨廠指派例外）
+- `migration_security_phase5_storage_write_gate.sql` — 收緊 public `incident-photos` bucket 的寫入權限；不會把 bucket 轉 private
+- `migration_security_phase6_task_identity_gate.sql` — 任務建立者／指派對象的資料庫完整性防線
 
 ### Seed（範例 / 初始資料）
 - `seed_fault_tree.sql` — 故障代碼樹

@@ -403,7 +403,7 @@ export default async function IncidentDetailPage({
           <GudangRequest incidentId={id} />
         </div>
       )}
-      <PartsRequestTracker requests={partsRequests ?? []} incidentClosed={isClosed} nowMs={renderedAtMs} />
+      <PartsRequestTracker incidentId={id} requests={partsRequests ?? []} incidentClosed={isClosed} nowMs={renderedAtMs} />
     </div>
   )
 

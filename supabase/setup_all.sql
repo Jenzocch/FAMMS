@@ -52,6 +52,7 @@ CREATE TABLE profiles (
   role TEXT NOT NULL DEFAULT 'technician',
   -- roles: 'technician' | 'supervisor' | 'manager' | 'director' | 'admin'
   is_active BOOLEAN DEFAULT true,
+  is_shared_device BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

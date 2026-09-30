@@ -31,7 +31,7 @@ export default function ReportLocationFields({
   const { t } = useI18n()
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <Label className="text-base">{t('report.location')} <span className="text-red-500">*</span></Label>
       {/* Factory + area side by side: matches the natural "pick factory →
           its area" reading order without an extra scroll/tap. Machine and
@@ -43,7 +43,7 @@ export default function ReportLocationFields({
           lets the trigger's own line-clamp-1 do its job. */}
       <div className="grid grid-cols-2 gap-2">
         <Select value={factoryId} onValueChange={(v) => setFactoryId(v ?? '')} items={Object.fromEntries(factories.map(f => [f.id, f.name]))}>
-          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
+          <SelectTrigger aria-label={t('report.selectFactory')} className="w-full min-w-0 min-h-12 text-base"><SelectValue placeholder={t('report.selectFactory')} /></SelectTrigger>
           <SelectContent>
             {factories.map(f => (
               <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
@@ -59,7 +59,7 @@ export default function ReportLocationFields({
             ...(areas.length === 0 ? [['__other__', t('report.selectAreaOther', '其他')]] : []),
           ])}
         >
-          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
+          <SelectTrigger aria-label={t('report.selectArea')} className="w-full min-w-0 min-h-12 text-base"><SelectValue placeholder={t('report.selectArea')} /></SelectTrigger>
           <SelectContent>
             {areas.map(a => (
               <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -76,7 +76,7 @@ export default function ReportLocationFields({
           value={locationNote}
           onChange={e => setLocationNote(e.target.value)}
           placeholder={t('report.areaCustom', '請填寫區域名稱')}
-          className="mt-1"
+          className="min-h-12 text-base"
         />
       )}
 
@@ -93,7 +93,7 @@ export default function ReportLocationFields({
 
       {assets.length > 0 && (
         <Select value={assetId} onValueChange={(v) => setAssetId(v ?? '')} items={Object.fromEntries(assets.map(a => [a.id, `${machineLabel(a.machine_name, a.machine_code)}`]))}>
-          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>
+          <SelectTrigger aria-label={t('report.selectMachine')} className="w-full min-w-0 min-h-12 text-base"><SelectValue placeholder={t('report.selectMachine')} /></SelectTrigger>
           <SelectContent>
             {assets.map(a => (
               <SelectItem key={a.id} value={a.id}>
@@ -113,7 +113,7 @@ export default function ReportLocationFields({
           value={locationNote}
           onChange={e => setLocationNote(e.target.value)}
           placeholder={t('report.locationOther', '其他位置（自行填寫，選填）')}
-          className="mt-1"
+          className="min-h-12 text-base"
         />
       )}
     </div>

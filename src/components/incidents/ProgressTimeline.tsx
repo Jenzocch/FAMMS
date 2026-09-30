@@ -11,6 +11,7 @@ export interface TimelineRow {
   new_status: string | null
   note: string | null
   updated_by: string | null
+  shared_device_id?: string | null
   photos: string[]
   created_at: string
 }
@@ -53,7 +54,9 @@ export default function ProgressTimeline({
             <div className="bg-white rounded-lg border border-gray-200 p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-gray-800">
-                  {u.updated_by || t('incidentDetail.maintenanceStaff')}
+                  {u.shared_device_id
+                    ? `${t('progressTimeline.sharedDeviceSource', '共用設備帳號回報 · 自述處理人')}: ${u.updated_by || t('incidentDetail.maintenanceStaff')}`
+                    : u.updated_by || t('incidentDetail.maintenanceStaff')}
                 </span>
                 {u.new_status && (
                   <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_ZH_COLOR[u.new_status as IncidentStatus] || 'bg-gray-100 text-gray-600'}`}>

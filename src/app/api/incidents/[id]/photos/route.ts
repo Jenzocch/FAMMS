@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { requireActiveUser, PERMISSIONS } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 
 // DELETE /api/incidents/[id]/photos — remove one report photo from storage.
@@ -16,8 +16,9 @@ export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+  const user = guard.user
   if (!PERMISSIONS.editIncident(user.role)) {
     return NextResponse.json({ error: '只有主管以上可以刪除照片' }, { status: 403 })
   }

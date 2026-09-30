@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { getCurrentUser, PERMISSIONS } from '@/lib/auth'
+import { requireActiveUser, PERMISSIONS } from '@/lib/auth'
 
 // POST /api/incidents/[id]/relations — confirm a candidate repeat failure,
 // linking a newly reported incident to the prior one it may be a repeat of.
@@ -11,9 +11,10 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+  const user = guard.user
   const supabase = await createClient()
-  const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Same tier as closing/RCA/editing the due date — confirming "yes, this is
   // the same failure again" is a supervisory judgment call, not something a

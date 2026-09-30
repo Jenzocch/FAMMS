@@ -1,30 +1,31 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { notifyFactory, isTelegramConfigured } from '@/lib/telegram'
+import { requireActiveUser } from '@/lib/auth'
+import { PERMISSIONS } from '@/lib/permissions'
 
 // POST /api/notifications/test — send a test message to the current user's
 // factory groups/users to verify Telegram wiring.
 export async function POST() {
+  const guard = await requireActiveUser()
+  if (!guard.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: guard.status })
+  if (!PERMISSIONS.manageTelegram(guard.user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   if (!isTelegramConfigured()) {
     return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN belum dikonfigurasi di server' }, { status: 400 })
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('factory_id')
-    .eq('id', user.id)
-    .single()
-  if (!profile?.factory_id) {
+  if (!guard.user.factory_id) {
     return NextResponse.json({ error: 'Factory tidak ditemukan' }, { status: 400 })
   }
 
   const html = '✅ <b>Tes Notifikasi FAMMS</b>\nKoneksi Telegram berfungsi dengan baik.'
   const r = await notifyFactory(supabase, {
-    factoryId: profile.factory_id,
+    factoryId: guard.user.factory_id,
     type: 'status_update',
     html,
   })

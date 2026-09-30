@@ -58,7 +58,6 @@ export default function KBForm({ incidentId, defaultProblem = '', defaultRootCau
       if (!res.ok) throw new Error(json.error || t('kb.saveFailed', '儲存失敗'))
       toast.success(t('kb.saved', '知識庫已儲存'))
       router.push(`/knowledge-base/${json.entry.id}`)
-      router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('kb.saveFailed', '儲存失敗'))
     } finally {

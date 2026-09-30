@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/types'
 import { baseCapabilityDefaults, resolveCapabilities, type CustomRole, type EffectiveCapabilities } from '@/lib/roles'
+import { createAdminClient } from '@/lib/supabase/admin'
 export { PERMISSIONS } from '@/lib/permissions'
 
 export type CurrentUser = {
@@ -17,6 +18,7 @@ export type CurrentUser = {
   // is ONLY for the couple of capabilities lib/roles.ts allows overriding.
   capabilities: EffectiveCapabilities
   is_active: boolean
+  is_shared_device: boolean
 }
 
 // Server-only: looks up a custom role's base tier + capability overrides.
@@ -69,7 +71,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('factory_id, full_name, role, custom_role_key, is_active')
+    .select('factory_id, full_name, role, custom_role_key, is_active, is_shared_device')
     .eq('id', claims.sub)
     .single()
 
@@ -87,8 +89,56 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
     customRole,
     capabilities,
     is_active: profile.is_active ?? true,
+    is_shared_device: profile.is_shared_device ?? false,
   }
 })
+
+// Baseline guard for a server-side action that only needs an active signed-in
+// account. Do not replace this with auth.getUser(): a valid Auth session can
+// outlive an administrator disabling the matching profile.
+export async function requireActiveUser(): Promise<
+  | { ok: true; user: CurrentUser }
+  | { ok: false; status: 401 | 403 }
+> {
+  const user = await getCurrentUser()
+  if (!user) return { ok: false, status: 401 }
+  if (!user.is_active) return { ok: false, status: 403 }
+  return { ok: true, user }
+}
+
+// Dedicated shared-tablet boundary. The device identity remains the signed-in
+// actor; roster names are only declared performers and never become auth users.
+export async function getSharedTabletContext() {
+  const active = await requireActiveUser()
+  if (!active.ok) return { ok: false as const, status: active.status }
+  const user = active.user
+  if (!user.is_shared_device || user.role !== 'technician') {
+    return { ok: false as const, status: 403 as const }
+  }
+
+  try {
+    const admin = createAdminClient()
+    const { data: device, error: deviceError } = await admin
+      .from('shared_devices').select('id, auth_user_id, label, enabled')
+      .eq('auth_user_id', user.id).maybeSingle()
+    if (deviceError || !device || !device.enabled) {
+      return { ok: false as const, status: 403 as const }
+    }
+    const [{ data: factories, error: factoriesError }, { data: roster, error: rosterError }] = await Promise.all([
+      admin.from('shared_device_factories').select('factory_id').eq('device_id', device.id),
+      admin.from('shared_device_roster').select('technician_id, technician:shared_technicians(id, full_name, is_active)').eq('device_id', device.id),
+    ])
+    if (factoriesError || rosterError || !factories?.length) return { ok: false as const, status: 403 as const }
+    const members = (roster ?? []).flatMap(row => {
+      const person = Array.isArray(row.technician) ? row.technician[0] : row.technician
+      return person?.is_active ? [{ id: person.id, full_name: person.full_name ?? '' }] : []
+    })
+    if (!members.length) return { ok: false as const, status: 403 as const }
+    return { ok: true as const, user, device: { id: device.id, label: device.label, factory_ids: factories.map(row => row.factory_id) }, roster: members }
+  } catch {
+    return { ok: false as const, status: 503 as const }
+  }
+}
 
 // Guard for admin-only API routes. Returns the admin user or an error reason.
 // Strictly `role === 'admin'` (系統管理員) — used wherever TRUE unrestricted
@@ -100,11 +150,9 @@ export async function requireAdmin(): Promise<
   | { ok: true; user: CurrentUser }
   | { ok: false; status: 401 | 403 }
 > {
-  const user = await getCurrentUser()
-  if (!user) return { ok: false, status: 401 }
-  // Deactivated accounts must not pass admin checks even with a valid session —
-  // the layout blocks them in the browser, but API routes don't go through it.
-  if (!user.is_active) return { ok: false, status: 403 }
+  const active = await requireActiveUser()
+  if (!active.ok) return active
+  const { user } = active
   if (user.role !== 'admin') return { ok: false, status: 403 }
   return { ok: true, user }
 }
@@ -124,9 +172,9 @@ export async function requireUserManager(): Promise<
   | { ok: true; user: CurrentUser }
   | { ok: false; status: 401 | 403 }
 > {
-  const user = await getCurrentUser()
-  if (!user) return { ok: false, status: 401 }
-  if (!user.is_active) return { ok: false, status: 403 }
+  const active = await requireActiveUser()
+  if (!active.ok) return active
+  const { user } = active
   if (user.role !== 'admin' && !user.capabilities.manageUsers) return { ok: false, status: 403 }
   return { ok: true, user }
 }

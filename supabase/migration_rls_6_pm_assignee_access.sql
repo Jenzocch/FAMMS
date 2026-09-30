@@ -20,7 +20,7 @@
 -- True if the current user may see this PM schedule (by factory OR assignment).
 CREATE OR REPLACE FUNCTION app_can_access_pm_schedule(sched UUID) RETURNS BOOLEAN
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (
+  SELECT app_is_active() AND EXISTS (
     SELECT 1 FROM pm_schedules s
     WHERE s.id = sched
       AND ( app_can_access(s.factory_id) OR auth.uid() = ANY(s.assigned_user_ids) )
@@ -33,7 +33,7 @@ DO $$ BEGIN
   IF to_regclass('public.pm_schedules') IS NOT NULL THEN
     DROP POLICY IF EXISTS pm_schedules_sel ON pm_schedules;
     CREATE POLICY pm_schedules_sel ON pm_schedules FOR SELECT
-      USING (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids));
+      USING (app_is_active() AND (app_can_access(factory_id) OR auth.uid() = ANY(assigned_user_ids)));
   END IF;
 END $$;
 

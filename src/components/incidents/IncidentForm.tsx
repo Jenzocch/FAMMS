@@ -7,9 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
@@ -69,10 +66,13 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
 
   const [locationNote, setLocationNote] = useState('')
   const [issueType, setIssueType] = useState('machine')
+  const hasSelectedIssueType = issueTypes.some(type => type.value === issueType)
   const [urgency, setUrgency] = useState('medium')
   const [dueDate, setDueDate] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [reportingForSomeoneElse, setReportingForSomeoneElse] = useState(false)
+  const [reporterOverride, setReporterOverride] = useState('')
   // Generated ONCE per logical report (not per submit attempt) so that a retry
   // after a flaky-signal timeout — user hits submit again because it looked
   // like it failed — is recognized as the same report instead of creating a
@@ -85,14 +85,25 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   // Past incidents on the picked machine + KB entries matching the typed
   // problem — surfaced live in the form so last time's fix is one tap away.
   const { pastIncidents, kbEntries } = usePastRecords(location.assetId, description)
+  const reporterName = reporter.isSharedDevice
+    ? reporter.reporterName.trim()
+    : reportingForSomeoneElse ? reporterOverride.trim() : reporter.defaultReporterName.trim()
 
   async function submit() {
+    if (reporter.identityStatus !== 'ready') {
+      toast.error(t(reporter.identityStatus === 'loading' ? 'report.identityLoading' : 'report.identityLoadFailed'))
+      return
+    }
     if (!location.factoryId || !description.trim()) {
       toast.error(t('report.fillRequired'))
       return
     }
-    if (reporter.isSharedDevice && !reporter.reporterName.trim()) {
-      toast.error(t('report.reporterRequired', '這是共用裝置，請選擇實際回報的人'))
+    if (!hasSelectedIssueType) {
+      toast.error(t('report.specifyType'))
+      return
+    }
+    if ((reporter.isSharedDevice && !reporterName) || (reportingForSomeoneElse && !reporterName)) {
+      toast.error(t('report.reporterRequired', '請填寫實際回報人的姓名'))
       return
     }
     // Title is auto-derived from the description (same truncation rule as
@@ -129,7 +140,7 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
           machineId: location.assetId || null,
           title,
           description,
-          reporterName: reporter.reporterName,
+          reporterName,
           impactCode,
           dueDate: computedDueDate,
           locationNote,
@@ -172,7 +183,7 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
         machineId: location.assetId || null,
         title,
         description,
-        reporterName: reporter.reporterName,
+        reporterName,
         impactCode,
         dueDate: computedDueDate,
         locationNote,
@@ -207,68 +218,58 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
   }
 
   const submitDisabled =
-    submitting || !location.factoryId || !description.trim() ||
-    (reporter.isSharedDevice && !reporter.reporterName.trim())
+    submitting || reporter.identityStatus !== 'ready' || !hasSelectedIssueType || !location.factoryId || !description.trim() ||
+    ((reporter.isSharedDevice || reportingForSomeoneElse) && !reporterName)
 
   return (
     // Extra bottom padding on phone clears the fixed submit bar (which itself
     // sits above BottomNav) — see the fixed bar below. Not needed on desktop,
     // where submit is inline.
-    <div className="space-y-5 lg:space-y-6 pb-24 lg:pb-0">
+    <div className="space-y-4 lg:space-y-5 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">{t('report.title')}</h1>
         <p className="text-base text-gray-500 mt-1">{t('report.subtitle')}</p>
       </div>
 
-      {/* Two-column on desktop so the form uses the horizontal space instead of
+      {/* Two-column on tablet and desktop so the form uses horizontal space instead of
           a single narrow stack. On phone the two column divs simply stack
           full-width one after another, which is exactly the intended reading
           order: reporter → ①location → ②issue text → photos → ③urgency. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-6 gap-y-5 lg:items-start">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] md:items-start md:gap-5 lg:gap-6">
       {/* ---- Left column (desktop) / top of page (phone) ---- */}
-      <div className="space-y-5">
-      {/* Reporter — compact, sits above the numbered sections */}
-      <div>
-        <Label className="text-sm">
+      <div className="min-w-0 space-y-4">
+      {/* Personal sessions use the authenticated profile by default. Only
+          shared-device sessions or explicit on-behalf reports need this field. */}
+      {reporter.identityStatus === 'error' && <p role="alert" className="text-sm text-red-700">{t('report.identityLoadFailed')}</p>}
+      {reporter.isSharedDevice ? <div>
+        <Label htmlFor="shared-reporter-name" className="text-sm">
           {t('report.reporterName')}
-          {reporter.isSharedDevice && <span className="text-red-500 ml-0.5">*</span>}
+          <span className="text-red-500 ml-0.5">*</span>
         </Label>
-        {reporter.isSharedDevice && (
-          <p className="text-xs text-amber-600 mt-0.5">
-            {t('report.sharedDeviceHint', '這是共用裝置，請選擇或輸入實際回報的人')}
-          </p>
-        )}
-        {reporter.accounts.length > 0 && (
-          <Select
-            value={reporter.reporterAccountId}
-            onValueChange={(v) => {
-              const id = v ?? ''
-              reporter.setReporterAccountId(id)
-              const a = reporter.accounts.find(x => x.id === id)
-              if (a) reporter.setReporterName(a.full_name || '')
-            }}
-            items={Object.fromEntries(reporter.accounts.map(a => [a.id, a.full_name || t('report.unnamedAccount', '(未命名帳號)')]))}
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder={t('report.selectReporter', '選擇帳號（或手動填寫）')} />
-            </SelectTrigger>
-            <SelectContent>
-              {reporter.accounts.map(a => (
-                <SelectItem key={a.id} value={a.id}>{a.full_name || t('report.unnamedAccount', '(未命名帳號)')}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <p className="text-xs text-amber-700 mt-0.5">
+          {t('report.sharedDeviceHint', '這是共用裝置，請輸入實際回報人的姓名')}
+        </p>
         <Input
+          id="shared-reporter-name"
           value={reporter.reporterName}
-          onChange={e => {
-            reporter.setReporterName(e.target.value)
-            // Typing manually clears the linked account selection.
-            if (reporter.reporterAccountId) reporter.setReporterAccountId('')
-          }}
+          onChange={e => reporter.setReporterName(e.target.value)}
           placeholder={t('report.reporterPlaceholder')}
-          className="mt-1.5"
+          className="mt-1.5 min-h-11"
         />
+      </div> : <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-gray-50 px-3 py-2">
+        <p className="min-w-0 flex-1 basis-36 break-words text-sm text-gray-700">
+          {reporter.identityStatus === 'loading' ? t('report.identityLoading') : `${t('report.reportingAs', '回報人')}：${reporter.defaultReporterName || t('report.currentAccount', '目前登入帳號')}`}
+        </p>
+        {!reportingForSomeoneElse && <button type="button" aria-expanded={false} aria-controls="reporter-override-fields" className="min-h-11 max-w-full px-1 text-left text-sm font-medium text-blue-700 underline underline-offset-2" onClick={() => { setReporterOverride(''); setReportingForSomeoneElse(true) }}>
+          {t('report.reportForSomeoneElse', '代他人回報')}
+        </button>}
+        {reportingForSomeoneElse && <button type="button" aria-expanded={true} aria-controls="reporter-override-fields" className="min-h-11 shrink-0 px-1 text-sm text-gray-600 underline underline-offset-2" onClick={() => { setReporterOverride(''); setReportingForSomeoneElse(false) }}>
+          {t('report.cancelOverride', '取消')}
+        </button>}
+      </div>}
+      <div id="reporter-override-fields" hidden={!reportingForSomeoneElse || reporter.isSharedDevice}>
+        <Label htmlFor="reporter-override" className="text-sm">{t('report.reporterName')} <span className="text-red-500">*</span></Label>
+        <Input id="reporter-override" value={reporterOverride} onChange={e => setReporterOverride(e.target.value)} placeholder={t('report.reporterPlaceholder')} className="mt-1.5 min-h-11" />
       </div>
 
       {/* ① Where */}
@@ -293,16 +294,28 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
           phone (they render immediately after, with no header in between,
           since the two-column divs stack seamlessly) but move to the right
           column on desktop. */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <SectionHeader number={2} title={t('report.sectionIssue', '什麼問題')} />
 
         <div>
-          <Label className="text-base">{t('report.issueType')} <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-2 gap-2 mt-1">
+          <Label id="report-issue-type-label" htmlFor="report-issue-type" className="text-base">{t('report.issueType')}</Label>
+          {/* The native phone picker keeps the form short and uses the
+              device's familiar selection controls. Both layouts share state. */}
+          <select
+            id="report-issue-type"
+            value={hasSelectedIssueType ? issueType : ''}
+            onChange={event => setIssueType(event.target.value)}
+            className="mt-1 block min-h-12 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 lg:hidden"
+          >
+            <option value="" disabled>{t('report.specifyType')}</option>
+            {issueTypes.map(it => <option key={it.value} value={it.value}>{it.label}</option>)}
+          </select>
+          <div role="group" aria-labelledby="report-issue-type-label" className="hidden grid-cols-2 gap-2 mt-1 lg:grid xl:grid-cols-3">
             {issueTypes.map(it => (
               <button
                 key={it.value}
                 type="button"
+                aria-pressed={issueType === it.value}
                 onClick={() => setIssueType(it.value)}
                 className={`text-left rounded-lg border px-3 py-2.5 text-base font-medium transition-colors ${
                   issueType === it.value
@@ -318,18 +331,20 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
 
         <div>
           <div className="flex items-center justify-between gap-2">
-            <Label className="text-base">{t('report.problemDesc')} <span className="text-red-500">*</span></Label>
+            <Label htmlFor="report-description" className="text-base">{t('report.problemDesc')} <span className="text-red-500">*</span></Label>
             {/* Dictation shortcut — appends into the SAME editable textarea,
                 so mis-recognitions from factory noise get fixed before
                 submitting, never auto-sent. Hidden when unsupported. */}
             <SpeechMicButton onText={txt => setDescription(prev => (prev ? prev + ' ' : '') + txt)} />
           </div>
           <Textarea
+            id="report-description"
+            aria-required="true"
             value={description}
             onChange={e => setDescription(e.target.value)}
             placeholder={t('report.descPlaceholder')}
-            className="mt-1"
-            rows={4}
+            className="mt-1 min-h-24 resize-y text-base"
+            rows={3}
           />
         </div>
 
@@ -340,9 +355,9 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       </div>
       </div>
       {/* ---- Right column (desktop) / continues down the page (phone) ---- */}
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-4 md:rounded-xl md:border md:border-gray-200 md:bg-gray-50/50 md:p-4">
 
-      {/* Photos — big obvious tap target, see PhotoPicker's 'report' variant */}
+      {/* Compact report controls preserve two explicit photo sources and generous tap targets. */}
       <PhotoPicker
         photos={photoCapture.photos}
         photoPreviews={photoCapture.photoPreviews}
@@ -350,6 +365,7 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
         maxPhotos={5}
         onAddPhotos={photoCapture.addPhotos}
         onRemovePhoto={photoCapture.removePhoto}
+        compact
       />
 
       {/* ③ How urgent */}
@@ -361,14 +377,15 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
               key={u.value}
               type="button"
               onClick={() => setUrgency(u.value)}
-              className={`rounded-lg border px-2 py-2 text-left transition-colors ${
+              aria-pressed={urgency === u.value}
+              className={`min-h-12 rounded-lg border px-2 py-2 text-left transition-colors ${
                 urgency === u.value
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
                   : 'border-gray-200 bg-white text-gray-700'
               }`}
             >
-              <span className="text-xs font-semibold block">{t(u.labelKey)}</span>
-              <span className="text-xs text-gray-400 block mt-0.5 leading-tight">{t(u.descKey)}</span>
+              <span className="text-sm font-semibold block">{t(u.labelKey)}</span>
+              <span className="text-sm text-gray-600 block mt-1 leading-snug break-words">{t(u.descKey)}</span>
             </button>
           ))}
         </div>
@@ -377,16 +394,17 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
             aren't distracted: leaving it empty auto-derives the date from
             urgency. */}
         <details className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 mt-3">
-          <summary className="text-sm text-gray-600 cursor-pointer select-none">
+          <summary className="min-h-11 content-center text-sm text-gray-600 cursor-pointer select-none">
             {t('report.advancedOptions', '進階選項（截止日，可不填）')}
           </summary>
           <div className="mt-2">
-            <Label className="text-sm">{t('report.dueDate', '截止日')}</Label>
+            <Label htmlFor="report-due-date" className="text-sm">{t('report.dueDate', '截止日')}</Label>
             <Input
+              id="report-due-date"
               type="date"
               value={dueDate}
               onChange={e => setDueDate(e.target.value)}
-              className="mt-1"
+              className="mt-1 min-h-11"
             />
             <p className="text-xs text-gray-400 mt-1">
               {t('report.dueDateHint', '留空則依緊急程度自動計算（緊急=當天、中=7天、一般=30天）')}
@@ -408,11 +426,10 @@ export default function IncidentForm({ presetMachineId }: { presetMachineId?: st
       {/* ---- End two-column grid ---- */}
       </div>
 
-      {/* Sticky submit bar (phone only) — pinned just above BottomNav (h-16)
-          so it's always reachable without scrolling back up. z-40 keeps it
-          below BottomNav's z-50 in case of any visual overlap. */}
-      <div className="lg:hidden fixed inset-x-0 bottom-16 z-40 border-t border-gray-200 bg-white/95 backdrop-blur px-4 py-3 safe-area-bottom">
-        <div className="max-w-lg mx-auto">
+      {/* Sticky submit bar (phone only) — pinned above the BottomNav and its
+          iPhone safe area, so it stays reachable without covering navigation. */}
+      <div className="lg:hidden fixed inset-x-0 bottom-above-mobile-nav z-40 border-t border-gray-200 bg-white/95 backdrop-blur px-4 py-2 md:px-6">
+        <div className="max-w-lg mx-auto md:max-w-3xl">
           <Button
             onClick={submit}
             disabled={submitDisabled}
@@ -436,7 +453,7 @@ function SectionHeader({ number, title }: { number: number; title: string }) {
         {number}
       </span>
       <h2 className="text-base font-bold text-gray-900">
-        {title} <span className="text-red-500">*</span>
+        {title}
       </h2>
     </div>
   )

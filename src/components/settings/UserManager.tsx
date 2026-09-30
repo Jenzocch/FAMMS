@@ -15,6 +15,7 @@ import type { UserRole } from '@/types'
 import type { CustomRole } from '@/lib/roles'
 import { customRoleLabel } from '@/lib/roles'
 import { useI18n } from '@/lib/i18n'
+import SharedTabletManager from '@/components/settings/SharedTabletManager'
 
 interface Factory { id: string; name: string }
 interface ManagedUser {
@@ -482,6 +483,7 @@ export default function UserManager({ currentUserId, canAssignAdmin = false }: {
           })
         )}
       </div>
+      {canAssignAdmin && <SharedTabletManager />}
     </div>
   )
 }
