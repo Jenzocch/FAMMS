@@ -33,9 +33,9 @@
 --   WJ1–WJ4 (Waterjet)   → Ruang Pemotongan    (owner: "water jet 在 potong 那邊";
 --       Pemotongan rather than Ruang Ayak dan Potong Baru — edit the four rows
 --       below and re-run if it is the other room)
---   C9-06, HPE, HPM      → Other               (owner has not said where yet —
---       parked in the existing empty "Other" area, NOT a new invented one.
---       Tell me the room and move them with one UPDATE / an edit to this file.)
+--   C9-06                → Ruang Pemotongan    (owner: same room as C1–C8)
+--   HPE, HPM (Hand Pallet) → Gudang Produk Jadi (owner)
+-- Every machine on the list now has a real room; nothing is parked in "Other".
 --
 -- The children-of-machines repoint is discovered from the live catalog (every
 -- uuid column named machine_id in public), not from schema.sql: production has
@@ -72,7 +72,7 @@ INSERT INTO _din_list (final_code, orig_code, name, target_area) VALUES
   ('C3-12',   'C3',  'Mesin Potong', NULL), ('C4-08',   'C4',  'Mesin Potong', NULL),
   ('C5-06',   'C5',  'Mesin Potong', NULL), ('C6-03',   'C6',  'Mesin Potong', NULL),
   ('C7-03',   'C7',  'Mesin Potong', NULL), ('C8-03',   'C8',  'Mesin Potong', NULL),
-  ('C9-06',   NULL,  'Mesin Potong', 'O'),
+  ('C9-06',   NULL,  'Mesin Potong', 'Ruang Pemotongan'),
   ('C10-05',  'C10', 'Mesin Potong', NULL), ('C11-03S', 'C11', 'Mesin Potong', NULL),
   ('AYK1', NULL, 'Mesin Ayak', 'Ruang Ayak dan Potong Baru'),
   ('I1',   'DIN-MIX-001', 'Mesin Mixer', NULL),
@@ -81,7 +81,7 @@ INSERT INTO _din_list (final_code, orig_code, name, target_area) VALUES
   ('HMG1', 'DIN-HMG-001', 'Mesin Homogenizer', NULL),
   ('F1', NULL, 'Mesin Vakum', 'PACK'), ('F2', NULL, 'Mesin Vakum', 'PACK'),
   ('F3', NULL, 'Mesin Vakum', 'PACK'), ('F4', NULL, 'Mesin Vakum', 'PACK'),
-  ('HPE', NULL, 'Hand Pallet', 'O'), ('HPM', NULL, 'Hand Pallet', 'O'),
+  ('HPE', NULL, 'Hand Pallet', 'Gudang Produk Jadi'), ('HPM', NULL, 'Hand Pallet', 'Gudang Produk Jadi'),
   ('WJ1', NULL, 'Waterjet', 'Ruang Pemotongan'), ('WJ2', NULL, 'Waterjet', 'Ruang Pemotongan'),
   ('WJ3', NULL, 'Waterjet', 'Ruang Pemotongan'), ('WJ4', NULL, 'Waterjet', 'Ruang Pemotongan');
 
@@ -196,9 +196,9 @@ WHERE f.id = a.factory_id AND f.code = 'DIN'
 COMMIT;
 
 -- ── Verify ──────────────────────────────────────────────────────────────────
--- Expect: Ruang Slice 15 · Ruang Pemotongan 12 · Ruang Ayak dan Potong Baru 6
+-- Expect: Ruang Slice 15 · Ruang Pemotongan 13 · Ruang Ayak dan Potong Baru 6
 -- (C10-05, C11-03S, C12, C13, C14, AYK1) · Ruang Press 3 · Packing 4 ·
--- Other 3 · Production 7 · Ruang Pasteurisasi 8.
+-- Gudang Produk Jadi 2 · Production 7 · Ruang Pasteurisasi 8 ("Other" is empty).
 SELECT a.code, a.name, COUNT(m.id) AS machines
 FROM areas a
 JOIN factories f ON f.id = a.factory_id AND f.code = 'DIN'
