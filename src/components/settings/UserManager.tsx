@@ -262,7 +262,18 @@ export default function UserManager({ currentUserId, canAssignAdmin = false }: {
     try {
       const res = await fetch(`/api/admin/users/${u.id}`, { method: 'DELETE' })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t('settings.deleteFailed'))
+      if (!res.ok) {
+        // Still carries unfinished work: say exactly what, and what to do instead.
+        if (json.code === 'HAS_OPEN_WORK' && json.blockers) {
+          throw new Error(
+            t('settings.deleteBlockedOpenWork')
+              .replace('{incidents}', String(json.blockers.incidents ?? 0))
+              .replace('{tasks}', String(json.blockers.tasks ?? 0))
+              .replace('{pm}', String(json.blockers.pmSchedules ?? 0))
+          )
+        }
+        throw new Error(json.error || t('settings.deleteFailed'))
+      }
       toast.success(t('settings.userDeleted'))
       loadUsers()
     } catch (err) {

@@ -624,6 +624,7 @@
     "cannotDeleteSelf": "無法刪除自己的帳號",
     "systemAdminProtected": "無權限操作系統管理員帳號",
     "confirmDeleteUser": "確認刪除帳號 {email}？此動作無法復原。",
+    "deleteBlockedOpenWork": "無法刪除：這個帳號名下還有未結案的工作（工單 {incidents}、任務 {tasks}、保養排程 {pm}）。請先把這些轉派給別人，或改用「停用」——停用會鎖死登入、保留所有歷史紀錄。",
     "userDeleted": "已刪除帳號",
     "noUsers": "尚無帳號",
     "emailLabel": "帳號 (Email)",

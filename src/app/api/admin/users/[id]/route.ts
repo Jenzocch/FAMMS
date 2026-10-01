@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireUserManager } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { countOpenWork } from '@/lib/open-work'
 import { accountNameToEmail, isValidLoginName, SYNTHETIC_EMAIL_DOMAIN } from '@/lib/login-name'
 import type { UserRole } from '@/types'
 
@@ -232,6 +233,29 @@ export async function DELETE(
     if (targetProfile?.role === 'admin') {
       return NextResponse.json({ error: '無法刪除系統管理員帳號' }, { status: 403 })
     }
+  }
+
+  // Refuse to delete someone who still carries unfinished work. Deleting the
+  // account would leave a dead id in every open case's assignee list (a case
+  // whose only assignee vanished is seen by nobody) and silently un-own their
+  // tasks. The right way to remove a leaver is to reassign their work and/or
+  // deactivate them (which locks the login but keeps history); delete is only
+  // for accounts with nothing open.
+  let openWork
+  try {
+    openWork = await countOpenWork(admin, id)
+  } catch {
+    return NextResponse.json({ error: '無法確認此帳號名下是否還有未結案工作，為了安全先不刪除，請稍後再試' }, { status: 500 })
+  }
+  if (openWork.total > 0) {
+    return NextResponse.json(
+      {
+        error: `此帳號名下還有未結案工作（工單 ${openWork.incidents}、任務 ${openWork.tasks}、保養排程 ${openWork.pmSchedules}），請先轉派給別人，或改用「停用」`,
+        code: 'HAS_OPEN_WORK',
+        blockers: { incidents: openWork.incidents, tasks: openWork.tasks, pmSchedules: openWork.pmSchedules },
+      },
+      { status: 409 },
+    )
   }
 
   // Deleting the auth user cascades to profiles (FK ON DELETE CASCADE)
