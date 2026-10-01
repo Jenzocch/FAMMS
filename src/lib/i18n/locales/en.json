@@ -624,6 +624,7 @@
     "cannotDeleteSelf": "You cannot delete your own account",
     "systemAdminProtected": "Not authorized to modify a System Admin account",
     "confirmDeleteUser": "Delete account {email}? This cannot be undone.",
+    "deleteBlockedOpenWork": "Can't delete: this account still has unfinished work (incidents {incidents}, tasks {tasks}, PM schedules {pm}). Reassign it first, or use Deactivate instead — it locks the login and keeps all history.",
     "userDeleted": "Account deleted",
     "noUsers": "No accounts yet",
     "emailLabel": "Account (Email)",

@@ -624,6 +624,7 @@
     "cannotDeleteSelf": "Anda tidak dapat menghapus akun sendiri",
     "systemAdminProtected": "Tidak berwenang mengubah akun System Admin",
     "confirmDeleteUser": "Hapus akun {email}? Tindakan ini tidak dapat dibatalkan.",
+    "deleteBlockedOpenWork": "Tidak bisa dihapus: akun ini masih memegang pekerjaan yang belum selesai (insiden {incidents}, tugas {tasks}, jadwal PM {pm}). Alihkan dulu ke orang lain, atau gunakan Nonaktifkan — login dikunci dan semua riwayat tetap tersimpan.",
     "userDeleted": "Akun dihapus",
     "noUsers": "Belum ada akun",
     "emailLabel": "Akun (Email)",
